@@ -1,0 +1,178 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bonificações - App Vendedor</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Trebuchet MS", sans-serif;
+        }
+
+        body {
+            background-color: #f7f7f7;
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 80px;
+            padding: 0 20px;
+            background-color: #C1AB63;
+            color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        header img.logo {
+            height: 100%;
+            max-height: 80px;
+            object-fit: contain;
+        }
+
+        header .saudacao {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        nav.menu {
+            background-color: white;
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            padding: 10px 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        nav.menu a {
+            text-decoration: none;
+            color: #C1AB63;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: color 0.3s;
+        }
+
+        nav.menu a:hover {
+            color: #8B7D3B;
+        }
+
+        main {
+            padding: 10px 20px;
+            background: white;
+            border-radius: 6px;
+            box-shadow: 0 0 8px rgba(0,0,0,0.1);
+            flex-grow: 1;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+        }
+
+        button#novaSolicitacao {
+            background-color: #C1AB63;
+            border: none;
+            padding: 10px 18px;
+            color: white;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-size: 14px;
+        }
+
+        button#novaSolicitacao:hover {
+            background-color: #8B7D3B;
+        }
+
+        /* Removidas as regras de estilo específicas para tabelas e filtros,
+           pois não serão usados nesta página. */
+
+
+        @media (max-width: 768px) {
+            /* Regras de media query para filtros removidas */
+        }
+
+        @media (max-width: 600px) {
+            header {
+                flex-direction: column;
+                height: auto;
+                padding: 10px 20px;
+                gap: 5px;
+            }
+
+            header img.logo {
+                max-height: 60px;
+            }
+
+            header .saudacao {
+                font-size: 16px;
+            }
+
+            nav.menu {
+                flex-direction: column;
+                gap: 0;
+                padding: 5px 10px;
+            }
+
+            nav.menu a {
+                justify-content: center;
+                padding: 8px 0;
+                width: 100%;
+            }
+
+            main {
+                padding: 10px;
+            }
+
+            .top-bar {
+                justify-content: center;
+                margin-bottom: 15px;
+            }
+
+            button#novaSolicitacao {
+                width: 100%;
+                max-width: 300px;
+            }
+            /* Regras de media query para tabelas removidas */
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <img src="{% static 'logo.png' %}" alt="Logo" class="logo" />
+        <div class="saudacao">Olá, {{ user.first_name }}</div>
+    </header>
+
+    <nav class="menu">
+        <a href="{% url 'salesapp:inicio' %}">🏠 <span>Início</span></a>
+        <a href="{% url 'salesapp:cadastros' %}">📋 <span>Cadastros</span></a>
+        <a href="{% url 'salesapp:bonificacoes' %}">🎁 <span>Bonificação</span></a> {# Link ativo para esta página #}
+        <a href="{% url 'salesapp:logout' %}">🚪 <span>Sair</span></a>
+    </nav>
+
+    <main>
+        <div class="top-bar">
+            <button id="novaSolicitacao" onclick="location.href='{% url 'salesapp:nova_bonificacao' %}'">+ Nova Solicitação</button>
+        </div>
+
+        <p>Aqui você poderá visualizar e gerenciar as solicitações de bonificação.</p>
+
+    </main>
+
+</body>
+</html>

@@ -1,0 +1,116 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Início - App Vendedor</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Trebuchet MS', sans-serif;
+      background-color: #f8f8f8;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 80px;
+      padding: 0 20px;
+      background-color: #C1AB63;
+      color: white;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    header img.logo {
+      height: 100%;
+      max-height: 80px;
+      object-fit: contain;
+    }
+    header .saudacao {
+      font-size: 18px;
+      font-weight: bold;
+    }
+    nav.menu {
+      background-color: white;
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      padding: 10px 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      font-weight: bold;
+      font-size: 16px;
+    }
+    nav.menu a {
+      text-decoration: none;
+      color: #C1AB63;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: color 0.3s;
+    }
+    nav.menu a:hover {
+      color: #8B7D3B;
+    }
+
+    main {
+      padding: 20px;
+      flex-grow: 1;
+    }
+
+    /* Responsividade */
+    @media (max-width: 600px) {
+        header {
+            flex-direction: column;
+            height: auto;
+            padding: 10px 20px;
+            gap: 5px;
+        }
+
+        header img.logo {
+            max-height: 60px;
+        }
+
+        header .saudacao {
+            font-size: 16px;
+        }
+
+        nav.menu {
+            flex-direction: column;
+            gap: 0;
+            padding: 5px 10px;
+        }
+
+        nav.menu a {
+            justify-content: center;
+            padding: 8px 0; 
+            width: 100%;
+        }
+
+        main {
+            padding: 15px;
+        }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <img src="{% static 'logo.png' %}" alt="Logo" class="logo" />
+  <div class="saudacao">Olá, {{ user.first_name }}</div>
+</header>
+
+<nav class="menu">
+  <a href="{% url 'salesapp:inicio' %}">🏠 <span>Início</span></a>
+  <a href="{% url 'salesapp:cadastros' %}">📋 <span>Cadastros</span></a>
+  <a href="{% url 'salesapp:bonificacoes' %}">🎁 <span>Bonificação</span></a>
+  <a href="{% url 'salesapp:logout' %}">🚪 <span>Sair</span></a>
+</nav>
+
+<main>
+  <p>Bem-vindo ao aplicativo de vendedores!</p>
+</main>
+
+</body>
+</html>

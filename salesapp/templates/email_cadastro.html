@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Novo Cliente Pendente de Cadastro</title>
+    <style>
+        body {
+            font-family: 'Trebuchet MS', sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 30px;
+        }
+
+        .container {
+            background-color: #ffffff;
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        h1 {
+            color: #333333;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #555555;
+            font-size: 20px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+
+        .data-item {
+            margin-bottom: 10px;
+            font-size: 16px;
+            color: #444;
+        }
+
+        .buttons-container {
+            margin-top: 30px;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 12px 20px;
+            margin-right: 15px;
+            border-radius: 6px;
+            text-decoration: none;
+            color: #fff;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+
+        .approve {
+            background-color: #28a745;
+        }
+
+        .approve:hover {
+            background-color: #218838;
+        }
+
+        .reject {
+            background-color: #dc3545;
+        }
+
+        .reject:hover {
+            background-color: #c82333;
+        }
+
+        a {
+            color: #007bff;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        ul {
+            padding-left: 20px;
+        }
+
+        p {
+            color: #333;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 600px) {
+            .button {
+                display: block;
+                margin-bottom: 10px;
+            }
+
+            .buttons-container {
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Solicitação de cadastro</h1>
+
+        <h2>Dados Básicos:</h2>
+        <div class="data-item"><strong>Plataforma:</strong> {{ cadastro.plataforma }}</div>
+        <div class="data-item"><strong>Tipo:</strong> {{ cadastro.tipo_cliente }}</div>
+        <div class="data-item"><strong>Razão Social/Nome:</strong> {{ cadastro.razao_social }}</div>
+        <div class="data-item"><strong>Nome Fantasia:</strong> {{ cadastro.nome_fantasia }}</div>
+        <div class="data-item"><strong>CNPJ/CPF:</strong> {{ cadastro.cgc }}</div>
+        <div class="data-item"><strong>Inscrição Estadual:</strong> {{ cadastro.inscricao_estadual|default:"" }}</div>
+        <div class="data-item"><strong>Email:</strong> {{ cadastro.email }}</div>
+        <div class="data-item"><strong>Telefone:</strong> {{ cadastro.telefone }}</div>
+        <div class="data-item"><strong>CEP:</strong> {{ cadastro.cep }}</div>
+        <div class="data-item"><strong>Estado:</strong> {{ cadastro.estado }}</div>
+        <div class="data-item"><strong>Cidade:</strong> {{ cadastro.cidade }}</div>
+        <div class="data-item"><strong>Bairro:</strong> {{ cadastro.bairro }}</div>
+        <div class="data-item"><strong>Endereço:</strong> {{ cadastro.endereco }}</div>
+        <div class="data-item"><strong>Número:</strong> {{ cadastro.numero }}</div>
+        <div class="data-item"><strong>Complemento:</strong> {{ cadastro.complemento|default:"" }}</div>
+        <div class="data-item"><strong>Data de Envio:</strong> {{ cadastro.data_cadastro|date:"d/m/Y H:i" }}</div>
+
+        <h2>Dados Complementares:</h2>
+        <div class="data-item"><strong>Grupo de Cliente:</strong> {{ cadastro.grupo_cliente }}</div>
+        <div class="data-item"><strong>Condição de Pagamento:</strong> {{ cadastro.condicao_pagamento }}</div>
+        <div class="data-item"><strong>Vendedor:</strong> {{ cadastro.vendedor.first_name }} {{ cadastro.vendedor.last_name }}</div>
+        <div class="data-item"><strong>Horário de Entrega:</strong> {{ cadastro.horario_entrega }}</div>
+        
+        <h2>Endereço de Entrega:</h2>
+        <div class="data-item"><strong>CEP:</strong> {{ cadastro.cep_entrega }}</div>
+        <div class="data-item"><strong>Estado:</strong> {{ cadastro.estado_entrega }}</div>
+        <div class="data-item"><strong>Cidade:</strong> {{ cadastro.cidade_entrega }}</div>
+        <div class="data-item"><strong>Bairro:</strong> {{ cadastro.bairro_entrega }}</div>
+        <div class="data-item"><strong>Endereço:</strong> {{ cadastro.endereco_entrega }}</div>
+        <div class="data-item"><strong>Número:</strong> {{ cadastro.numero_entrega }}</div>
+        <div class="data-item"><strong>Complemento:</strong> {{ cadastro.complemento_entrega|default:"" }}</div>
+
+        <h2>Pessoas:</h2>
+        <div class="data-item"><strong>Sócio:</strong> {{ cadastro.nome_socio|default:"" }}</div>
+        <div class="data-item"><strong>CPF:</strong> {{ cadastro.cpf_socio|default:"" }}</div>
+        <div class="data-item"><strong>CEP:</strong> {{ cadastro.cep_socio|default:"" }}</div>
+        <div class="data-item"><strong>Estado:</strong> {{ cadastro.estado_socio|default:"" }}</div>
+        <div class="data-item"><strong>Cidade:</strong> {{ cadastro.cidade_socio|default:"" }}</div>
+        <div class="data-item"><strong>Bairro:</strong> {{ cadastro.bairro_socio|default:"" }}</div>
+        <div class="data-item"><strong>Endereço:</strong> {{ cadastro.endereco_socio|default:"" }}</div>
+        <div class="data-item"><strong>Número:</strong> {{ cadastro.numero_socio|default:"" }}</div>
+        <div class="data-item"><strong>Complemento:</strong> {{ cadastro.complemento_socio|default:"" }}</div>
+        <div class="data-item"><strong>Responsável Financeiro:</strong> {{ cadastro.nome_financeiro|default:"" }}</div>
+        <div class="data-item"><strong>Telefone:</strong> {{ cadastro.telefone_financeiro|default:"" }}</div>
+        <div class="data-item"><strong>Comprador:</strong> {{ cadastro.nome_compras|default:"" }}</div>
+        <div class="data-item"><strong>Telefone:</strong> {{ cadastro.telefone_compras|default:"" }}</div>
+
+        {% if anexos_info %}
+            <p>Documentos anexados:</p>
+            <ul>
+            {% for anexo in anexos_info %}
+                <li>{{ anexo.descricao }}: {{ anexo.nome_arquivo }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+
+        <p>O cadastro foi realizado?</p>
+
+        <p>
+            ➤ <a href="{{ confirm_url }}">Cadastro Realizado (Aprovar)</a><br>
+            ➤ <a href="{{ reject_url }}">Cadastro Não Realizado (Rejeitar)</a>
+        </p>
+
+        <p style="margin-top: 30px; font-size: 0.9em; color: #999;">
+            Este é um e-mail automático. Por favor, não responda diretamente.
+        </p>
+    </div>
+</body>
+</html>

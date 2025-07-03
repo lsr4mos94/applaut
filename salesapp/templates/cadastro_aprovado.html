@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Cadastro Aprovado!</title>
+    <style>
+        body {
+            font-family: 'Trebuchet MS', sans-serif;
+            background-color: #f8f9fa;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            max-width: 600px;
+            margin: auto;
+        }
+        h1 {
+            color: #28a745;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        p, li {
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        .status {
+            font-weight: bold;
+            color: #155724;
+        }
+        .note {
+            font-size: 0.85em;
+            color: #888;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Processo finalizado!</h1>
+
+        <p>O cadastro do cliente <strong>{{ cadastro.razao_social }}</strong> (CNPJ/CPF: {{ cadastro.cgc }}) foi <strong>APROVADO</strong> e <strong>LIBERADO</strong> com sucesso.</p>
+
+        <p class="note">Este é um e-mail de notificação automática. Não é necessário responder.</p>
+    </div>
+</body>
+</html>

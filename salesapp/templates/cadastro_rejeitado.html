@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Cadastro Rejeitado!</title>
+    <style>
+        body {
+            font-family: 'Trebuchet MS', sans-serif;
+            background-color: #f8f9fa;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            max-width: 600px;
+            margin: auto;
+        }
+        h1 {
+            color: #dc3545;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        p, li {
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        .status {
+            font-weight: bold;
+            color: #721c24;
+        }
+        .note {
+            font-size: 0.85em;
+            color: #888;
+            margin-top: 20px;
+        }
+        .motivo {
+            background: #f8d7da;
+            padding: 10px;
+            border-left: 4px solid #dc3545;
+            margin: 10px 0 20px 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Cadastro Rejeitado!</h1>
+
+        <p>O cadastro do cliente <strong>{{ cadastro.razao_social }}</strong> (CNPJ/CPF: {{ cadastro.cgc }}) foi <strong>REJEITADO</strong>.</p>
+
+        <div class="motivo">
+            <strong>Motivo da Rejeição:</strong><br>
+            {{ motivo }}
+        </div>
+
+        <p class="note">Este é um e-mail de notificação automática. Não é necessário responder.</p>
+    </div>
+</body>
+</html>
