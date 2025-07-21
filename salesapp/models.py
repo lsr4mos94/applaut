@@ -220,12 +220,24 @@ class Bonificacao(models.Model):
     data_pedido = models.DateTimeField(null=True, blank=True, verbose_name="Data de Geração do Pedido")
     obs_pedido = models.TextField(null=True, blank=True, verbose_name="Observação do Pedido")
 
+
+    TIPO_BONIFICACAO_CHOICES = [
+        ('VERBA_CONTRATO', 'Verba Contrato'),
+        ('BONIFICACAO_VERBA', 'Bonificação Dentro da Verba'),
+        ('NEGOCIACAO_ESPECIAL', 'Negociação Especial'),
+    ]
+
+    tipo_bonificacao = models.CharField(
+        max_length=50,
+        choices=TIPO_BONIFICACAO_CHOICES,
+        default='NEGOCIACAO_ESPECIAL' # Defina um default se apropriado
+    )
+
     motivo_recusa = models.TextField(null=True, blank=True, verbose_name="Motivo da Recusa")
 
     STATUS_CHOICES = [
-        ('PENDENTE_GESTOR', 'Pendente Aprovação Gestor'),
-        ('PENDENTE_DIRETORIA', 'Pendente Aprovação Diretoria'),
-        ('PENDENTE_PEDIDO', 'Pendente Lançamento do Pedido'),
+        ('PENDENTE_GESTOR', 'Pendente Aprovação'),
+        ('PENDENTE_PEDIDO', 'Pendente Pedido'),
         ('RECUSADA', 'Recusada'),
         ('PEDIDO_GERADO', 'Pedido Gerado'),
     ]
@@ -235,9 +247,8 @@ class Bonificacao(models.Model):
     def status_display(self):
         """Retorna o texto amigável para o status do cadastro na tabela."""
         status_map = {
-            'PENDENTE_GESTOR': 'Pendente Aprovação Gestor',
-            'PENDENTE_DIRETORIA': 'Pendente Aprovação Diretoria',
-            'PENDENTE_PEDIDO': 'Pendente Lançamento do Pedido',
+            'PENDENTE_GESTOR': 'Pendente Aprovação',
+            'PENDENTE_PEDIDO': 'Pendente Pedido',
             'RECUSADA': 'Recusada',
             'PEDIDO_GERADO': 'Pedido Gerado',
         }

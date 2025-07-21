@@ -64,6 +64,7 @@ class BonificacaoForm(forms.ModelForm):
     class Meta:
         model = Bonificacao
         fields = [
+            'tipo_bonificacao',
             'cod_cliente',
             'loja_cliente',
             'razao_social',
@@ -72,6 +73,21 @@ class BonificacaoForm(forms.ModelForm):
             'grupo_cliente',
             'motivo',
         ]
+        widgets = {
+            'tipo_bonificacao': forms.RadioSelect(choices=Bonificacao.TIPO_BONIFICACAO_CHOICES),
+        }
+        labels = {
+            'tipo_bonificacao': 'Tipo de Bonificação',
+            'cod_cliente': 'Código Cliente',
+            'loja_cliente': 'Loja Cliente',
+            'razao_social': 'Razão Social',
+            'nome_fantasia': 'Nome Fantasia',
+            'cgc': 'CGC',
+            'grupo_cliente': 'Grupo Cliente',
+            'motivo': 'Motivo',
+            'observacoes': 'Observações',
+        }
+
 
 class ItemBonificacaoForm(forms.ModelForm):
     class Meta:

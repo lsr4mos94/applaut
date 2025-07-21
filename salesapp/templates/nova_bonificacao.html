@@ -203,6 +203,49 @@
             cursor: pointer;
         }
 
+        /* Estilos para os botões de rádio */
+        .radio-group { /* Usa .radio-group para corresponder ao HTML */
+            display: flex;
+            gap: 1rem; /* Espaçamento entre as opções */
+            flex-wrap: wrap;
+        }
+
+        .radio-option {
+            display: inline-flex;
+            align-items: center;
+            cursor: pointer;
+            padding: 0.5rem 0;
+        }
+
+        .radio-option input[type="radio"] {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid var(--cor-principal); /* Cor da borda com base na variável */
+            border-radius: 50%;
+            margin-right: 0.5rem;
+            position: relative;
+            display: grid;
+            place-content: center;
+        }
+
+        .radio-option input[type="radio"]::before {
+            content: "";
+            width: 0.75rem;
+            height: 0.75rem;
+            border-radius: 50%;
+            transform: scale(0);
+            transition: transform 0.2s ease-in-out;
+            background-color: var(--cor-principal); /* Cor de preenchimento com base na variável */
+        }
+
+        .radio-option input[type="radio"]:checked::before {
+            transform: scale(1);
+        }
+
+        /* Mantenha também a correção da media query */
         @media (max-width: 768px) {
             .ui-dialog {
                 width: 95% !important;
@@ -227,6 +270,12 @@
             #product-search-results-modal .ui-dialog-content {
                 overflow-x: auto;
             }
+
+            /* Correção do nome da classe para o media query dos rádios */
+            .radio-group { /* Usa .radio-group para corresponder ao HTML */
+                flex-direction: column;
+                gap: 10px; /* Espaçamento entre as opções em tela menor */
+            }
         }
     </style>
 </head>
@@ -239,6 +288,25 @@
 
         <div class="header-section">
             <h2 class="text-xl font-bold mb-4 titulo-secao">Dados Básicos</h2>
+
+            <div class="md:col-span-2">
+                <label class="block font-semibold mb-1">Tipo de Bonificação</label>
+                <div class="radio-group">
+                    <label class="radio-option">
+                        <input type="radio" name="tipo_bonificacao" value="VERBA_CONTRATO" required>
+                        Verba Contrato
+                    </label>
+                    <label class="radio-option">
+                        <input type="radio" name="tipo_bonificacao" value="BONIFICACAO_VERBA">
+                        Bonificação Dentro da Verba
+                    </label>
+                    <label class="radio-option">
+                        <input type="radio" name="tipo_bonificacao" value="NEGOCIACAO_ESPECIAL">
+                        Negociação Especial
+                    </label>
+                </div>
+            </div>
+            <br>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="form-group md:col-span-2">
                     <label for="clienteBusca">Buscar Cliente:</label>
@@ -608,16 +676,10 @@
                 $(this).data('timeout', searchTimeout);
             });
 
-            // Evento de clique nas linhas do modal de produto (mantido como está)
             $(document).on('click', '#product-results-table-body .clickable-row', function() {
                 const $rowSelected = $(this);
                 const $currentRow = activeProductSearchInput.closest('.item-row'); 
-                
-                console.log("DEBUG_FRONTEND: Clicou na linha do modal de produto.");
-                console.log("DEBUG_FRONTEND: activeProductSearchInput:", activeProductSearchInput);
-                console.log("DEBUG_FRONTEND: $currentRow (linha do formulário):", $currentRow);
-
-
+            
                 if ($currentRow && activeProductSearchInput) {
                     $currentRow.find('.codigo-produto').val($rowSelected.data('codigo-produto') || '');
                     $currentRow.find('.descricao-produto').val($rowSelected.data('descricao-produto') || '');
@@ -662,6 +724,19 @@
                 formBonificacao.addEventListener('submit', async (e) => {
                     console.log('DEBUG: Evento de submit do formulário de bonificação disparado.');
                     e.preventDefault();
+
+                    // Coleta o valor do tipo de bonificação selecionado
+                    const tipoBonificacaoElement = document.querySelector('input[name="tipo_bonificacao"]:checked');
+                    if (!tipoBonificacaoElement) {
+                        alert('Por favor, selecione um Tipo de Bonificação.');
+                        if (botaoEnviarBonificacao) {
+                            botaoEnviarBonificacao.disabled = false;
+                            botaoEnviarBonificacao.textContent = 'Salvar Solicitação';
+                        }
+                        return;
+                    }
+                    const tipoBonificacao = tipoBonificacaoElement.value;
+
 
                     // Adicionado validação no frontend para campos obrigatórios de cliente
                     const codCliente = document.getElementById('codCliente').value;
@@ -725,6 +800,7 @@
                     formData.append('cod_cliente', codCliente); 
                     formData.append('loja_cliente', lojaCliente); 
                     formData.append('motivo', motivo);
+                    formData.append('tipo_bonificacao', tipoBonificacao); // ADICIONADO: Coleta o valor do tipo de bonificação
 
                     // Coleta os dados dos itens adicionados dinamicamente
                     // A variável itemRows já está definida mais acima.
@@ -758,33 +834,34 @@
                         console.log('DEBUG: Resposta Axios recebida:', response);
 
                         if (response.status === 200 || response.status === 201) {
-                            alert('Bonificação criada com sucesso!');
+                            if (tipoBonificacao === 'NEGOCIACAO_ESPECIAL') {
+                                alert('Solicitação registrada com sucesso. Aguarde autorização do gestor.');
+                            } else {
+                                alert('Solicitação registrada e autorizada. Favor inserir seu pedido no sistema.');
+                            }
                             window.location.href = '{% url "salesapp:bonificacoes" %}';
-                        } else {
-                            alert('Erro ao criar a bonificação. Tente novamente.');
                         }
                     } catch (error) {
                         console.error('DEBUG: Erro na requisição Axios:', error);
-                        alert('Ocorreu um erro ao enviar a bonificação.');
+                        let finalErrorMessage = 'Ocorreu um erro ao enviar a bonificação.'; 
+
                         if (error.response) {
                             console.error('DEBUG: Dados da resposta de erro:', error.response.data);
                             if (error.response.data && error.response.data.errors) {
-                                const errors = error.response.data.errors;
-                                let errorMessage = 'Erro(s) de validação:\n';
+                                let detailedErrorMessage = 'Erro(s) de validação:\n';
                                 
-                                document.querySelectorAll('.text-red-500.text-sm').forEach(el => el.textContent = '');
+                                document.querySelectorAll('.text-red-500.text-sm.field-error').forEach(el => el.textContent = '');
 
-                                if (errors.main_form) {
+                                if (error.response.data.errors.main_form) {
                                     try {
-                                        const mainFormErrors = errors.main_form; 
+                                        const mainFormErrors = error.response.data.errors.main_form; 
                                         for (const field in mainFormErrors) {
                                             // Mapeia 'motivo' para 'justificativa' no frontend para exibir o erro no campo correto
                                             const elementId = (field === 'motivo') ? 'justificativa' : field;
                                             const element = document.getElementById(elementId); 
                                             if (element) {
                                                 let errorDisplay = element.nextElementSibling;
-                                                if (!errorDisplay || !errorDisplay.classList.contains('text-red-500')) {
-                                                    // Procura por um span de erro específico ou cria um
+                                                if (!errorDisplay || !errorDisplay.classList.contains('text-red-500') || !errorDisplay.classList.contains('field-error')) {
                                                     let existingErrorSpan = element.closest('.form-group').querySelector('.field-error');
                                                     if (!existingErrorSpan) {
                                                         existingErrorSpan = document.createElement('span');
@@ -797,16 +874,16 @@
                                                     errorDisplay.textContent = mainFormErrors[field].join(', ');
                                                 }
                                             }
-                                            errorMessage += `- Formulário Principal - ${field}: ${mainFormErrors[field].join(', ')}\n`;
+                                            detailedErrorMessage += `- Formulário Principal - ${field}: ${mainFormErrors[field].join(', ')}\n`;
                                         }
                                     } catch (e) {
-                                        errorMessage += `- Erro na análise do Formulário Principal: ${errors.main_form}\n`;
+                                        detailedErrorMessage += `- Erro na análise do Formulário Principal: ${error.response.data.errors.main_form}\n`;
                                     }
                                 }
 
-                                if (errors.item_forms) {
+                                if (error.response.data.errors.item_forms) {
                                     try {
-                                        const itemFormsErrors = errors.item_forms; 
+                                        const itemFormsErrors = error.response.data.errors.item_forms; 
                                         itemFormsErrors.forEach((itemError, index) => {
                                             if (itemError) {
                                                 const itemRow = document.querySelectorAll('.item-row')[index];
@@ -827,26 +904,28 @@
                                                         }
                                                     }
                                                 }
-                                                errorMessage += `\n- Item ${index + 1}:\n`;
+                                                detailedErrorMessage += `\n- Item ${index + 1}:\n`;
                                                 for (const field in itemError) {
-                                                    errorMessage += `  - ${field}: ${itemError[field].join(', ')}\n`;
+                                                    detailedErrorMessage += `  - ${field}: ${itemError[field].join(', ')}\n`;
                                                 }
                                             }
                                         });
                                     } catch (e) {
-                                        errorMessage += `- Erro na análise dos Itens: ${errors.item_forms}\n`;
+                                        detailedErrorMessage += `- Erro na análise dos Itens: ${error.response.data.errors.item_forms}\n`;
                                     }
                                 }
-                                alert(errorMessage);
+                                finalErrorMessage = detailedErrorMessage; // Usa a mensagem detalhada se houver erros de validação
 
                             } else if (error.response.status === 403) {
-                                alert('Erro de segurança (CSRF). Por favor, tente novamente ou recarregue a página.');
+                                finalErrorMessage = 'Erro de segurança (CSRF). Por favor, tente novamente ou recarregue a página.';
                             } else {
-                                alert(`Erro: ${error.response.status} - ${error.response.data.detail || error.response.statusText}`);
+                                finalErrorMessage = `Erro: ${error.response.status} - ${error.response.data.detail || error.response.statusText || 'Detalhes do erro não disponíveis.'}`;
                             }
                         } else {
-                            alert('Erro de rede ou servidor não respondeu.');
+                            // Erros de rede ou outros que não têm 'response'
+                            finalErrorMessage = 'Erro de rede ou servidor não respondeu.';
                         }
+                        alert(finalErrorMessage); // Exibe a mensagem de erro final
                     } finally {
                         if (botaoEnviarBonificacao) {
                             botaoEnviarBonificacao.disabled = false;

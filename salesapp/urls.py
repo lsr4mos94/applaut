@@ -30,9 +30,6 @@ urlpatterns = [
     path('bonificacao/autorizar_gestor/<int:bonificacao_id>/', views.bonificacao_autorizar_gestor, name='bonificacao_autorizar_gestor'),
     path('bonificacao/recusar_gestor/<int:bonificacao_id>/', views.bonificacao_recusar_gestor, name='bonificacao_recusar_gestor'),
 
-    path('bonificacao/autorizar_diretoria/<int:bonificacao_id>/', views.bonificacao_autorizar_diretoria, name='bonificacao_autorizar_diretoria'),
-    path('bonificacao/recusar_diretoria/<int:bonificacao_id>/', views.bonificacao_recusar_diretoria, name='bonificacao_recusar_diretoria'),
-
     path('bonificacao/bonificacao_pedido/<int:bonificacao_id>/', views.bonificacao_pedido, name='bonificacao_pedido'),
 
 ]
