@@ -1,25 +1,26 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 from django.conf import settings 
 import os
 import mimetypes 
-from .forms import LoginForm, NovoCadastroForm
-from .models import Cadastro, AnexoCadastro
+from .forms import LoginForm, NovoCadastroForm, BonificacaoForm, ItemBonificacaoFormSet
+from .models import Cadastro, AnexoCadastro, TotvsCliente, TotvsVendedor, TotvsProduto, TotvsTabPreco, Bonificacao, ItemBonificacao
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods 
 from django.urls import reverse 
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.views import PasswordResetConfirmView
-from django.contrib.auth import get_user_model
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.db.models import Q
+from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 @login_required
 def inicio(request):
@@ -76,7 +77,6 @@ def cadastros(request):
         'is_gestor': is_gestor,
     }
     return render(request, 'cadastros.html', context)
-
 
 @login_required
 def novo_cadastro(request):
@@ -136,23 +136,19 @@ def novo_cadastro_submit(request):
 
             email_html_content = render_to_string('email_cadastro.html', email_context)
 
-            #to_email_list = ['cadastroclientes@lautbeer.com.br']
-            to_email_list = ['lorrane.ramos@lautbeer.com.br']
+            to_email_list = ['cadastroclientes@lautbeer.com.br']
 
-            #if request.user.is_authenticated and request.user.email:
-            #    to_email_list.append(request.user.email)
-
-            #bcc_email_list = ['lorrane.ramos@lautbeer.com.br']
+            bcc_email_list = ['lorrane.ramos@lautbeer.com.br']
            
             from_email = settings.DEFAULT_FROM_EMAIL
-            subject = f'Cliente Pendente de Cadastro: {cadastro.razao_social}'
+            subject = f'NOVO CLIENTE PENDENTE DE CADASTRO: #{cadastro.razao_social}'
 
             email = EmailMessage(
                 subject,
                 email_html_content,
                 from_email,
                 to_email_list,
-                #bcc=bcc_email_list
+                bcc=bcc_email_list
             )
             email.content_subtype = "html"
             
@@ -210,7 +206,11 @@ def cadastro_confirmar(request, cadastro_id):
         return render(request, 'cadastro_confirmar.html', {'cadastro': cadastro, 'action_url': action_url})
 
     elif request.method == 'POST':
+        obs_cadastro_input = request.POST.get('obs', '').strip()
+
         cadastro.status = 'cadastrado' 
+        cadastro.data_aprovacao_cadastro = timezone.now()
+        cadastro.obs_cadastro = obs_cadastro_input if obs_cadastro_input else None
         cadastro.save()
 
         liberar_url = request.build_absolute_uri(
@@ -234,28 +234,29 @@ def cadastro_confirmar(request, cadastro_id):
             'cadastro': cadastro,
             'liberar_url': liberar_url,
             'bloquear_url': bloquear_url,
-            'anexos_info': anexos_para_email_context, # Passa a nova lista com nome e descrição
+            'anexos_info': anexos_para_email_context,
         }
 
         email_html_content = render_to_string('email_financeiro.html', email_context)
 
-        #to_email_list = ['cobranca@lautbeer.com.br']
-        to_email_list = ['lorrane.ramos@lautbeer.com.br']
+        to_email_list = ['cobranca@lautbeer.com.br']
 
-        #if request.user.is_authenticated and request.user.email:
-        #    to_email_list.append(request.user.email)
+        if cadastro.vendedor:
+            to_email_list.append(cadastro.vendedor.email)
+        else:
+            pass
 
-        #bcc_email_list = ['lorrane.ramos@lautbeer.com.br']
+        bcc_email_list = ['lorrane.ramos@lautbeer.com.br']
 
         from_email = settings.DEFAULT_FROM_EMAIL
-        subject = f'Cadastro Pendente de Liberação: {cadastro.razao_social}'
+        subject = f'NOVO CADASTRO PENDENTE DE LIBERAÇÃO FINANCEIRA: #{cadastro.razao_social}'
 
         email = EmailMessage(
             subject,
             email_html_content,
             from_email,
             to_email_list,
-            #bcc=bcc_email_list
+            bcc=bcc_email_list
         )
         email.content_subtype = "html"
         
@@ -339,23 +340,24 @@ def cadastro_rejeitar(request, cadastro_id):
         }
         email_html_content = render_to_string('cadastro_rejeitado.html', email_context) 
 
-        #to_email_list = ['cadastroclientes@lautbeer.com.br']
-        to_email_list = ['lorrane.ramos@lautbeer.com.br']
+        to_email_list = ['cadastroclientes@lautbeer.com.br']
 
-        #if request.user.is_authenticated and request.user.email:
-        #    to_email_list.append(request.user.email)
+        if cadastro.vendedor:
+            to_email_list.append(cadastro.vendedor.email)
+        else:
+            pass
 
-        #bcc_email_list = ['lorrane.ramos@lautbeer.com.br']
+        bcc_email_list = ['lorrane.ramos@lautbeer.com.br']
 
         from_email = settings.DEFAULT_FROM_EMAIL
-        subject = f'Cliente não cadastrado: {cadastro.razao_social}'
+        subject = f'CLIENTE NÃO CADASTRADO: #{cadastro.razao_social}'
 
         email = EmailMessage(
             subject,
             email_html_content,
             from_email,
             to_email_list,
-        #   bcc_email_list
+            bcc_email_list
         )
         email.content_subtype = "html"
         
@@ -385,7 +387,11 @@ def liberar_cadastro(request, cadastro_id):
         return render(request, 'cadastro_confirmar.html', {'cadastro': cadastro, 'action_url': action_url})
 
     elif request.method == 'POST':
+        obs_cadastro_input = request.POST.get('obs', '').strip()
+
         cadastro.status = 'liberado' 
+        cadastro.data_aprovacao_financeiro = timezone.now()
+        cadastro.obs_financeiro = obs_cadastro_input if obs_cadastro_input else None
         cadastro.save()
 
         anexos_db = AnexoCadastro.objects.filter(cadastro=cadastro)
@@ -406,23 +412,24 @@ def liberar_cadastro(request, cadastro_id):
         }
         email_html_content = render_to_string('cadastro_aprovado.html', email_context)
 
-        #to_email_list = ['cadastroclientes@lautbeer.com.br', 'cobranca@lautbeer.com.br']
-        to_email_list = ['lorrane.ramos@lautbeer.com.br']
+        to_email_list = ['cadastroclientes@lautbeer.com.br', 'cobranca@lautbeer.com.br']
 
-        #if request.user.is_authenticated and request.user.email:
-        #    to_email_list.append(request.user.email)
+        if cadastro.vendedor:
+            to_email_list.append(cadastro.vendedor.email)
+        else:
+            pass
 
-        #bcc_email_list = ['lorrane.ramos@lautbeer.com.br']
+        bcc_email_list = ['lorrane.ramos@lautbeer.com.br']
 
         from_email = settings.DEFAULT_FROM_EMAIL
-        subject = f'Cliente cadastrado: {cadastro.razao_social}'
+        subject = f'CLIENTE CADASTRADO: #{cadastro.razao_social}'
 
         email = EmailMessage(
             subject,
             email_html_content,
             from_email,
             to_email_list,
-            #bcc_email_list
+            bcc_email_list
         )
 
         email.content_subtype = "html"
@@ -478,27 +485,28 @@ def bloquear_cadastro(request, cadastro_id):
             'cadastro': cadastro,
             'motivo': motivo,
             'rejeitor_email': request.user.email if request.user.is_authenticated else "rejeitor_desconhecido",
-            'anexos_info': anexos_para_email_context, # Passa a nova lista com nome e descrição
+            'anexos_info': anexos_para_email_context,
         }
         email_html_content = render_to_string('cadastro_rejeitado.html', email_context) 
 
-        #to_email_list = ['cadastroclientes@lautbeer.com.br', 'cobranca@lautbeer.com.br']
-        to_email_list = ['lorrane.ramos@lautbeer.com.br']
+        to_email_list = ['cadastroclientes@lautbeer.com.br', 'cobranca@lautbeer.com.br']
 
-        #if request.user.is_authenticated and request.user.email:
-        #    to_email_list.append(request.user.email)
+        if cadastro.vendedor:
+            to_email_list.append(cadastro.vendedor.email)
+        else:
+            pass
 
-        #bcc_email_list = ['lorrane.ramos@lautbeer.com.br']
+        bcc_email_list = ['lorrane.ramos@lautbeer.com.br']
 
         from_email = settings.DEFAULT_FROM_EMAIL
-        subject = f'Cliente não cadastrado: {cadastro.razao_social}'
+        subject = f'CADASTRO NÃO LIBERADO: #{cadastro.razao_social}'
 
         email = EmailMessage(
             subject,
             email_html_content,
             from_email,
             to_email_list,
-        #    bcc_email_list
+            bcc_email_list
         )
         
         email.content_subtype = "html"
@@ -561,22 +569,638 @@ class CustomPasswordResetView(auth_views.PasswordResetView):
     html_email_template_name = 'registration/password_reset_email.html'
 
     def post(self, request, *args, **kwargs):
-        print(">>> DEBUG: Método POST da CustomPasswordResetView chamado.")
+
         return super().post(request, *args, **kwargs)
 
     def form_valid(self, form):
-        print(">>> DEBUG: Método form_valid da CustomPasswordResetView chamado. Início do envio do e-mail.")
         response = super().form_valid(form)
-        print(">>> DEBUG: Método form_valid da CustomPasswordResetView concluído. E-mail supostamente enviado.")
         return response
     
 @login_required
 def bonificacoes(request):
+
+    is_gestor = request.user.groups.filter(name='Gestores').exists()
+
+    if is_gestor:
+        bonificacao_query = Bonificacao.objects.all()
+        vendedores_disponiveis = User.objects.filter(groups__name='Vendedores').order_by('first_name', 'username')
+    else:
+        bonificacao_query = Bonificacao.objects.filter(vendedor=request.user)
+        vendedores_disponiveis = None
+
+    termo_busca = request.GET.get('busca', '').strip()
+    if termo_busca:
+        bonificacao_query = bonificacao_query.filter(
+            Q(razao_social__icontains=termo_busca) |
+            Q(cgc__icontains=termo_busca)
+        )
+
+    if is_gestor:
+        vendedor_id = request.GET.get('vendedor', '')
+        if vendedor_id:
+            try:
+                vendedor_id = int(vendedor_id)
+                bonificacao_query = bonificacao_query.filter(vendedor_id=vendedor_id)
+            except ValueError:
+                pass
+
+    situacao = request.GET.get('situacao', '')
+    if situacao:
+        bonificacao_query = bonificacao_query.filter(status=situacao)
+
+    bonificacao_query = bonificacao_query.order_by('-data_criacao')
+
     context = {
-        'user': request.user,
+        'bonificacoes': bonificacao_query,
+        'vendedores_disponiveis': vendedores_disponiveis,
+        'situacoes_disponiveis': [
+            ('PENDENTE_GESTOR', 'Pendente Aprovação Gestor'),
+            ('PENDENTE_DIRETORIA', 'Pendente Aprovação Diretoria'),
+            ('PENDENTE_PEDIDO', 'Pendente Lançamento do Pedido'),
+            ('RECUSADA', 'Recusada'),
+            ('PEDIDO_GERADO', 'Pedido Gerado'),
+        ],
+        'termo_busca_selecionado': termo_busca,
+        'vendedor_selecionado': request.GET.get('vendedor', ''),
+        'situacao_selecionada': situacao,
+        'is_gestor': is_gestor,
     }
     return render(request, 'bonificacoes.html', context)
 
 @login_required
 def nova_bonificacao(request):
-    return render(request, 'nova_bonificacao.html')
+    if request.method == 'POST':
+        pass
+    else: 
+        bonificacao_form = BonificacaoForm()
+        item_formset = ItemBonificacaoFormSet(prefix='itens')
+
+    context = {
+        'form': bonificacao_form,
+        'formset': item_formset,
+    }
+    return render(request, 'nova_bonificacao.html', context)
+
+@require_POST
+def nova_bonificacao_submit(request):
+    
+    if request.method == 'POST':
+        
+        form = BonificacaoForm(request.POST, request.FILES)
+        
+        if form.is_valid():
+            bonificacao = form.save(commit=False)
+            
+            bonificacao.status = 'PENDENTE_GESTOR' 
+            bonificacao.vendedor = request.user 
+            bonificacao.save()
+
+            item_formset = ItemBonificacaoFormSet(request.POST, request.FILES, instance=bonificacao, prefix='itens')
+
+            if item_formset.is_valid():
+                item_formset.save()
+            else:
+                print(f"Erros no formset de itens: {item_formset.errors}")
+                return JsonResponse({'success': False, 'errors': item_formset.errors}, status=400)
+
+            from django.db.models import Sum
+            total_bonificacao = bonificacao.itens.aggregate(total=Sum('valor_total_item'))['total'] or 0.00
+            bonificacao.valor_total = total_bonificacao
+            bonificacao.save(update_fields=['valor_total'])
+
+            bonificacao_itens = bonificacao.itens.all()
+                    
+            confirm_url = request.build_absolute_uri(
+                reverse('salesapp:bonificacao_autorizar_gestor', args=[bonificacao.id])
+            )
+            reject_url = request.build_absolute_uri(
+                reverse('salesapp:bonificacao_recusar_gestor', args=[bonificacao.id])
+            )
+
+            email_context = {
+                'bonificacao': bonificacao,
+                'itens': bonificacao_itens,
+                'confirm_url': confirm_url,
+                'reject_url': reject_url,
+            }
+
+            email_html_content = render_to_string('email_gestor.html', email_context)
+
+            to_email_list = ['wellington@lautbeer.com.br']
+
+            bcc_email_list = ['lorrane.ramos@lautbeer.com.br']
+           
+            from_email = settings.DEFAULT_FROM_EMAIL
+            subject = f'BONIFICAÇÃO PENDENTE DE AUTORIZAÇÃO: {bonificacao.razao_social}'
+
+            email = EmailMessage(
+                subject,
+                email_html_content,
+                from_email,
+                to_email_list,
+                bcc=bcc_email_list
+            )
+            email.content_subtype = "html"
+            
+            try:
+                email.send()
+            except Exception as e:
+                print(f"ERRO: Falha ao enviar e-mail 'email_gestor.html': {e}")
+                messages.error(request, "Erro ao enviar e-mail de nova bonificação. Verifique os logs.")
+
+            return JsonResponse({'success': True, 'message': 'Solicitação enviada e e-mail disparado para aprovação.'})
+        else:
+            print(f"Erros no formulário principal: {form.errors}") # <-- ADICIONE ESTA LINHA AQUI
+            errors_dict = dict(form.errors)
+            return JsonResponse({'success': False, 'errors': errors_dict}, status=400)
+    else:
+        form = BonificacaoForm()
+    return render(request, 'nova_bonificacao.html', {'form': form})
+    
+@login_required
+def buscar_clientes(request):
+    termo_busca = request.GET.get('q', '').strip()
+    clientes_encontrados = []
+
+    if not termo_busca:
+        return JsonResponse({'clientes': []})
+
+    try:
+        email_usuario_logado = request.user.email
+
+        vendedor = TotvsVendedor.objects.get(email_vendedor=email_usuario_logado)
+        cod_vendedor_logado = vendedor.cod_vendedor
+
+        clientes = TotvsCliente.objects.filter(
+            Q(razao_social__icontains=termo_busca) |
+            Q(nome_fantasia__icontains=termo_busca) |
+            Q(cgc__icontains=termo_busca),
+            cod_vendedor=cod_vendedor_logado
+        ).values('razao_social', 'nome_fantasia', 'cgc', 'grp_cliente', 'cod_cliente', 'loja_cliente').distinct() # <-- CAMPOS ADICIONADOS AQUI
+
+        for cliente in clientes:
+            clientes_encontrados.append({
+                'razaoSocial': cliente['razao_social'],
+                'nomeFantasia': cliente['nome_fantasia'],
+                'cgc': cliente['cgc'],
+                'grupoCliente': cliente['grp_cliente'],
+                'codigoCliente': cliente['cod_cliente'], # <-- CAMPO ADICIONADO AQUI
+                'lojaCliente': cliente['loja_cliente'],   # <-- CAMPO ADICIONADO AQUI
+            })
+
+    except TotvsVendedor.DoesNotExist:
+        return JsonResponse({'clientes': [], 'error': 'Vendedor não encontrado para o usuário logado.'}, status=404)
+    except Exception as e:
+        return JsonResponse({'clientes': [], 'error': str(e)}, status=500)
+
+    return JsonResponse({'clientes': clientes_encontrados})
+
+@login_required
+def buscar_produtos(request):
+    termo_busca = request.GET.get('q', '').strip()
+    produtos_encontrados = []
+
+    print(f"DEBUG: Busca de produto iniciada para termo: '{termo_busca}'")
+
+    if not termo_busca:
+        print("DEBUG: Termo de busca vazio. Retornando lista vazia.")
+        return JsonResponse({'produtos': []})
+
+    try:
+        produtos_qs = TotvsProduto.objects.filter(
+            Q(cod_produto__icontains=termo_busca) |
+            Q(desc_produto__icontains=termo_busca) # <--- CORREÇÃO APLICADA AQUI
+        ).values('cod_produto', 'desc_produto').distinct() # <--- E AQUI
+
+        print(f"DEBUG: Produtos encontrados na TotvsProduto (QuerySet): {list(produtos_qs)}") # DEBUG PRINT
+
+        if not produtos_qs.exists():
+            print("DEBUG: Nenhum produto encontrado na TotvsProduto.") # DEBUG PRINT
+            return JsonResponse({'produtos': []})
+
+        for produto in produtos_qs:
+            cod_produto = produto['cod_produto']
+            descricao_produto = produto['desc_produto'] # <--- E AQUI (para usar o nome correto)
+            preco_tabela = "0.00" # Valor padrão se não encontrar preço
+
+            print(f"DEBUG: Processando produto: {cod_produto}") # DEBUG PRINT
+
+            try:
+                # 2. Buscar o preço correspondente na TotvsTabPreco pelo cod_produto
+                preco_obj = TotvsTabPreco.objects.filter(pk=cod_produto).first()
+
+                if preco_obj:
+                    if hasattr(preco_obj, 'vlr_unitario'): # <--- USE ESTE SE FOR 'vlr_unitario'
+                        preco_tabela = str(preco_obj.vlr_unitario)
+                        print(f"DEBUG: Preço (vlr_unitario): {preco_tabela}")
+                    # Mantenha os outros 'elif' caso você queira flexibilidade
+                    elif hasattr(preco_obj, 'preco_unitario'): 
+                        preco_tabela = str(preco_obj.preco_unitario)
+                        print(f"DEBUG: Preço (preco_unitario): {preco_tabela}")
+                    elif hasattr(preco_obj, 'val_unitario'):
+                        preco_tabela = str(preco_obj.val_unitario)
+                        print(f"DEBUG: Preço (val_unitario): {preco_tabela}")
+                    elif hasattr(preco_obj, 'preco'):
+                        preco_tabela = str(preco_obj.preco)
+                        print(f"DEBUG: Preço (preco): {preco_tabela}")
+                    else:
+                        print(f"DEBUG: Campo de preço não encontrado no TotvsTabPreco para {cod_produto} com nomes esperados.")
+                        pass # Mantém o preço padrão "0.00"
+                else:
+                    print(f"DEBUG: Nenhuma entrada de preço encontrada em TotvsTabPreco para {cod_produto}.") # DEBUG PRINT
+
+            except Exception as e_preco:
+                print(f"DEBUG: ERRO na busca de preço para {cod_produto}: {e_preco}") # DEBUG PRINT
+                pass # Continua com o preço padrão "0.00"
+
+            produtos_encontrados.append({
+                'codigoProduto': cod_produto,
+                'descricaoProduto': descricao_produto, # <--- E AQUI (para o dicionário de retorno)
+                'precoTabela': preco_tabela,
+            })
+
+        print(f"DEBUG: Produtos finalizados para retorno: {produtos_encontrados}") # DEBUG PRINT
+        return JsonResponse({'produtos': produtos_encontrados})
+
+    except Exception as e:
+        print(f"DEBUG: ERRO GERAL INESPERADO na view buscar_produtos: {e}") # DEBUG PRINT
+        return JsonResponse({'produtos': [], 'error': str(e)}, status=500)
+    
+@require_http_methods(["GET", "POST"])
+def bonificacao_autorizar_gestor(request, bonificacao_id):
+    
+    bonificacao = get_object_or_404(Bonificacao, id=bonificacao_id)
+
+    if bonificacao.status != 'PENDENTE_GESTOR': 
+        context = {'bonificacao': bonificacao}
+        messages.info(request, f"A solicitação de bonificação para '{bonificacao.razao_social}' já foi processada e não pode ser alterado.")
+        return render(request, 'bonificacao_ja_processada.html', context)
+
+    if request.method == 'GET':
+        action_url = reverse('salesapp:bonificacao_autorizar_gestor', args=[bonificacao.id])
+        return render(request, 'bonificacao_autorizar.html', {'bonificacao': bonificacao, 'action_url': action_url})
+
+    elif request.method == 'POST':
+        obs_gestor_input = request.POST.get('obs', '').strip()
+
+        bonificacao.status = 'PENDENTE_DIRETORIA' 
+        bonificacao.data_aprovacao_gestor = timezone.now()
+        bonificacao.obs_gestor = obs_gestor_input if obs_gestor_input else ''
+        bonificacao.save()
+
+        confirm2_url = request.build_absolute_uri(
+            reverse('salesapp:bonificacao_autorizar_diretoria', args=[bonificacao.id])
+        )
+        reject2_url = request.build_absolute_uri(
+            reverse('salesapp:bonificacao_recusar_diretoria', args=[bonificacao.id])
+        )
+
+        bonificacao_itens = bonificacao.itens.all()
+
+        email_context = {
+            'bonificacao': bonificacao,
+            'itens': bonificacao_itens,
+            'confirm_url': confirm2_url,
+            'reject_url': reject2_url,
+        }
+
+        email_html_content = render_to_string('email_diretoria.html', email_context)
+
+        to_email_list = ['henriquemiranda@lautbeer.com.br']
+
+        bcc_email_list = ['lorrane.ramos@lautbeer.com.br']
+
+        from_email = settings.DEFAULT_FROM_EMAIL
+        subject = f'BONIFICAÇÃO PENDENTE DE AUTORIZAÇÃO: {bonificacao.razao_social}'
+
+        email = EmailMessage(
+            subject,
+            email_html_content,
+            from_email,
+            to_email_list,
+            bcc=bcc_email_list
+        )
+        email.content_subtype = "html"
+        
+        try:
+            email.send()
+        except Exception as e:
+            print(f"ERRO: Falha ao enviar e-mail 'email_diretoria.html': {e}")
+            messages.error(request, "Erro ao enviar e-mail de nova bonificação. Verifique os logs.")
+
+        messages.success(request, f'Solicitação enviada e e-mail disparado para aprovação.')
+        return render(request, 'bonificacao_ja_processada.html', {'bonificacao': bonificacao})
+
+    else:
+        messages.error(request, "Ação inválida. Use o formulário de aprovação.")
+        return render(request, 'bonificacao_ja_processada.html', {'bonificacao': bonificacao})
+
+@require_http_methods(["GET", "POST"])
+def bonificacao_recusar_gestor(request, bonificacao_id):
+    bonificacao = get_object_or_404(Bonificacao, id=bonificacao_id)
+
+    if bonificacao.status != 'PENDENTE_GESTOR':
+        context = {'bonificacao': bonificacao}
+        messages.info(request, f"A solicitação de bonificação para '{bonificacao.razao_social}' já foi processada e não pode ser alterado.")
+        return render(request, 'bonificacao_ja_processada.html', context)
+
+    if request.method == 'GET':
+        action_url = reverse('salesapp:bonificacao_recusar_gestor', args=[bonificacao.id])
+        return render(request, 'bonificacao_recusar.html', {'bonificacao': bonificacao, 'erro_motivo': False, 'action_url': action_url})
+        
+    elif request.method == 'POST':
+        motivo = request.POST.get('motivo_rejeicao', '').strip()
+        if not motivo:
+            messages.error(request, "O motivo não pode estar vazio.")
+            action_url = reverse('salesapp:bonificacao_recusar', args=[bonificacao.id])
+            return render(request, 'bonificacao_recusar.html', {'bonificacao': bonificacao, 'erro_motivo': True, 'action_url': action_url})
+
+        bonificacao.status = 'RECUSADA'
+        bonificacao.motivo_recusa = motivo
+        bonificacao.save()
+
+        bonificacao_itens = bonificacao.itens.all()
+
+        email_context = {
+            'bonificacao': bonificacao,
+            'itens': bonificacao_itens,
+            'motivo': motivo,
+            'rejeitor_email': request.user.email if request.user.is_authenticated else "rejeitor_desconhecido",
+        }
+
+        email_html_content = render_to_string('bonificacao_recusada.html', email_context) 
+
+        to_email_list = ['wellington@lautbeer.com.br']
+
+        if bonificacao.vendedor:
+            to_email_list.append(bonificacao.vendedor.email)
+        else:
+            pass
+
+        bcc_email_list = ['lorrane.ramos@lautbeer.com.br']
+
+        from_email = settings.DEFAULT_FROM_EMAIL
+        subject = f'BONIFICAÇÃO NÃO AUTORIZADA: {bonificacao.razao_social}'
+
+        email = EmailMessage(
+            subject,
+            email_html_content,
+            from_email,
+            to_email_list,
+            bcc_email_list
+        )
+        email.content_subtype = "html"
+        
+        try:
+            email.send()
+        except Exception as e:
+            print(f"ERRO: Falha ao enviar e-mail de 'bonificacao_recusada': {e}")
+            messages.error(request, "Erro ao enviar e-mail de notificação de recusa. Verifique os logs.")
+
+        messages.success(request, f"Solicitação de bonificacaçõ para {bonificacao.razao_social} rejeitada pelo gestor. Motivo: {motivo}")
+        return render(request, 'bonificacao_ja_processada.html', {'bonificacao': bonificacao})
+    else:
+        messages.error(request, "Ação inválida.")
+        return render(request, 'bonificacao_ja_processada.html', {'bonificacao': bonificacao})
+    
+@require_http_methods(["GET", "POST"])
+def bonificacao_autorizar_diretoria(request, bonificacao_id):
+    
+    bonificacao = get_object_or_404(Bonificacao, id=bonificacao_id)
+
+    if bonificacao.status != 'PENDENTE_DIRETORIA': 
+        context = {'bonificacao': bonificacao}
+        messages.info(request, f"A solicitação de bonificação para '{bonificacao.razao_social}' já foi processada e não pode ser alterado.")
+        return render(request, 'bonificacao_ja_processada.html', context)
+
+    if request.method == 'GET':
+        action_url = reverse('salesapp:bonificacao_autorizar_diretoria', args=[bonificacao.id]) # Linha corrigida
+        return render(request, 'bonificacao_autorizar.html', {'bonificacao': bonificacao, 'action_url': action_url})
+
+    elif request.method == 'POST':
+        obs_diretoria_input = request.POST.get('obs', '').strip()
+
+        bonificacao.status = 'PENDENTE_PEDIDO' 
+        bonificacao.data_aprovacao_diretoria = timezone.now()
+        bonificacao.obs_diretoria = obs_diretoria_input if obs_diretoria_input else ''
+        bonificacao.save()
+
+        confirm3_url = request.build_absolute_uri(
+            reverse('salesapp:bonificacao_pedido', args=[bonificacao.id])
+        )
+
+        bonificacao_itens = bonificacao.itens.all()
+
+        email_context = {
+            'bonificacao': bonificacao,
+            'itens': bonificacao_itens,
+            'confirm_url': confirm3_url, # This is for email_pedido.html
+        }
+
+        email_html_content = render_to_string('email_pedido.html', email_context)
+
+        to_email_list = ['cadastroclientes@lautbeer.com.br']
+
+        bcc_email_list = ['lorrane.ramos@lautbeer.com.br']
+
+        from_email = settings.DEFAULT_FROM_EMAIL
+        subject = f'BONIFICAÇÃO AUTORIZADA PENDENTE DE EMISSÃO DO PEDIDO: {bonificacao.razao_social}'
+
+        email = EmailMessage(
+            subject,
+            email_html_content,
+            from_email,
+            to_email_list,
+            bcc=bcc_email_list
+        )
+        email.content_subtype = "html"
+        
+        try:
+            email.send()
+        except Exception as e:
+            print(f"ERRO: Falha ao enviar e-mail 'email_pedido.html': {e}")
+            messages.error(request, "Erro ao enviar e-mail de nova bonificação. Verifique os logs.")
+
+        messages.success(request, f'Solicitação aprovada e e-mail enviado para emissão do pedido.')
+        return render(request, 'bonificacao_ja_processada.html', {'bonificacao': bonificacao})
+
+    else:
+        messages.error(request, "Ação inválida. Use o formulário de aprovação.")
+        return render(request, 'bonificacao_ja_processada.html', {'bonificacao': bonificacao})
+
+@require_http_methods(["GET", "POST"])
+def bonificacao_recusar_diretoria(request, bonificacao_id):
+    bonificacao = get_object_or_404(Bonificacao, id=bonificacao_id)
+
+    if bonificacao.status != 'PENDENTE_GESTOR':
+        context = {'bonificacao': bonificacao}
+        messages.info(request, f"A solicitação de bonificação para '{bonificacao.razao_social}' já foi processada e não pode ser alterado.")
+        return render(request, 'bonificacao_ja_processada.html', context)
+
+    if request.method == 'GET':
+        action_url = reverse('salesapp:bonificacao_recusar', args=[bonificacao.id])
+        return render(request, 'bonificacao_recusar.html', {'bonificacao': bonificacao, 'erro_motivo': False, 'action_url': action_url})
+        
+    elif request.method == 'POST':
+        motivo = request.POST.get('motivo_rejeicao', '').strip()
+        if not motivo:
+            messages.error(request, "O motivo não pode estar vazio.")
+            action_url = reverse('salesapp:bonificacao_recusar', args=[bonificacao.id])
+            return render(request, 'bonificacao_recusar.html', {'bonificacao': bonificacao, 'erro_motivo': True, 'action_url': action_url})
+
+        bonificacao.status = 'RECUSADA'
+        bonificacao.motivo_recusa = motivo
+        bonificacao.save()
+
+        bonificacao_itens = bonificacao.itens.all()
+
+        email_context = {
+            'bonificacao': bonificacao,
+            'itens': bonificacao_itens,
+            'motivo': motivo,
+            'rejeitor_email': request.user.email if request.user.is_authenticated else "rejeitor_desconhecido",
+        }
+
+        email_html_content = render_to_string('bonificacao_recusada.html', email_context) 
+
+        to_email_list = ['henriquemiranda@lautbeer.com.br', 'wellington@lautbeer.com.br']
+
+        if bonificacao.vendedor:
+            to_email_list.append(bonificacao.vendedor.email)
+        else:
+            pass
+
+        bcc_email_list = ['lorrane.ramos@lautbeer.com.br']
+
+        from_email = settings.DEFAULT_FROM_EMAIL
+        subject = f'BONIFICAÇÃO NÃO AUTORIZADA: {bonificacao.razao_social}'
+
+        email = EmailMessage(
+            subject,
+            email_html_content,
+            from_email,
+            to_email_list,
+            bcc_email_list
+        )
+        email.content_subtype = "html"
+        
+        try:
+            email.send()
+        except Exception as e:
+            print(f"ERRO: Falha ao enviar e-mail de 'bonificacao_recusada': {e}")
+            messages.error(request, "Erro ao enviar e-mail de notificação de recusa. Verifique os logs.")
+
+        messages.success(request, f"Solicitação de bonificação para {bonificacao.razao_social} rejeitada pela diretoria. Motivo: {motivo}")
+        return render(request, 'bonificacao_ja_processada.html', {'bonificacao': bonificacao})
+    else:
+        messages.error(request, "Ação inválida.")
+        return render(request, 'bonificacao_ja_processada.html', {'bonificacao': bonificacao})
+    
+@require_http_methods(["GET", "POST"])
+def bonificacao_pedido(request, bonificacao_id):
+    bonificacao = get_object_or_404(Bonificacao, id=bonificacao_id)
+
+    if bonificacao.status != 'PENDENTE_PEDIDO': 
+        context = {'bonificacao': bonificacao}
+        messages.info(request, f"A solicitação de bonificação para '{bonificacao.razao_social}' já foi processada e não pode ser alterado.")
+        return render(request, 'bonificacao_ja_processada.html', context)
+
+    if request.method == 'GET':
+        action_url = reverse('salesapp:bonificacao_pedido', args=[bonificacao.id])
+        return render(request, 'bonificacao_pedido.html', {'bonificacao': bonificacao, 'action_url': action_url})
+
+    elif request.method == 'POST':
+        status_emissao = request.POST.get('status')
+        obs_pedido_input = request.POST.get('obs', '')
+        numero_pedido = request.POST.get('numero_pedido', '')
+
+        bonificacao_itens = bonificacao.itens.all()
+
+        if status_emissao == 'emitido':
+
+            bonificacao.status = 'PEDIDO_GERADO'
+
+            bonificacao.data_pedido = timezone.now()
+            bonificacao.obs_pedido = obs_pedido_input if obs_pedido_input else ''
+            bonificacao.numero_pedido = numero_pedido
+            bonificacao.save()
+
+            email_context = {
+            'bonificacao': bonificacao,
+            'itens': bonificacao_itens,
+            }
+
+            email_html_content = render_to_string('bonificacao_autorizada.html', email_context)
+
+            to_email_list = ['cadastroclientes@lautbeer.com.br', 'henriquemiranda@lautbeer.com.br', 'wellington@lautbeer.com.br']
+
+            if bonificacao.vendedor:
+                to_email_list.append(bonificacao.vendedor.email)
+            else:
+                pass
+
+            bcc_email_list = ['lorrane.ramos@lautbeer.com.br']
+
+            from_email = settings.DEFAULT_FROM_EMAIL
+            subject = f'PEDIDO DE BONIFICAÇÃO EMITIDO: {bonificacao.razao_social}'
+
+            email = EmailMessage(
+                subject,
+                email_html_content,
+                from_email,
+                to_email_list,
+                bcc=bcc_email_list
+            )
+            email.content_subtype = "html"
+        
+            try:
+                email.send()
+            except Exception as e:
+                print(f"ERRO: Falha ao enviar e-mail 'bonificacao_autorizada.html': {e}")
+                messages.error(request, "Erro ao enviar e-mail de pedido emitido. Verifique os logs.")
+
+            messages.success(request, f'Solicitação aprovada e pedido emitido.')
+            return render(request, 'bonificacao_ja_processada.html', {'bonificacao': bonificacao})
+            
+        elif status_emissao == 'nao_emitido':
+
+            bonificacao.status = 'RECUSADA' 
+            bonificacao.motivo_recusa = obs_pedido_input if obs_pedido_input else ''
+            bonificacao.save()
+
+            email_context = {
+            'bonificacao': bonificacao,
+            'itens': bonificacao_itens,
+            }
+
+            email_html_content = render_to_string('bonificacao_recusada.html', email_context)
+            
+            to_email_list = ['cadastroclientes@lautbeer.com.br', 'henriquemiranda@lautbeer.com.br', 'wellington@lautbeer.com.br']
+
+            if bonificacao.vendedor:
+                to_email_list.append(bonificacao.vendedor.email)
+            else:
+                pass
+
+            bcc_email_list = ['lorrane.ramos@lautbeer.com.br']
+
+            from_email = settings.DEFAULT_FROM_EMAIL
+            subject = f'PEDIDO DE BONIFICAÇÃO NÃO EMITIDO: {bonificacao.razao_social}'
+
+            email = EmailMessage(
+                subject,
+                email_html_content,
+                from_email,
+                to_email_list,
+                bcc=bcc_email_list
+            )
+            email.content_subtype = "html"
+        
+            try:
+                email.send()
+            except Exception as e:
+                print(f"ERRO: Falha ao enviar e-mail 'bonificacao_recusada.html': {e}")
+                messages.error(request, "Erro ao enviar e-mail de pedido não emitido. Verifique os logs.")
+
+            messages.success(request, f'Pedido de bonificação não emitido.')
+            return render(request, 'bonificacao_ja_processada.html', {'bonificacao': bonificacao})

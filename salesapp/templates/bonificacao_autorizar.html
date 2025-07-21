@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Confirmação de Cadastro</title>
+    <title>Autorização de Bonificação</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
         body {
@@ -12,10 +12,10 @@
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center px-4">
     <div class="bg-white shadow-2xl rounded-2xl p-8 w-full max-w-md text-center">
-        <h1 class="text-3xl font-bold mb-4 text-green-600">Aprovação de Cadastro</h1>
+        <h1 class="text-3xl font-bold mb-4 text-green-600">Autorização de Bonificação</h1>
         
-        <p class="text-gray-700 mb-2">Aprovar o cadastro do cliente:</p>
-        <p class="text-xl font-semibold text-gray-900 mb-6">{{ cadastro.razao_social }}</p>
+        <p class="text-gray-700 mb-2">Autorizar bonificação para:</p>
+        <p class="text-xl font-semibold text-gray-900 mb-6">{{ bonificacao.razao_social }}</p>
 
         <p class="text-gray-600 mb-6">Tem certeza de que deseja confirmar esta ação? Esta operação não poderá ser desfeita.</p>
 
@@ -26,7 +26,7 @@
 
             <div class="flex flex-col sm:flex-row justify-center gap-4">
                 <button type="submit" class="bg-green-500 hover:bg-green-600 transition text-white font-bold py-2 px-6 rounded-lg shadow">
-                    Confirmar Aprovação
+                    Autorizar
                 </button>
                 <button type="button" onclick="cancelarEFechar()" class="bg-gray-300 hover:bg-gray-400 transition text-gray-800 font-bold py-2 px-6 rounded-lg shadow">
                     Cancelar e fechar

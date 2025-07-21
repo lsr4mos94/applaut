@@ -1,10 +1,8 @@
 from django.urls import path
 from . import views
-from django.contrib import admin
-from django.urls import path, include
+from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
-from django.views.generic.base import RedirectView
 
 app_name = 'salesapp'
 
@@ -23,8 +21,19 @@ urlpatterns = [
     path('cadastro/liberar/<int:cadastro_id>/', views.liberar_cadastro, name='liberar_cadastro'),
     path('cadastro/bloquear/<int:cadastro_id>/', views.bloquear_cadastro, name='bloquear_cadastro'),
 
+    path('nova_bonificacao/submit/', views.nova_bonificacao_submit, name='nova_bonificacao_submit'),
     path('bonificacoes/', views.bonificacoes, name='bonificacoes'),
     path('nova_bonificacao/', views.nova_bonificacao, name='nova_bonificacao'),
+    path('api/buscar-clientes/', views.buscar_clientes, name='buscar_clientes_api'),
+    path('api/buscar-produtos/', views.buscar_produtos, name='buscar_produtos_api'), 
+
+    path('bonificacao/autorizar_gestor/<int:bonificacao_id>/', views.bonificacao_autorizar_gestor, name='bonificacao_autorizar_gestor'),
+    path('bonificacao/recusar_gestor/<int:bonificacao_id>/', views.bonificacao_recusar_gestor, name='bonificacao_recusar_gestor'),
+
+    path('bonificacao/autorizar_diretoria/<int:bonificacao_id>/', views.bonificacao_autorizar_diretoria, name='bonificacao_autorizar_diretoria'),
+    path('bonificacao/recusar_diretoria/<int:bonificacao_id>/', views.bonificacao_recusar_diretoria, name='bonificacao_recusar_diretoria'),
+
+    path('bonificacao/bonificacao_pedido/<int:bonificacao_id>/', views.bonificacao_pedido, name='bonificacao_pedido'),
 
 ]
 

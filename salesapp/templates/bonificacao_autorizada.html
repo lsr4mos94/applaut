@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Cadastro Rejeitado!</title>
+    <title>Bonificação Autorizada!</title>
     <style>
         /* Estilos básicos para o email para melhor visualização */
         body {
@@ -47,14 +47,18 @@
 </head>
 <body>
     <div class="container">
-        <h2>SOLICITAÇÃO DE CADASTRO REJEITADA!</h2>
+        <h2>SOLICITAÇÃO DE BONIFICAÇÃO APROVADA!</h2>
 
-        <p>O cadastro do cliente <strong>{{ cadastro.razao_social }}</strong> (CNPJ/CPF: {{ cadastro.cgc }}) foi <strong>REJEITADO</strong>.</p>
+        <p>A solicitação de bonificação para <strong>{{ bonificacao.razao_social }}</strong> (CNPJ/CPF: {{ bonificacao.cgc }}) foi <strong>APROVADA</strong> e o pedido de venda <strong>{{ bonificacao.numero_pedido }}</strong> foi emitido.</p>
 
-        <div class="motivo">
-            <strong>Motivo da Rejeição:</strong><br>
-            {{ motivo }}
-        </div>
+        <h3>Observações:</h3>
+        <div class="data-item"><strong>Data de Envio:</strong> {{ bonificacao.data_criacao|date:"d/m/Y H:i" }}</div>
+        <div class="data-item"><strong>Data de Aprovação do Gestor:</strong> {{ bonificacao.data_aprovacao_gestor|date:"d/m/Y H:i" }}</div>
+        <div class="data-item"><strong>Observações do Gestor:</strong> {{ bonificacao.obs_gestor }}</div>
+        <div class="data-item"><strong>Data de Aprovação da Diretoria:</strong> {{ bonificacao.data_aprovacao_diretoria|date:"d/m/Y H:i" }}</div>
+        <div class="data-item"><strong>Observações da Diretoria:</strong> {{ bonificacao.obs_diretoria }}</div>
+        <div class="data-item"><strong>Data de Emissão do Pedido:</strong> {{ bonificacao.data_pedido|date:"d/m/Y H:i" }}</div>
+        <div class="data-item"><strong>Observações do Pedido:</strong> {{ bonificacao.obs_pedido }}</div>
 
         <p style="margin-top: 30px; font-size: 0.9em; color: #999;">
             Este é um e-mail automático. Por favor, não responda diretamente.

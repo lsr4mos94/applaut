@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import User
+from django.db import models
+from django.core.validators import MinValueValidator
 
 class Cadastro(models.Model):
 
@@ -63,9 +65,15 @@ class Cadastro(models.Model):
         default='pendente',
         verbose_name="Status do Cadastro"
     )
+
     motivo_rejeicao = models.TextField(blank=True, null=True, verbose_name="Motivo da Rejeição")
     data_cadastro = models.DateTimeField(auto_now_add=True, verbose_name="Data de Cadastro")
     data_atualizacao = models.DateTimeField(auto_now=True, verbose_name="Última Atualização")
+
+    data_aprovacao_cadastro = models.DateTimeField(null=True, blank=True, verbose_name="Data Aprovação Cadastro")
+    obs_cadastro = models.TextField(null=True, blank=True, verbose_name="Observação do Cadastro")
+    data_aprovacao_financeiro = models.DateTimeField(null=True, blank=True, verbose_name="Data Aprovação Financeiro")
+    obs_financeiro = models.TextField(null=True, blank=True, verbose_name="Observação do Financeiro")
 
     @property
     def situacao_display(self):
@@ -123,3 +131,160 @@ class AnexoCadastro(models.Model):
 
     def __str__(self):
         return f"Anexo para {self.cadastro.razao_social} - {self.descricao or self.arquivo.name}"
+    
+class TotvsVendedor(models.Model):
+    cod_vendedor = models.CharField(max_length=6, primary_key=True)
+    nome_vendedor = models.CharField(max_length=100, null=True, blank=True)
+    email_vendedor = models.EmailField(max_length=80, unique=True)
+
+    class Meta:
+        db_table = 'totvs_vendedores'
+        verbose_name = 'Vendedor TOTVS'
+        verbose_name_plural = 'Vendedores TOTVS'
+
+    def __str__(self):
+        return f"{self.nome_vendedor} ({self.cod_vendedor})"
+
+class TotvsCliente(models.Model):
+    cod_cliente = models.CharField(max_length=8)
+    loja_cliente = models.CharField(max_length=4)
+    razao_social = models.CharField(max_length=100, null=True, blank=True)
+    nome_fantasia = models.CharField(max_length=100, null=True, blank=True)
+    cgc = models.CharField(max_length=20, null=True, blank=True)
+    grp_cliente = models.CharField(max_length=100, null=True, blank=True)
+    desc_grupo = models.CharField(max_length=20, null=True, blank=True)
+    cod_vendedor = models.ForeignKey(
+        TotvsVendedor,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        to_field='cod_vendedor',
+        db_column='cod_vendedor'
+    )
+
+    class Meta:
+        db_table = 'totvs_clientes'
+        verbose_name = 'Cliente TOTVS'
+        verbose_name_plural = 'Clientes TOTVS'
+        unique_together = (('cod_cliente', 'loja_cliente'),)
+
+    def __str__(self):
+        return f"{self.razao_social} ({self.cod_cliente}-{self.loja_cliente})"
+
+class TotvsProduto(models.Model):
+    cod_produto = models.CharField(max_length=20, primary_key=True)
+    desc_produto = models.CharField(max_length=255)
+
+    class Meta:
+        managed = False
+        db_table = 'totvs_produtos'
+
+class TotvsTabPreco(models.Model):
+    cod_produto = models.OneToOneField(
+        TotvsProduto,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        db_column='cod_produto',
+        to_field='cod_produto'
+    )
+    grp_cliente = models.CharField(max_length=6, null=True, blank=True)
+    vlr_unitario = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        managed = False
+        db_table = 'totvs_tab_preco'
+        verbose_name = 'Tabela de Preço TOTVS'
+        verbose_name_plural = 'Tabelas de Preço TOTVS'
+
+    def __str__(self):
+        return f"Preço {self.vlr_unitario} para {self.cod_produto.cod_produto} (Grupo: {self.grp_cliente})"
+
+class Bonificacao(models.Model):
+    cod_cliente = models.CharField(max_length=20, verbose_name="Código do Cliente")
+    loja_cliente = models.CharField(max_length=4, verbose_name="Loja do Cliente")
+    razao_social = models.CharField(max_length=255, verbose_name="Razão Social")
+    nome_fantasia = models.CharField(max_length=255, null=True, blank=True, verbose_name="Nome Fantasia")
+    cgc = models.CharField(max_length=18, verbose_name="CNPJ/CPF")
+    grupo_cliente = models.CharField(max_length=50, verbose_name="Grupo do Cliente")
+    motivo = models.TextField(verbose_name="Motivo da Bonificação")
+    valor_total = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name="Valor Total")
+    numero_pedido = models.CharField(max_length=10, null=True, blank=True, verbose_name="Pedido de Venda")
+    
+    vendedor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Vendedor Responsável")
+    
+    data_criacao = models.DateTimeField(auto_now_add=True, verbose_name="Data de Cadastro")
+    data_aprovacao_gestor = models.DateTimeField(null=True, blank=True, verbose_name="Data de Aprovação do Gestor")
+    obs_gestor = models.TextField(null=True, blank=True, verbose_name="Observação do Gestor")
+    data_aprovacao_diretoria = models.DateTimeField(null=True, blank=True, verbose_name="Data de Aprovação da Diretoria")
+    obs_diretoria = models.TextField(null=True, blank=True, verbose_name="Observação da Diretoria")
+    data_pedido = models.DateTimeField(null=True, blank=True, verbose_name="Data de Geração do Pedido")
+    obs_pedido = models.TextField(null=True, blank=True, verbose_name="Observação do Pedido")
+
+    motivo_recusa = models.TextField(null=True, blank=True, verbose_name="Motivo da Recusa")
+
+    STATUS_CHOICES = [
+        ('PENDENTE_GESTOR', 'Pendente Aprovação Gestor'),
+        ('PENDENTE_DIRETORIA', 'Pendente Aprovação Diretoria'),
+        ('PENDENTE_PEDIDO', 'Pendente Lançamento do Pedido'),
+        ('RECUSADA', 'Recusada'),
+        ('PEDIDO_GERADO', 'Pedido Gerado'),
+    ]
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='PENDENTE_GESTOR', verbose_name="Status")
+
+    @property
+    def status_display(self):
+        """Retorna o texto amigável para o status do cadastro na tabela."""
+        status_map = {
+            'PENDENTE_GESTOR': 'Pendente Aprovação Gestor',
+            'PENDENTE_DIRETORIA': 'Pendente Aprovação Diretoria',
+            'PENDENTE_PEDIDO': 'Pendente Lançamento do Pedido',
+            'RECUSADA': 'Recusada',
+            'PEDIDO_GERADO': 'Pedido Gerado',
+        }
+        return status_map.get(self.status, 'Desconhecido')
+
+    @property
+    def status_cor(self):
+        """Retorna a classe CSS para a cor do status-dot."""
+        if self.status == 'PEDIDO_GERADO':
+            return 'verde'
+        elif self.status == 'RECUSADA':
+            return 'vermelho'
+        elif self.status in ['PENDENTE_GESTOR', 'PENDENTE_DIRETORIA', 'PENDENTE_PEDIDO']:
+            return 'amarelo' 
+        return ''
+
+    class Meta:
+        verbose_name = "Bonificação"
+        verbose_name_plural = "Bonificações"
+        indexes = [
+            models.Index(fields=['cod_cliente', 'loja_cliente']),
+        ]
+
+    def __str__(self):
+        return f"Bonificação para {self.razao_social} (ID: {self.id})"
+
+class ItemBonificacao(models.Model):
+    
+    bonificacao = models.ForeignKey(
+        Bonificacao, 
+        on_delete=models.CASCADE,
+        related_name='itens',
+        verbose_name="Bonificação Relacionada"
+    )
+    cod_produto = models.CharField(max_length=50, verbose_name="Código do Produto")
+    desc_produto = models.CharField(max_length=255, verbose_name="Descrição do Produto")
+    preco_tabela = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Preço Tabela")
+    quantidade = models.IntegerField(validators=[MinValueValidator(1)], verbose_name="Quantidade")
+    valor_total_item = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Valor Total do Item")
+
+    class Meta:
+        verbose_name = "Item de Bonificação"
+        verbose_name_plural = "Itens de Bonificação"
+
+    def save(self, *args, **kwargs):
+        self.valor_total_item = self.preco_tabela * self.quantidade
+        super().save(*args, **kwargs)
+        
+    def __str__(self):
+        return f"Item {self.cod_produto} - {self.desc_produto} (Qtd: {self.quantidade})"

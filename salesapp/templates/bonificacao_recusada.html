@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Cadastro Rejeitado!</title>
+    <title>Bonificação Recusada!</title>
     <style>
         /* Estilos básicos para o email para melhor visualização */
         body {
@@ -47,12 +47,12 @@
 </head>
 <body>
     <div class="container">
-        <h2>SOLICITAÇÃO DE CADASTRO REJEITADA!</h2>
+        <h2>SOLICITAÇÃO DE BONIFICAÇÃO RECUSADA!</h2>
 
-        <p>O cadastro do cliente <strong>{{ cadastro.razao_social }}</strong> (CNPJ/CPF: {{ cadastro.cgc }}) foi <strong>REJEITADO</strong>.</p>
+        <p>A solicitação de bonificação para <strong>{{ bonificacao.razao_social }}</strong> (CNPJ/CPF: {{ bonificacao.cgc }}) foi <strong>RECUSADA</strong>.</p>
 
         <div class="motivo">
-            <strong>Motivo da Rejeição:</strong><br>
+            <strong>Motivo:</strong><br>
             {{ motivo }}
         </div>
 

@@ -1,0 +1,114 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Detalhes da Solicitação de Bonificação</title>
+    <style>
+        /* Estilos básicos para o email para melhor visualização */
+        body {
+            font-family: 'Trebuchet MS', sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        h2 {
+            color: #c1ab63; /* Usando sua cor principal */
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #c1ab63; /* Sua cor principal */
+            color: white;
+        }
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 0.9em;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>SOLICITAÇÃO DE BONIFICAÇÃO PENDENTE DE APROVAÇÃO #{{ bonificacao.razao_social }}</h2>
+
+        <p>Uma nova solicitação de bonificação foi criada com os seguintes detalhes:</p>
+
+        <h3>Dados da Bonificação:</h3>
+            <strong>Cliente:</strong> {{ bonificacao.razao_social }} (CGC: {{ bonificacao.cgc }})<br>
+            <strong>Código Cliente:</strong> {{ bonificacao.cod_cliente }}<br>
+            <strong>Loja Cliente:</strong> {{ bonificacao.loja_cliente }}<br>
+            <strong>Nome Fantasia:</strong> {{ bonificacao.nome_fantasia }}<br>
+            <strong>Grupo Cliente:</strong> {{ bonificacao.grupo_cliente }}<br>
+            <strong>Vendedor:</strong> {{ bonificacao.vendedor.first_name }} {{ bonificacao.vendedor.last_name }}<br>
+            <strong>Motivo:</strong> {{ bonificacao.motivo }}<br>
+
+        <h3>Itens da Bonificação:</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Cód. Produto</th>
+                    <th>Descrição</th>
+                    <th>Qtd</th>
+                    <th>Preço Un.</th>
+                    <th>Valor Total Item</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in itens %}
+                <tr>
+                    <td>{{ item.cod_produto }}</td>
+                    <td>{{ item.desc_produto }}</td>
+                    <td>{{ item.quantidade }}</td>
+                    <td>R$ {{ item.preco_tabela|floatformat:2|intcomma }}</td>
+                    <td>R$ {{ item.valor_total_item|floatformat:2|intcomma }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5">Nenhum item adicionado a esta bonificação.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="4" style="text-align: right;"><strong>Total Geral da Bonificação:</strong></td>
+                    <td><strong>R$ {{ bonificacao.valor_total|floatformat:2|intcomma }}</strong></td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <h3>Observações:</h3>
+        <div class="data-item"><strong>Data de Envio:</strong> {{ bonificacao.data_criacao|date:"d/m/Y H:i" }}</div>
+
+        <p>Autorizar bonificação?</p>
+
+        <p>
+            ➤ <a href="{{ confirm_url }}">Bonificação Autorizada</a><br>
+            ➤ <a href="{{ reject_url }}">Bonificação Não Autorizada</a>
+        </p>
+
+        <p style="margin-top: 30px; font-size: 0.9em; color: #999;">
+            Este é um e-mail automático. Por favor, não responda diretamente.
+        </p>
+    
+    </div>
+</body>
+</html>

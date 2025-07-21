@@ -1,5 +1,5 @@
 from django import forms
-from .models import Cadastro
+from .models import Cadastro, Bonificacao, ItemBonificacao
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm
 
@@ -48,7 +48,6 @@ class NovoCadastroForm(forms.ModelForm):
                 self.fields[field_name].widget.attrs['placeholder'] = placeholder_text
                 self.fields[field_name].widget.attrs['class'] = 'form-input'
                 
-
 class LoginForm(AuthenticationForm):
 
     username = forms.CharField(
@@ -60,3 +59,46 @@ class LoginForm(AuthenticationForm):
         label="Senha",
         widget=forms.PasswordInput(attrs={'placeholder': 'Senha'})
     )
+
+class BonificacaoForm(forms.ModelForm):
+    class Meta:
+        model = Bonificacao
+        fields = [
+            'cod_cliente',
+            'loja_cliente',
+            'razao_social',
+            'nome_fantasia',
+            'cgc',
+            'grupo_cliente',
+            'motivo',
+        ]
+
+class ItemBonificacaoForm(forms.ModelForm):
+    class Meta:
+        model = ItemBonificacao
+        fields = [
+            'cod_produto',
+            'desc_produto',
+            'preco_tabela',
+            'quantidade',
+        ]
+        widgets = {
+            'preco_tabela': forms.NumberInput(attrs={'step': '0.01'}),
+            'quantidade': forms.NumberInput(attrs={'min': '1'}),
+        }
+        labels = {
+            'cod_produto': 'Código do Produto',
+            'desc_produto': 'Descrição do Produto',
+            'preco_tabela': 'Preço de Tabela',
+            'quantidade': 'Quantidade',
+        }
+
+ItemBonificacaoFormSet = forms.inlineformset_factory(
+    Bonificacao,
+    ItemBonificacao,
+    form=ItemBonificacaoForm,
+    extra=0,
+    can_delete=True,
+    min_num=1,
+    validate_min=True
+)

@@ -4,106 +4,54 @@
     <meta charset="UTF-8">
     <title>Novo Cliente Pendente de Cadastro</title>
     <style>
+        /* Estilos básicos para o email para melhor visualização */
         body {
             font-family: 'Trebuchet MS', sans-serif;
-            background-color: #f9f9f9;
-            margin: 0;
-            padding: 30px;
-        }
-
-        .container {
-            background-color: #ffffff;
-            max-width: 700px;
-            margin: 0 auto;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        }
-
-        h1 {
-            color: #333333;
-            font-size: 24px;
-            margin-bottom: 20px;
-        }
-
-        h2 {
-            color: #555555;
-            font-size: 20px;
-            margin-top: 30px;
-            margin-bottom: 15px;
-        }
-
-        .data-item {
-            margin-bottom: 10px;
-            font-size: 16px;
-            color: #444;
-        }
-
-        .buttons-container {
-            margin-top: 30px;
-        }
-
-        .button {
-            display: inline-block;
-            padding: 12px 20px;
-            margin-right: 15px;
-            border-radius: 6px;
-            text-decoration: none;
-            color: #fff;
-            font-weight: bold;
-            transition: background-color 0.3s ease;
-        }
-
-        .approve {
-            background-color: #28a745;
-        }
-
-        .approve:hover {
-            background-color: #218838;
-        }
-
-        .reject {
-            background-color: #dc3545;
-        }
-
-        .reject:hover {
-            background-color: #c82333;
-        }
-
-        a {
-            color: #007bff;
-        }
-
-        a:hover {
-            text-decoration: underline;
-        }
-
-        ul {
-            padding-left: 20px;
-        }
-
-        p {
+            line-height: 1.6;
             color: #333;
-            line-height: 1.5;
         }
-
-        @media (max-width: 600px) {
-            .button {
-                display: block;
-                margin-bottom: 10px;
-            }
-
-            .buttons-container {
-                text-align: center;
-            }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        h2 {
+            color: #c1ab63; /* Usando sua cor principal */
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #c1ab63; /* Sua cor principal */
+            color: white;
+        }
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 0.9em;
+            color: #777;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Solicitação de cadastro</h1>
+        <h2>CLIENTE PENDENTE DE CADASTRO: #{{ cadastro.razao_social }}</h2>
 
-        <h2>Dados Básicos:</h2>
+        <p>Um novo cadastro foi criado com os seguintes detalhes:</p>
+
+        <h3>Dados Básicos:</h3>
         <div class="data-item"><strong>Plataforma:</strong> {{ cadastro.plataforma }}</div>
         <div class="data-item"><strong>Tipo:</strong> {{ cadastro.tipo_cliente }}</div>
         <div class="data-item"><strong>Razão Social/Nome:</strong> {{ cadastro.razao_social }}</div>
@@ -121,13 +69,13 @@
         <div class="data-item"><strong>Complemento:</strong> {{ cadastro.complemento|default:"" }}</div>
         <div class="data-item"><strong>Data de Envio:</strong> {{ cadastro.data_cadastro|date:"d/m/Y H:i" }}</div>
 
-        <h2>Dados Complementares:</h2>
+        <h3>Dados Complementares:</h3>
         <div class="data-item"><strong>Grupo de Cliente:</strong> {{ cadastro.grupo_cliente }}</div>
         <div class="data-item"><strong>Condição de Pagamento:</strong> {{ cadastro.condicao_pagamento }}</div>
         <div class="data-item"><strong>Vendedor:</strong> {{ cadastro.vendedor.first_name }} {{ cadastro.vendedor.last_name }}</div>
         <div class="data-item"><strong>Horário de Entrega:</strong> {{ cadastro.horario_entrega }}</div>
         
-        <h2>Endereço de Entrega:</h2>
+        <h3>Endereço de Entrega:</h3>
         <div class="data-item"><strong>CEP:</strong> {{ cadastro.cep_entrega }}</div>
         <div class="data-item"><strong>Estado:</strong> {{ cadastro.estado_entrega }}</div>
         <div class="data-item"><strong>Cidade:</strong> {{ cadastro.cidade_entrega }}</div>
@@ -136,7 +84,7 @@
         <div class="data-item"><strong>Número:</strong> {{ cadastro.numero_entrega }}</div>
         <div class="data-item"><strong>Complemento:</strong> {{ cadastro.complemento_entrega|default:"" }}</div>
 
-        <h2>Pessoas:</h2>
+        <h3>Pessoas:</h3>
         <div class="data-item"><strong>Sócio:</strong> {{ cadastro.nome_socio|default:"" }}</div>
         <div class="data-item"><strong>CPF:</strong> {{ cadastro.cpf_socio|default:"" }}</div>
         <div class="data-item"><strong>CEP:</strong> {{ cadastro.cep_socio|default:"" }}</div>

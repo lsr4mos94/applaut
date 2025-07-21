@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Gerar Pedido de Bonificação</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        /* Estilos básicos para o email para melhor visualização */
+        body {
+            font-family: 'Trebuchet MS', sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        h2 {
+            color: #c1ab63;
+            text-align: center;
+            font-size: 2em;
+            font-weight: bold;
+
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #c1ab63; /* Sua cor principal */
+            color: white;
+        }
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 0.9em;
+            color: #777;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center px-4">
+    <div class="bg-white shadow-2xl rounded-2xl p-8 w-full max-w-md text-center">
+        <h2>EMISSÃO DO PEDIDO DE BONIFICAÇÃO</h2>
+        
+        <p class="text-gray-700 mb-2">Pedido de bonificação a ser emitido para:</p>
+        <p class="text-xl font-semibold text-gray-900 mb-6">{{ bonificacao.razao_social }}</p>
+
+        <p class="text-gray-600 mb-6">Tem certeza de que deseja confirmar esta ação? Esta operação não poderá ser desfeita.</p>
+
+        <form method="POST" action="{{ action_url }}">
+            {% csrf_token %}
+
+            <p class="text-gray-600 mb-2">Número do Pedido:</p>
+            <input type="text" name="numero_pedido" id="numero_pedido" class="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-500" placeholder="Insira o número do pedido">
+
+            <p class="text-gray-600 mb-2">Observações:</p>
+            <textarea name="obs" rows="3" class="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-500" placeholder="Adicione observações aqui..."></textarea>
+
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <button type="submit" name="status" value="emitido" class="bg-green-500 hover:bg-green-600 transition text-white font-bold py-2 px-6 rounded-lg shadow">
+                    Pedido Emitido
+                </button>
+                <button type="submit" name="status" value="nao_emitido" class="bg-red-500 hover:bg-red-600 transition text-white font-bold py-2 px-6 rounded-lg shadow">
+                    Pedido Não Emitido
+                </button>
+            </div>
+        </form>
+
+        <p class="text-sm text-gray-400 mt-6">Esta ação será registrada no sistema.</p>
+    </div>
+
+    <script>
+        function cancelarEFechar() {
+            window.close();
+        }
+    </script>
+
+</body>
+</html>

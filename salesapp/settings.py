@@ -19,7 +19,7 @@ SECRET_KEY = 'django-insecure-@&3(gd%*g)r=y1qa7b*a68m3cbzw=0=-46_kqr0-5r50stc-1=
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['appvendedores.duckdns.org', '192.168.184.24', '149.57.32.44', '127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['app.lautbeer.com.br', '149.57.32.44', '127.0.0.1', 'localhost']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',
     'salesapp'
 ]
 
@@ -69,18 +70,8 @@ DATABASES = {
         'PASSWORD': 'Bw)reThOXV8mcel',
         'HOST':     '149.57.32.44',
         'PORT':     '5432',
-    },
-    'bonificacao_db': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'dw_bi',
-        'USER': 'postgres',
-        'PASSWORD': 'Bw)reThOXV8mcel',
-        'HOST': '149.57.32.44',
-        'PORT': '5432',
     }
 }
-
-DATABASE_ROUTERS = ['salesapp.database_routers.BonificacaoRouter']
 
 AUTH_PASSWORD_VALIDATORS = [
     {

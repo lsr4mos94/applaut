@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Nova Solicitação de Bonificação</title>
+    {% load static %}
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script> {# Manter jQuery se outras partes do seu site dependem dele #}
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        /* Variáveis de cor principal */
+        :root {
+            --cor-principal: #c1ab63;
+        }
+
+        /* Estilos gerais do corpo */
+        body {
+            font-family: 'Trebuchet MS', sans-serif;
+        }
+
+        /* Estilos de título de seção */
+        .titulo-secao {
+            color: var(--cor-principal);
+            font-weight: bold;
+            font-size: 1.5rem; /* text-2xl */
+            margin-bottom: 1.5rem; /* mb-6 */
+            text-align: center;
+        }
+
+        /* Estilos de botões principais */
+        .botao-principal {
+            background-color: var(--cor-principal);
+            color: white;
+            padding: 0.75rem 2rem; /* py-3 px-8 */
+            border-radius: 0.5rem; /* rounded-lg */
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+        .botao-principal:hover {
+            background-color: #b19a55;
+            transform: translateY(-2px);
+        }
+
+        .botao-secundario {
+            background-color: #6b7280;
+            color: white;
+            padding: 0.75rem 2rem;
+            border-radius: 0.5rem;
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+        .botao-secundario:hover {
+            background-color: #4b5563;
+            transform: translateY(-2px);
+        }
+        
+        .item-row.hidden {
+            display: none;
+        }
+
+        .item-row {
+            transition: opacity 0.3s ease;
+        }
+        
+        /* Estilos para campos de formulário renderizados pelo Django */
+        input[type="text"],
+        input[type="number"],
+        input[type="email"],
+        input[type="date"],
+        textarea,
+        select {
+            width: 100%;
+            border: 1px solid #d1d5db; /* border-gray-300 */
+            border-radius: 0.5rem; /* rounded-lg */
+            padding: 0.5rem 0.75rem; /* p-2 */
+            background-color: #ffffff; /* bg-white */
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        input[type="email"]:focus,
+        input[type="date"]:focus,
+        textarea:focus,
+        select:focus {
+            border-color: var(--cor-principal);
+            box-shadow: 0 0 0 3px rgba(193, 171, 99, 0.3); /* ring-offset-2 ring-cor-principal */
+            outline: none;
+        }
+
+        /* Estilo específico para File Input (que Django renderiza diferente) */
+        input[type="file"] {
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            background-color: #ffffff;
+            width: 100%; /* Garante que ocupe toda a largura */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center py-10">
+    <div class="bg-white shadow-xl rounded-2xl p-8 w-full max-w-4xl">
+        <h1 class="text-3xl font-bold mb-6 titulo-secao">Nova Solicitação de Bonificação</h1>
+
+        <form id="form-bonificacao" method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            {# Formulário Principal da Bonificação - Campos de Cadastro/Cliente #}
+            <div class="mb-8 p-6 border rounded-lg bg-gray-50">
+                <h2 class="text-xl font-semibold mb-4 titulo-secao">Dados da Bonificação Principal</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="{{ form.cod_cliente.id_for_label }}" class="block font-semibold mb-1">CÓDIGO CLIENTE</label>
+                        {{ form.cod_cliente }}
+                        {% if form.cod_cliente.errors %}<p class="text-red-500 text-sm mt-1">{{ form.cod_cliente.errors }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.loja_cliente.id_for_label }}" class="block font-semibold mb-1">LOJA CLIENTE</label>
+                        {{ form.loja_cliente }}
+                        {% if form.loja_cliente.errors %}<p class="text-red-500 text-sm mt-1">{{ form.loja_cliente.errors }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.razao_social.id_for_label }}" class="block font-semibold mb-1">RAZÃO SOCIAL</label>
+                        {{ form.razao_social }}
+                        {% if form.razao_social.errors %}<p class="text-red-500 text-sm mt-1">{{ form.razao_social.errors }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.nome_fantasia.id_for_label }}" class="block font-semibold mb-1">NOME FANTASIA</label>
+                        {{ form.nome_fantasia }}
+                        {% if form.nome_fantasia.errors %}<p class="text-red-500 text-sm mt-1">{{ form.nome_fantasia.errors }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.cgc.id_for_label }}" class="block font-semibold mb-1">CGC</label>
+                        {{ form.cgc }}
+                        {% if form.cgc.errors %}<p class="text-red-500 text-sm mt-1">{{ form.cgc.errors }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.grupo_cliente.id_for_label }}" class="block font-semibold mb-1">GRUPO CLIENTE</label>
+                        {{ form.grupo_cliente }}
+                        {% if form.grupo_cliente.errors %}<p class="text-red-500 text-sm mt-1">{{ form.grupo_cliente.errors }}</p>{% endif %}
+                    </div>
+                    <div class="col-span-full"> {# Motivo pode ser um campo mais longo #}
+                        <label for="{{ form.motivo.id_for_label }}" class="block font-semibold mb-1">MOTIVO</label>
+                        {{ form.motivo }}
+                        {% if form.motivo.errors %}<p class="text-red-500 text-sm mt-1">{{ form.motivo.errors }}</p>{% endif %}
+                    </div>
+                    {# Adicionar campos hidden para o usuário logado, se necessário #}
+                    {% if user.is_authenticated %}
+                        <input type="hidden" name="criado_por" value="{{ user.id }}">
+                    {% endif %}
+                </div>
+                {# Exibe erros do formulário principal não relacionados a campos específicos, se houver #}
+                {% if form.non_field_errors %}
+                    <div class="text-red-500 text-sm mt-4">{{ form.non_field_errors }}</div>
+                {% endif %}
+            </div>
+
+            {# Formulário de Itens de Bonificação (Formset) #}
+            <div class="mb-8 p-6 border rounded-lg bg-gray-50">
+                <h2 class="text-xl font-semibold mb-4 titulo-secao">Itens da Bonificação</h2>
+                <div id="formset-container">
+                    {{ formset.management_form }} {# Campos de gerenciamento do formset #}
+                    {% for form in formset %}
+                        <div class="item-row mb-4 p-4 border border-gray-200 rounded-lg bg-white">
+                            {{ form.id }} {# Campo hidden para ID do item existente #}
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div>
+                                    <label for="{{ form.cod_produto.id_for_label }}" class="block font-semibold mb-1">Cód. Produto</label>
+                                    {{ form.cod_produto }}
+                                    {% if form.cod_produto.errors %}<p class="text-red-500 text-sm mt-1">{{ form.cod_produto.errors }}</p>{% endif %}
+                                </div>
+                                <div>
+                                    <label for="{{ form.desc_produto.id_for_label }}" class="block font-semibold mb-1">Descrição</label>
+                                    {{ form.desc_produto }}
+                                    {% if form.desc_produto.errors %}<p class="text-red-500 text-sm mt-1">{{ form.desc_produto.errors }}</p>{% endif %}
+                                </div>
+                                <div>
+                                    <label for="{{ form.preco_tabela.id_for_label }}" class="block font-semibold mb-1">Preço Tabela</label>
+                                    {{ form.preco_tabela }}
+                                    {% if form.preco_tabela.errors %}<p class="text-red-500 text-sm mt-1">{{ form.preco_tabela.errors }}</p>{% endif %}
+                                </div>
+                                <div>
+                                    <label for="{{ form.quantidade.id_for_label }}" class="block font-semibold mb-1">Quantidade</label>
+                                    {{ form.quantidade }}
+                                    {% if form.quantidade.errors %}<p class="text-red-500 text-sm mt-1">{{ form.quantidade.errors }}</p>{% endif %}
+                                </div>
+                                <div class="col-span-full flex items-end justify-end">
+                                    <div>
+                                        <label for="{{ form.DELETE.id_for_label }}" class="inline-flex items-center mr-4">
+                                            {{ form.DELETE }} <span class="ml-2">Excluir</span>
+                                        </label>
+                                    </div>
+                                    <button type="button" class="remove-item-button text-red-500 hover:text-red-700 font-bold">Remover</button>
+                                </div>
+                            </div>
+                            {# Exibe erros do formulário de item não relacionados a campos específicos, se houver #}
+                            {% if form.non_field_errors %}
+                                <div class="text-red-500 text-sm mt-2">{{ form.non_field_errors }}</div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+                <button type="button" id="add-item" class="botao-secundario mt-4 px-4 py-2 text-sm">Adicionar Item</button>
+            </div>
+
+            <div class="flex justify-end mt-8">
+                <button type="submit" id="botaoEnviarBonificacao" class="botao-principal px-6 py-2 rounded-lg">Criar Bonificação</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const formBonificacao = document.getElementById('form-bonificacao');
+            const botaoEnviarBonificacao = document.getElementById('botaoEnviarBonificacao');
+            const formsetContainer = document.getElementById('formset-container');
+            const addItemButton = document.getElementById('add-item');
+            const totalFormsInput = document.querySelector('input[name$="TOTAL_FORMS"]'); // Gerenciado pelo Django
+
+            // Clone do template de um item para adicionar novos
+            const initialForms = document.querySelectorAll('.item-row');
+            // Clona o último formulário como template. Se não houver nenhum, crie um elemento vazio.
+            const emptyForm = initialForms.length > 0 ? initialForms[initialForms.length - 1].cloneNode(true) : document.createElement('div');
+            if (initialForms.length === 0) {
+                // Se não houver itens iniciais, precisamos construir o HTML do template vazio manualmente
+                // Isso deve corresponder à estrutura de um item-row no template Django
+                emptyForm.className = 'item-row mb-4 p-4 border border-gray-200 rounded-lg bg-white hidden';
+                emptyForm.innerHTML = `
+                    <input type="hidden" name="itens-__prefix__-id" id="id_itens-__prefix__-id">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label for="id_itens-__prefix__-cod_produto" class="block font-semibold mb-1">Cód. Produto</label>
+                            <input type="text" name="itens-__prefix__-cod_produto" id="id_itens-__prefix__-cod_produto" class="w-full border border-gray-300 rounded-lg p-2">
+                            <p class="text-red-500 text-sm mt-1 field-error-cod_produto"></p>
+                        </div>
+                        <div>
+                            <label for="id_itens-__prefix__-desc_produto" class="block font-semibold mb-1">Descrição</label>
+                            <input type="text" name="itens-__prefix__-desc_produto" id="id_itens-__prefix__-desc_produto" class="w-full border border-gray-300 rounded-lg p-2">
+                            <p class="text-red-500 text-sm mt-1 field-error-desc_produto"></p>
+                        </div>
+                        <div>
+                            <label for="id_itens-__prefix__-preco_tabela" class="block font-semibold mb-1">Preço Tabela</label>
+                            <input type="number" name="itens-__prefix__-preco_tabela" id="id_itens-__prefix__-preco_tabela" step="0.01" class="w-full border border-gray-300 rounded-lg p-2">
+                            <p class="text-red-500 text-sm mt-1 field-error-preco_tabela"></p>
+                        </div>
+                        <div>
+                            <label for="id_itens-__prefix__-quantidade" class="block font-semibold mb-1">Quantidade</label>
+                            <input type="number" name="itens-__prefix__-quantidade" id="id_itens-__prefix__-quantidade" min="1" class="w-full border border-gray-300 rounded-lg p-2">
+                            <p class="text-red-500 text-sm mt-1 field-error-quantidade"></p>
+                        </div>
+                        <div class="col-span-full flex items-end justify-end">
+                            <div>
+                                <label for="id_itens-__prefix__-DELETE" class="inline-flex items-center mr-4">
+                                    <input type="checkbox" name="itens-__prefix__-DELETE" id="id_itens-__prefix__-DELETE"> <span class="ml-2">Excluir</span>
+                                </label>
+                            </div>
+                            <button type="button" class="remove-item-button text-red-500 hover:text-red-700 font-bold">Remover</button>
+                        </div>
+                    </div>
+                    <p class="text-red-500 text-sm mt-2 non-field-errors"></p>
+                `;
+            }
+
+            emptyForm.classList.add('hidden'); // Esconde o template
+            emptyForm.querySelector('input[name$="-id"]').value = ''; // Limpa ID para novos itens
+            emptyForm.querySelectorAll('input, select, textarea').forEach(element => {
+                element.value = ''; // Limpa valores
+                if (element.type === 'checkbox') {
+                    element.checked = false; // Desmarca checkboxes
+                }
+            });
+            // Re-adiciona listener ao botão de remover no template (será clonado com ele)
+            const removeButtonTemplate = emptyForm.querySelector('.remove-item-button');
+            if (removeButtonTemplate) {
+                removeButtonTemplate.addEventListener('click', removeItem);
+            }
+
+
+            // Adicionar novo item
+            let formIdx = parseInt(totalFormsInput.value); // Começa com o TOTAL_FORMS atual
+
+            addItemButton.addEventListener('click', () => {
+                const newForm = emptyForm.cloneNode(true);
+                newForm.classList.remove('hidden');
+
+                // Atualiza nomes e IDs dos campos para o novo índice
+                newForm.innerHTML = newForm.innerHTML.replace(/__prefix__/g, formIdx);
+                
+                // Limpa valores e desmarca checkbox de DELETE para o novo item
+                newForm.querySelectorAll('input, select, textarea').forEach(element => {
+                    element.value = '';
+                    if (element.type === 'checkbox') {
+                        element.checked = false;
+                        if (element.name.includes('-DELETE')) {
+                            // Garante que o campo DELETE do novo item não esteja disabled
+                            element.disabled = false;
+                            element.closest('.item-row').style.opacity = '1';
+                            element.closest('.item-row').querySelectorAll('input, select, textarea').forEach(el => {
+                                if (el !== element) el.disabled = false;
+                            });
+                        }
+                    }
+                });
+
+                // Adiciona o listener ao botão de remover do novo item
+                const newRemoveButton = newForm.querySelector('.remove-item-button');
+                if (newRemoveButton) {
+                    newRemoveButton.addEventListener('click', removeItem);
+                }
+
+                formsetContainer.append(newForm);
+                formIdx++;
+                totalFormsInput.value = formIdx;
+            });
+
+            // Remover item existente/dinamicamente adicionado
+            function removeItem(event) {
+                const row = event.target.closest('.item-row');
+                const deleteCheckbox = row.querySelector('input[name$="-DELETE"]');
+                
+                if (deleteCheckbox) {
+                    deleteCheckbox.checked = true; // Marca para exclusão lógica
+                    row.style.display = 'none'; // Esconde visualmente
+                } else {
+                    row.remove(); // Se não for um item de formset (improvável aqui), apenas remove
+                }
+                // Não decrementar TOTAL_FORMS, apenas marcar DELETE é o padrão do Django
+            }
+            
+            // Adiciona listeners aos botões de remover existentes
+            document.querySelectorAll('.remove-item-button').forEach(button => {
+                button.addEventListener('click', removeItem);
+            });
+
+            // Lógica para obter o CSRF token do cookie
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+
+            const csrftoken = getCookie('csrftoken');
+            console.log('DEBUG: CSRF Token obtido:', csrftoken);
+
+            if (formBonificacao) {
+                formBonificacao.addEventListener('submit', async (e) => {
+                    console.log('DEBUG: Evento de submit do formulário de bonificação disparado.');
+                    e.preventDefault(); // Impede o envio padrão do formulário
+
+                    if (botaoEnviarBonificacao) {
+                        botaoEnviarBonificacao.disabled = true;
+                        botaoEnviarBonificacao.textContent = 'Enviando...';
+                    }
+
+                    const formData = new FormData();
+                    
+                    // Coleta todos os campos do formulário (incluindo o formset)
+                    Array.from(formBonificacao.elements).forEach(element => {
+                        if (element.name && !element.disabled) {
+                            if (element.type === 'radio' || element.type === 'checkbox') {
+                                if (element.checked) {
+                                    formData.append(element.name, element.value);
+                                }
+                            } else if (element.type === 'file') {
+                                if (element.files.length > 0) {
+                                    formData.append(element.name, element.files[0]);
+                                }
+                            } else {
+                                formData.append(element.name, element.value);
+                            }
+                        }
+                    });
+
+                    console.log('DEBUG: Conteúdo FINAL do FormData antes do envio:');
+                    for (let pair of formData.entries()) {
+                        console.log(pair[0]+ ': ' + pair[1]);
+                    }
+
+                    try {
+                        console.log('DEBUG: Tentando enviar requisição Axios POST para bonificação...');
+                        const response = await axios.post('{% url "salesapp:nova_bonificacao_submit" %}', formData, {
+                            headers: {
+                                'X-CSRFToken': csrftoken,
+                                'Content-Type': 'multipart/form-data' // Importante para File Upload
+                            }
+                        });
+
+                        console.log('DEBUG: Resposta Axios recebida:', response);
+
+                        if (response.status === 200 || response.status === 201) {
+                            alert('Bonificação criada com sucesso!');
+                            window.location.href = '{% url "salesapp:bonificacoes" %}'; // Redirecionar para a lista de bonificações
+                        } else {
+                            alert('Erro ao criar a bonificação. Tente novamente.');
+                        }
+                    } catch (error) {
+                        console.error('DEBUG: Erro na requisição Axios:', error);
+                        alert('Ocorreu um erro ao enviar a bonificação.');
+                        if (error.response) {
+                            console.error('DEBUG: Dados da resposta de erro:', error.response.data);
+                            if (error.response.data && error.response.data.errors) {
+                                const errors = error.response.data.errors;
+                                let errorMessage = 'Erro(s) de validação:\n';
+                                // Limpa erros anteriores do HTML
+                                document.querySelectorAll('.text-red-500.text-sm').forEach(el => el.textContent = '');
+
+                                if (errors.main_form) {
+                                    try {
+                                        const mainFormErrors = JSON.parse(errors.main_form);
+                                        for (const field in mainFormErrors) {
+                                            const errorElement = document.querySelector(`[for$="${field}"] + [name="${field}"] + .text-red-500.text-sm`);
+                                            if (errorElement) {
+                                                errorElement.textContent = mainFormErrors[field].join(', ');
+                                            } else {
+                                                // Fallback para erros não específicos de campo
+                                                const nonFieldErrorsElement = document.querySelector('.mb-8.p-6 .non-field-errors');
+                                                if (nonFieldErrorsElement) nonFieldErrorsElement.textContent = `Erro geral: ${mainFormErrors[field].join(', ')}`;
+                                            }
+                                            errorMessage += `- Formulário Principal - ${field}: ${mainFormErrors[field].join(', ')}\n`;
+                                        }
+                                    } catch (e) {
+                                        errorMessage += `- Erro no Formulário Principal: ${errors.main_form}\n`;
+                                    }
+                                }
+                                if (errors.item_forms) {
+                                    try {
+                                        const itemFormsErrors = JSON.parse(errors.item_forms);
+                                        itemFormsErrors.forEach((itemError, index) => {
+                                            if (itemError) {
+                                                const itemRow = document.querySelectorAll('.item-row')[index];
+                                                if (itemRow) {
+                                                    for (const field in itemError) {
+                                                        const errorElement = itemRow.querySelector(`input[name$="-${field}"] + .field-error-${field}`);
+                                                        if (errorElement) {
+                                                            errorElement.textContent = itemError[field].join(', ');
+                                                        } else {
+                                                            const nonFieldErrorsElement = itemRow.querySelector('.non-field-errors');
+                                                            if (nonFieldErrorsElement) nonFieldErrorsElement.textContent = `Erro geral do item: ${itemError[field].join(', ')}`;
+                                                        }
+                                                    }
+                                                }
+                                                errorMessage += `\n- Item ${index + 1}:\n`;
+                                                for (const field in itemError) {
+                                                    errorMessage += `  - ${field}: ${itemError[field].join(', ')}\n`;
+                                                }
+                                            }
+                                        });
+                                    } catch (e) {
+                                        errorMessage += `- Erro nos Itens: ${errors.item_forms}\n`;
+                                    }
+                                }
+                                alert(errorMessage);
+
+                            } else if (error.response.status === 403) {
+                                alert('Erro de segurança (CSRF). Por favor, tente novamente ou recarregue a página.');
+                            } else {
+                                alert(`Erro: ${error.response.status} - ${error.response.statusText}`);
+                            }
+                        } else {
+                            alert('Erro de rede ou servidor não respondeu.');
+                        }
+                    } finally {
+                        if (botaoEnviarBonificacao) {
+                            botaoEnviarBonificacao.disabled = false;
+                            botaoEnviarBonificacao.textContent = 'Criar Bonificação';
+                        }
+                    }
+                });
+            } else {
+                console.error('DEBUG: Elemento form-bonificacao não encontrado. Verifique o ID no HTML.');
+            }
+        });
+    </script>
+</body>
+</html>
