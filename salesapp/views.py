@@ -59,7 +59,16 @@ def cadastros(request):
 
     situacao = request.GET.get('situacao', '')
     if situacao:
-        cadastros_query = cadastros_query.filter(situacao_status=situacao)
+        # Map user-friendly display to actual model status values
+        status_map_reverse = {
+            'Pendente (Cadastro)': 'pendente',
+            'Pendente (Financeiro)': 'cadastrado',
+            'Aprovado': 'liberado',
+            'Rejeitado': 'rejeitado',
+        }
+        model_status = status_map_reverse.get(situacao)
+        if model_status:
+            cadastros_query = cadastros_query.filter(status=model_status) # Changed from situacao_status to status
 
     cadastros_query = cadastros_query.order_by('-data_cadastro')
 
@@ -755,7 +764,7 @@ def buscar_clientes(request):
     try:
         email_usuario_logado = request.user.email
 
-        vendedor = TotvsVendedor.objects.get(email_vendedor=email_usuario_logado)
+        vendedor = TotvsVendedor.objects.filter(email_vendedor=email_usuario_logado).first()
         cod_vendedor_logado = vendedor.cod_vendedor
 
         clientes = TotvsCliente.objects.filter(

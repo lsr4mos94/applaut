@@ -527,6 +527,11 @@
     </hop>
     <hop>
       <from>Select values</from>
+      <to>Unique rows (HashSet)</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Unique rows (HashSet)</from>
       <to>produtos</to>
       <enabled>Y</enabled>
     </hop>
@@ -808,43 +813,21 @@
       <schema_name/>
     </partitioning>
     <connection>laut_ciec_get</connection>
-    <sql>WITH Clientes AS (
-    SELECT 
-        A1_COD,
-        A1_LOJA,
-        A1_NOME,
-        A1_NREDUZ,
-        A1_GRPVEN,
-        A1_CGC,
-        A1_VEND,
-        ROW_NUMBER() OVER (PARTITION BY A1_NOME ORDER BY A1_COD, A1_LOJA) AS RN
-    FROM (
-        SELECT A1_COD, A1_LOJA, A1_NOME, A1_NREDUZ, A1_GRPVEN, A1_CGC, A1_VEND
-        FROM SA1010
-        WHERE A1_MSBLQL = '2' AND D_E_L_E_T_ &lt;&gt; '*'
-
-        UNION ALL
-
-        SELECT A1_COD, A1_LOJA, A1_NOME, A1_NREDUZ, A1_GRPVEN, A1_CGC, A1_VEND
-        FROM SA1020
-        WHERE A1_MSBLQL = '2' AND D_E_L_E_T_ &lt;&gt; '*'
-    ) AS Dados
-)
-
-SELECT
-    C.A1_COD,
-    C.A1_LOJA,
-    C.A1_NOME,
-    C.A1_NREDUZ,
-    ACY.ACY_DESCRI   AS GRUPO_CLIENTE,
-    C.A1_CGC,
-    C.A1_VEND
-FROM Clientes C
-LEFT JOIN ACY010 ACY
-       ON ACY.ACY_GRPVEN = C.A1_GRPVEN
-      AND ACY.D_E_L_E_T_ &lt;&gt; '*'
-WHERE C.RN = 1;
-</sql>
+    <sql>SELECT 
+    A1_COD, A1_LOJA, A1_NOME, A1_NREDUZ, ACY.ACY_DESCRI AS GRUPO_CLIENTE, A1_CGC, A1_VEND
+FROM 
+    SA1010
+LEFT JOIN ACY010 ACY ON ACY.ACY_GRPVEN = A1_GRPVEN AND ACY.D_E_L_E_T_ &lt;&gt; '*'
+WHERE
+    A1_MSBLQL = '2' AND SA1010.D_E_L_E_T_ &lt;&gt; '*'
+UNION ALL
+SELECT 
+    A1_COD, A1_LOJA, A1_NOME, A1_NREDUZ, ACY.ACY_DESCRI AS GRUPO_CLIENTE, A1_CGC, A1_VEND
+FROM 
+    SA1020
+LEFT JOIN ACY010 ACY ON ACY.ACY_GRPVEN = A1_GRPVEN AND ACY.D_E_L_E_T_ &lt;&gt; '*'
+WHERE
+    A1_MSBLQL = '2' AND SA1020.D_E_L_E_T_ &lt;&gt; '*'</sql>
     <limit>0</limit>
     <lookup/>
     <execute_each_row>N</execute_each_row>
@@ -1067,7 +1050,46 @@ WHERE C.RN = 1;
       </output>
     </remotesteps>
     <GUI>
-      <xloc>576</xloc>
+      <xloc>704</xloc>
+      <yloc>16</yloc>
+      <draw>Y</draw>
+    </GUI>
+  </step>
+  <step>
+    <name>Unique rows (HashSet)</name>
+    <type>UniqueRowsByHashSet</type>
+    <description/>
+    <distribute>Y</distribute>
+    <custom_distribution/>
+    <copies>1</copies>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <store_values>N</store_values>
+    <reject_duplicate_row>N</reject_duplicate_row>
+    <error_description/>
+    <fields>
+      <field>
+        <name>cod_cliente</name>
+      </field>
+      <field>
+        <name>loja_cliente</name>
+      </field>
+      <field>
+        <name>cod_vendedor</name>
+      </field>
+    </fields>
+    <attributes/>
+    <cluster_schema/>
+    <remotesteps>
+      <input>
+      </input>
+      <output>
+      </output>
+    </remotesteps>
+    <GUI>
+      <xloc>560</xloc>
       <yloc>16</yloc>
       <draw>Y</draw>
     </GUI>
