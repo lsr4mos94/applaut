@@ -32,6 +32,8 @@ urlpatterns = [
 
     path('bonificacao/bonificacao_pedido/<int:bonificacao_id>/', views.bonificacao_pedido, name='bonificacao_pedido'),
 
+    path('exportar/xlsx/', views.export_bonificacoes_xlsx, name='exportar_xlsx'),
+
 ]
 
 if settings.DEBUG:

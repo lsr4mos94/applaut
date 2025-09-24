@@ -81,10 +81,11 @@
         .top-bar {
             display: flex;
             justify-content: flex-end;
+            gap: 10px;
             margin-bottom: 10px;
         }
 
-        button#novaBonificacao {
+        button {
             background-color: #C1AB63;
             border: none;
             padding: 10px 18px;
@@ -95,8 +96,8 @@
             transition: background-color 0.3s;
             font-size: 14px;
         }
-
-        button#novaBonificacao:hover {
+        
+        button:hover {
             background-color: #8B7D3B;
         }
 
@@ -173,7 +174,7 @@
             display: flex;
             flex-direction: column;
             flex: 1;
-            min-width: 180px; /* Garante que os campos não fiquem muito apertados */
+            min-width: 180px;
         }
 
         .filter-group label {
@@ -184,6 +185,7 @@
         }
 
         .filter-form input[type="text"],
+        .filter-form input[type="date"],
         .filter-form select {
             padding: 8px 10px;
             border: 1px solid #ccc;
@@ -191,23 +193,6 @@
             font-size: 14px;
             width: 100%;
         }
-
-        .filter-form button {
-            background-color: #C1AB63;
-            border: none;
-            padding: 10px 20px;
-            color: white;
-            font-weight: bold;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            font-size: 14px;
-        }
-
-        .filter-form button:hover {
-            background-color: #8B7D3B;
-        }
-
 
         @media (max-width: 768px) {
             .filter-form {
@@ -255,11 +240,13 @@
             }
 
             .top-bar {
+                flex-direction: column;
                 justify-content: center;
+                align-items: center;
                 margin-bottom: 15px;
             }
 
-            button#novaBonificacao {
+            .top-bar button {
                 width: 100%;
                 max-width: 300px;
             }
@@ -283,7 +270,7 @@
 
             td {
                 display: block;
-                padding: 10px 10px 10px 50%; /* Ajuste o padding para o conteúdo */
+                padding: 10px 10px 10px 50%;
                 position: relative;
                 text-align: right;
                 white-space: normal;
@@ -293,21 +280,19 @@
             td::before {
                 content: attr(data-label);
                 position: absolute;
-                left: 10px; /* Reduza o padding da esquerda para o label */
+                left: 10px;
                 top: 10px;
-                width: 45%; /* Aumente a largura do label */
-                white-space: nowrap;
+                width: 45%;
                 font-weight: bold;
                 text-align: left;
             }
 
-            /* Ajustes para as novas colunas em telas menores */
-            th:nth-child(1), td:nth-child(1) { width: auto; } /* Razão Social */
-            th:nth-child(2), td:nth-child(2) { width: auto; } /* CGC */
-            th:nth-child(3), td:nth-child(3) { width: auto; } /* Vendedor */
-            th:nth-child(4), td:nth-child(4) { width: auto; } /* Data de Cadastro */
-            th:nth-child(5), td:nth-child(5) { width: auto; } /* Situação */
-            th:nth-child(6), td:nth-child(6) { width: auto; } /* Motivo da Rejeição */
+            th:nth-child(1), td:nth-child(1) { width: auto; }
+            th:nth-child(2), td:nth-child(2) { width: auto; }
+            th:nth-child(3), td:nth-child(3) { width: auto; }
+            th:nth-child(4), td:nth-child(4) { width: auto; }
+            th:nth-child(5), td:nth-child(5) { width: auto; }
+            th:nth-child(6), td:nth-child(6) { width: auto; }
         }
     </style>
 </head>
@@ -329,14 +314,13 @@
             <button id="novaBonificacao" onclick="location.href='{% url 'salesapp:nova_bonificacao' %}'">+ Nova Solicitação</button>
         </div>
 
-        {# Formulário de Filtros #}
         <form method="get" class="filter-form">
             <div class="filter-group">
                 <label for="id_busca">Razão Social / CGC:</label>
                 <input type="text" id="id_busca" name="busca" value="{{ termo_busca_selecionado }}" placeholder="Buscar por razão social ou CGC">
             </div>
 
-            {% if is_gestor %} {# Use a variável booleana 'is_gestor' aqui #}
+            {% if is_gestor %}
             <div class="filter-group">
                 <label for="id_vendedor">Vendedor:</label>
                 <select id="id_vendedor" name="vendedor">
@@ -361,9 +345,20 @@
                     {% endfor %}
                 </select>
             </div>
+
+            <div class="filter-group">
+                <label for="data_inicio">Data De:</label>
+                <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio_selecionada }}">
+            </div>
+
+            <div class="filter-group">
+                <label for="data_fim">Data Até:</label>
+                <input type="date" name="data_fim" id="data_fim" value="{{ data_fim_selecionada }}">
+            </div>
             
             <button type="submit">Aplicar Filtros</button>
             <button type="button" onclick="window.location.href='{% url 'salesapp:bonificacoes' %}'">Limpar Filtros</button>
+            <button type="button" onclick="window.location.href='{% url 'salesapp:exportar_xlsx' %}?' + window.location.search.substring(1)">Exportar para Excel</button>
         </form>
 
         <table id="tabelaBonificacao">
@@ -400,13 +395,15 @@
     </main>
 
     <script>
-        const tabela = document.getElementById('tabelaBonificacoes');
+        
+        const tabela = document.getElementById('tabelaBonificacao');
         const cabecalhos = tabela.querySelectorAll('th');
         let ordemAtual = {};
 
         cabecalhos.forEach(th => {
             th.addEventListener('click', () => {
                 const coluna = th.getAttribute('data-column');
+                if (!coluna) return;
                 const corpoTabela = tabela.querySelector('tbody');
                 const linhas = Array.from(corpoTabela.querySelectorAll('tr'));
                 let asc = ordemAtual[coluna] !== 'asc';
@@ -417,15 +414,17 @@
                     let aText, bText;
                     let cellIndex;
 
-                    // Encontrar o índice da coluna clicada dinamicamente
                     for (let i = 0; i < cabecalhos.length; i++) {
                         if (cabecalhos[i] === th) {
                             cellIndex = i;
                             break;
                         }
                     }
+                    
+                    aText = a.querySelector(`td:nth-child(${cellIndex + 1})`).textContent.trim();
+                    bText = b.querySelector(`td:nth-child(${cellIndex + 1})`).textContent.trim();
 
-                    if (coluna === 'situacao_completa') {
+                    if (coluna === 'situacao') {
                         const ordemSituacao = {
                             'Pendente Gestor': 1,
                             'Pendente Diretoria': 2,
@@ -434,11 +433,10 @@
                             'Pedido Gerado': 5,
                             'Desconhecido': 99
                         };
-                        aText = ordemSituacao[a.querySelector(`td:nth-child(${cellIndex + 1})`).textContent.trim()] || 99;
-                        bText = ordemSituacao[b.querySelector(`td:nth-child(${cellIndex + 1})`).textContent.trim()] || 99;
-                        return asc ? aText - bText : bText - aText;
-
-                    } else if(coluna === 'data_criacao') {
+                        const aOrder = ordemSituacao[aText] || 99;
+                        const bOrder = ordemSituacao[bText] || 99;
+                        return asc ? aOrder - bOrder : bOrder - aOrder;
+                    } else if(coluna === 'data_solicitacao') {
                         const parseDate = (str) => {
                             const parts = str.split(/[\s/:]/);
                             if (parts.length >= 5) {
@@ -446,17 +444,19 @@
                             }
                             return new Date(str);
                         };
-                        // Use cellIndex + 1 para acessar a célula correta
-                        aText = parseDate(a.querySelector(`td:nth-child(${cellIndex + 1})`).textContent.trim());
-                        bText = parseDate(b.querySelector(`td:nth-child(${cellIndex + 1})`).textContent.trim());
-                        return asc ? aText - bText : bText - aText;
+                        const aDate = parseDate(aText);
+                        const bDate = parseDate(bText);
+                        return asc ? aDate - bDate : bDate - aDate;
+                    } else if(coluna === 'valor_total') {
+                        const parseValue = (str) => {
+                            return parseFloat(str.replace('R$ ', '').replace(/\./g, '').replace(',', '.'));
+                        };
+                        const aValue = parseValue(aText);
+                        const bValue = parseValue(bText);
+                        return asc ? aValue - bValue : bValue - aValue;
+                    } else {
+                        return asc ? aText.localeCompare(bText) : bText.localeCompare(aText);
                     }
-                    
-                    // Para as novas colunas (vendedor_nome, motivo_rejeicao) e as existentes (razao_social, cgc)
-                    // Use cellIndex + 1 para acessar a célula correta
-                    aText = a.querySelector(`td:nth-child(${cellIndex + 1})`).textContent.trim();
-                    bText = b.querySelector(`td:nth-child(${cellIndex + 1})`).textContent.trim();
-                    return asc ? aText.localeCompare(bText) : bText.localeCompare(aText);
                 });
 
                 cabecalhos.forEach(h => h.classList.remove('sorted-asc','sorted-desc'));

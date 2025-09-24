@@ -1,12 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 from django.conf import settings 
-import os
-import mimetypes 
 from .forms import LoginForm, NovoCadastroForm, BonificacaoForm, ItemBonificacaoFormSet
 from .models import Cadastro, AnexoCadastro, TotvsCliente, TotvsVendedor, TotvsProduto, TotvsTabPreco, Bonificacao
 from django.contrib import messages
@@ -22,6 +20,10 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.db.models import Sum
 from django.contrib.auth.models import User
+from datetime import datetime
+import os
+import mimetypes
+import openpyxl
 
 @login_required
 def inicio(request):
@@ -616,6 +618,23 @@ def bonificacoes(request):
     if situacao:
         bonificacao_query = bonificacao_query.filter(status=situacao)
 
+    data_de_str = request.GET.get('data_inicio', '')
+    data_ate_str = request.GET.get('data_fim', '')
+
+    if data_de_str:
+        try:
+            data_inicio = datetime.strptime(data_de_str, '%Y-%m-%d').date()
+            bonificacao_query = bonificacao_query.filter(data_criacao__date__gte=data_inicio)
+        except ValueError:
+            pass
+            
+    if data_ate_str:
+        try:
+            data_fim = datetime.strptime(data_ate_str, '%Y-%m-%d').date()
+            bonificacao_query = bonificacao_query.filter(data_criacao__date__lte=data_fim)
+        except ValueError:
+            pass
+
     bonificacao_query = bonificacao_query.order_by('-data_criacao')
 
     context = {
@@ -1085,3 +1104,72 @@ def bonificacao_pedido(request, bonificacao_id):
 
             messages.success(request, f'Pedido de bonificação não emitido.')
             return render(request, 'bonificacao_ja_processada.html', {'bonificacao': bonificacao})
+        
+def export_bonificacoes_xlsx(request):
+
+    termo_busca = request.GET.get('busca', '')
+    vendedor_id = request.GET.get('vendedor', '')
+    situacao = request.GET.get('situacao', '')
+    data_inicio_str = request.GET.get('data_inicio', '')
+    data_fim_str = request.GET.get('data_fim', '')
+
+    bonificacoes = Bonificacao.objects.all()
+
+    if termo_busca:
+        bonificacoes = bonificacoes.filter(
+            Q(razao_social__icontains=termo_busca) | Q(cgc__icontains=termo_busca)
+        )
+
+    if vendedor_id:
+        bonificacoes = bonificacoes.filter(vendedor_id=vendedor_id)
+
+    if situacao:
+        bonificacoes = bonificacoes.filter(status=situacao)
+
+    if data_inicio_str:
+        data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%d').date()
+        bonificacoes = bonificacoes.filter(data_criacao__date__gte=data_inicio)
+
+    if data_fim_str:
+        data_fim = datetime.strptime(data_fim_str, '%Y-%m-%d').date()
+        bonificacoes = bonificacoes.filter(data_criacao__date__lte=data_fim)
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = 'attachment; filename=bonificacoes.xlsx'
+
+    workbook = openpyxl.Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Bonificações"
+
+    columns = [
+        "Razão Social",
+        "CGC",
+        "Vendedor",
+        "Data da Solicitação",
+        "Valor Total",
+        "Situação",
+    ]
+    row_num = 1
+    for col_num, column_title in enumerate(columns, 1):
+        cell = worksheet.cell(row=row_num, column=col_num)
+        cell.value = column_title
+
+    for bonificacao in bonificacoes:
+        row_num += 1
+
+        cgc_str = str(bonificacao.cgc)
+        status_display = bonificacao.get_status_display()
+        data_sem_tz = bonificacao.data_criacao.replace(tzinfo=None)
+
+        worksheet.cell(row=row_num, column=1, value=bonificacao.razao_social)
+        worksheet.cell(row=row_num, column=2, value=cgc_str)
+        worksheet.cell(row=row_num, column=3, value=bonificacao.vendedor.get_full_name())
+        worksheet.cell(row=row_num, column=4, value=data_sem_tz)
+        worksheet.cell(row=row_num, column=5, value=bonificacao.valor_total)
+        worksheet.cell(row=row_num, column=6, value=status_display)
+
+    workbook.save(response)
+
+    return response
