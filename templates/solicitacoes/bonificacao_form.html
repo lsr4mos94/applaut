@@ -1,0 +1,398 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<style>
+    .form-check-input:checked { background-color: #bca464 !important; border-color: #bca464 !important; box-shadow: 0 0 0 0.25rem rgba(188, 164, 100, 0.25) !important; }
+    .section-title { color: #bca464; font-weight: 600; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 1px; }
+    .form-label-custom { font-size: 0.75rem; font-weight: 700; color: #6c757d; text-transform: uppercase; margin-bottom: 5px; }
+    .bg-busca { background-color: #fcfbf7; border: 1px solid #bca464 !important; }
+    .list-group-item-action:hover { background-color: #fcfaf5; color: #bca464; }
+</style>
+
+<div class="mb-4">
+    <h3 style="color: #bca464; font-weight: 600;">Nova Solicitação de Bonificação</h3>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+        <form method="POST" action="{% url 'criar_bonificacao' %}" id="formBonificacao">
+            {% csrf_token %}
+            
+            <div class="mb-4 p-3 rounded" style="background-color: #fcfbf7; border: 1px solid #f1ece0;">
+                <label class="form-label-custom d-block mb-3">Tipo de Bonificação</label>
+                <div class="d-flex gap-5">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="tipo" id="verba" value="VERBA_VENDEDOR" checked>
+                        <label class="form-check-label" for="verba">Verba Vendedor</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="tipo" id="acordo" value="ACORDO_COMERCIAL">
+                        <label class="form-check-label" for="acordo">Acordo Comercial</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="tipo" id="negociacao" value="NEGOCIACAO_ESPECIAL">
+                        <label class="form-check-label" for="negociacao">Negociação Especial</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-5">
+                <div class="col-md-12">
+                    <label class="form-label-custom">Localizar Cliente (Razão Social ou CNPJ)</label>
+                    <div class="input-group">
+                        <input type="text" id="input_busca_cliente" class="form-control bg-busca" placeholder="Digite para localizar o cliente...">
+                        <button class="btn text-white px-4 fw-bold" type="button" id="btn_buscar_cliente" style="background-color: #bca464;">
+                            <i class="bi bi-search me-1"></i> BUSCAR CLIENTE
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <h6 class="section-title"><i class="bi bi-person-bounding-box me-2"></i>Informações do Cliente</h6>
+            
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="form-label-custom">Razão Social / Nome</label>
+                    <input type="text" name="cliente_razao_social" id="res_razao" class="form-control form-control-sm bg-light" readonly required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label-custom">Nome Fantasia</label>
+                    <input type="text" name="cliente_nome_fantasia" id="res_fantasia" class="form-control form-control-sm bg-light" readonly>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label-custom">Código</label>
+                    <input type="text" name="cliente_codigo" id="res_codigo" class="form-control form-control-sm bg-light" readonly>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label-custom">Loja</label>
+                    <input type="text" name="cliente_loja" id="res_loja" class="form-control form-control-sm bg-light" readonly>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label-custom">CPF / CNPJ</label>
+                    <input type="text" name="cliente_cpf_cnpj" id="res_cnpj" class="form-control form-control-sm bg-light" readonly required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label-custom">Grupo de Cliente</label>
+                    <input type="text" name="cliente_grupo" id="res_grupo" class="form-control form-control-sm bg-light" readonly>
+                </div>
+            </div>
+
+            <div class="mb-5">
+                <label class="form-label-custom">Justificativa da Bonificação</label>
+                <textarea name="justificativa" class="form-control" rows="2" placeholder="Descreva o motivo..." required></textarea>
+            </div>
+
+            <h6 class="section-title"><i class="bi bi-box-seam me-2"></i>Itens da Bonificação</h6>
+            
+            <div class="table-responsive mb-3">
+                <table class="table table-bordered align-middle">
+                    <thead class="bg-light text-muted small text-uppercase">
+                        <tr>
+                            <th style="width: 45%;">Produto</th>
+                            <th style="width: 15%;" class="text-center">Preço Un.</th>
+                            <th style="width: 15%;" class="text-center">Quantidade</th>
+                            <th style="width: 15%;" class="text-center">Valor Total</th>
+                            <th style="width: 10%;" class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyItens"></tbody>
+                    <tfoot>
+                        <tr class="fw-bold" style="background-color: #fcfbf7;">
+                            <td colspan="3" class="text-end text-muted small">TOTAL GERAL DA BONIFICAÇÃO:</td>
+                            <td class="text-center" id="totalGeral" style="color: #bca464; font-size: 1.1rem;">R$ 0,00</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            
+            <button type="button" class="btn btn-sm btn-outline-secondary px-3 mb-5" onclick="addLinha()">
+                <i class="bi bi-plus-circle me-1"></i> Adicionar Produto
+            </button>
+
+            <div class="d-flex justify-content-end gap-2 border-top pt-4">
+                <a href="{% url 'bonificacao_list' %}" class="btn btn-light border px-4">CANCELAR</a>
+                <button type="submit" class="btn text-white px-5" style="background-color: #bca464;">
+                    <strong>ENVIAR SOLICITAÇÃO</strong>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalCliente" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header text-white" style="background-color: #bca464;">
+                <h6 class="modal-title fw-bold">Selecionar Cliente</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0" style="max-height: 400px; overflow-y: auto;">
+                <div id="lista_clientes" class="list-group list-group-flush"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalProduto" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-dark text-white">
+                <h6 class="modal-title fw-bold">Buscar no Protheus</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="p-3 border-bottom bg-light">
+                <input type="text" id="filtro_produto" class="form-control" placeholder="Digite nome ou código (min. 3 letras)...">
+            </div>
+            <div class="modal-body p-0" style="max-height: 400px; overflow-y: auto;">
+                <div id="lista_produtos" class="list-group list-group-flush"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let contadorItens = 0;
+    let linhaAtiva = null;
+    let mCli, mProd;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        mCli = new bootstrap.Modal(document.getElementById('modalCliente'));
+        mProd = new bootstrap.Modal(document.getElementById('modalProduto'));
+
+        // Busca Cliente
+        document.getElementById('btn_buscar_cliente').onclick = function() {
+            const termo = document.getElementById('input_busca_cliente').value.trim();
+            if(termo.length < 3) return alert('Digite ao menos 3 caracteres.');
+
+            fetch("{% url 'api_busca_clientes' %}?q=" + encodeURIComponent(termo))
+                .then(res => res.json())
+                .then(data => {
+                    const lista = document.getElementById('lista_clientes');
+                    lista.innerHTML = '';
+                    data.forEach(c => {
+                        const b = document.createElement('button');
+                        b.className = 'list-group-item list-group-item-action';
+                        b.type = 'button';
+                        b.innerHTML = `<strong>${c.nome}</strong><br><small class="text-muted">${c.cnpj} | Cód: ${c.codigo}</small>`;
+                        b.onclick = () => {
+                            document.getElementById('res_razao').value = c.nome;
+                            document.getElementById('res_fantasia').value = c.fantasia || c.nome;
+                            document.getElementById('res_codigo').value = c.codigo;
+                            document.getElementById('res_loja').value = c.loja;
+                            document.getElementById('res_cnpj').value = c.cnpj;
+                            document.getElementById('res_grupo').value = c.grupo || 'GERAL';
+                            mCli.hide();
+                        };
+                        lista.appendChild(b);
+                    });
+                    mCli.show();
+                });
+        };
+
+        // Lógica de Busca de Produto (ao digitar no modal)
+        document.getElementById('filtro_produto').onkeyup = function() {
+            const termo = this.value.trim();
+            const lista = document.getElementById('lista_produtos');
+
+            if(termo.length < 3) {
+                lista.innerHTML = '<div class="p-3 text-center text-muted small">Continue digitando...</div>';
+                return;
+            }
+
+            lista.innerHTML = '<div class="p-3 text-center"><span class="spinner-border spinner-border-sm text-primary"></span> Consultando Protheus...</div>';
+
+            fetch("{% url 'api_busca_produtos' %}?q=" + encodeURIComponent(termo))
+                .then(res => res.json())
+                .then(data => {
+                    lista.innerHTML = '';
+                    if(data.length === 0) {
+                        lista.innerHTML = '<div class="p-3 text-center text-muted">Nenhum produto encontrado.</div>';
+                        return;
+                    }
+                    data.forEach(p => {
+                        const b = document.createElement('button');
+                        b.className = 'list-group-item list-group-item-action';
+                        b.type = 'button';
+                        b.innerHTML = `
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>${p.descricao}</strong><br>
+                                    <small class="text-muted">Cód: ${p.codigo} | ${p.grupo_familia}</small>
+                                </div>
+                                <span class="badge bg-success">R$ ${parseFloat(p.preco).toLocaleString('pt-br', {minimumFractionDigits: 2})}</span>
+                            </div>`;
+                        
+                        b.onclick = () => {
+                            document.getElementById(`nome_${linhaAtiva}`).value = p.descricao;
+                            document.getElementById(`cod_${linhaAtiva}`).value = p.codigo;
+                            document.getElementById(`preco_${linhaAtiva}`).value = p.preco;
+                            calc(linhaAtiva);
+                            mProd.hide();
+                        };
+                        lista.appendChild(b);
+                    });
+                });
+        };
+
+        addLinha(); 
+    });
+
+    function addLinha() {
+        contadorItens++;
+        const tbody = document.getElementById('tbodyItens');
+        const tr = document.createElement('tr');
+        tr.id = `linha-${contadorItens}`;
+        
+        tr.innerHTML = `
+            <td>
+                <div class="input-group input-group-sm">
+                    <input type="text" name="item_nome_${contadorItens}" id="nome_${contadorItens}" class="form-control" readonly placeholder="Selecione o produto..." required>
+                    <button class="btn btn-outline-secondary" type="button" onclick="abrirBuscaProduto(${contadorItens})">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+                <input type="hidden" name="item_codigo_${contadorItens}" id="cod_${contadorItens}">
+            </td>
+            <td>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text">R$</span>
+                    <input type="number" step="0.01" name="item_preco_${contadorItens}" id="preco_${contadorItens}" class="form-control text-center" value="0.00" oninput="calc(${contadorItens})">
+                </div>
+            </td>
+            <td>
+                <input type="number" name="item_qtd_${contadorItens}" id="qtd_${contadorItens}" class="form-control form-control-sm text-center" value="1" min="1" oninput="calc(${contadorItens})">
+            </td>
+            <td>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light">R$</span>
+                    <input type="number" step="0.01" name="item_total_${contadorItens}" id="total_${contadorItens}" class="form-control text-center bg-light" readonly value="0.00">
+                </div>
+            </td>
+            <td class="text-center">
+                <button type="button" class="btn btn-sm text-danger" onclick="removerLinha(${contadorItens})"><i class="bi bi-trash"></i></button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    }
+
+    function abrirBuscaProduto(id) {
+        linhaAtiva = id;
+        document.getElementById('filtro_produto').value = '';
+        document.getElementById('lista_produtos').innerHTML = '<div class="p-3 text-center text-muted small">Digite o nome do produto para buscar...</div>';
+        mProd.show();
+        setTimeout(() => document.getElementById('filtro_produto').focus(), 500);
+    }
+
+    function removerLinha(id) {
+        if(document.querySelectorAll('#tbodyItens tr').length > 1) {
+            document.getElementById(`linha-${id}`).remove();
+            calcularTotalGeral();
+        }
+    }
+
+    function calc(id) {
+        const q = parseFloat(document.getElementById(`qtd_${id}`).value) || 0;
+        const p = parseFloat(document.getElementById(`preco_${id}`).value) || 0;
+        document.getElementById(`total_${id}`).value = (q * p).toFixed(2);
+        calcularTotalGeral();
+    }
+
+    function calcularTotalGeral() {
+        let total = 0;
+        document.querySelectorAll('[id^="total_"]').forEach(input => {
+            total += parseFloat(input.value) || 0;
+        });
+        document.getElementById('totalGeral').innerText = `R$ ${total.toLocaleString('pt-br', {minimumFractionDigits: 2})}`;
+    }
+
+    // Adicione isso dentro do seu bloco <script> existente
+    document.querySelectorAll('input[name="tipo"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const infoBox = document.getElementById('info-acordo');
+            if (this.value === 'ACORDO_COMERCIAL') {
+                if (!infoBox) {
+                    const alerta = `
+                        <div id="info-acordo" class="alert alert-warning mt-2 py-2 shadow-sm" style="border-left: 5px solid #bca464; font-size: 0.85rem;">
+                            <i class="bi bi-shield-check me-2"></i>
+                            <strong>Validação Automática:</strong> O sistema consultará o saldo do acordo vigente no Protheus. 
+                            Caso não haja saldo ou acordo, a solicitação irá para aprovação manual da Controladoria.
+                        </div>`;
+                    document.querySelector('input[id="acordo"]').closest('.col-md-4').insertAdjacentHTML('afterend', alerta);
+                }
+            } else {
+                if (infoBox) infoBox.remove();
+            }
+        });
+    });
+
+    function validarRegraCopo() {
+        const CODIGO_COPO = '000072';
+        const DESCRICAO_COPO = 'COPO DESCARTAVEL 300ML C/LOGO';
+        
+        let totalChopp = 0;
+        let linhaCopo = null;
+
+        // 1. Calcular total de Chopp e verificar se o copo já existe na lista
+        document.querySelectorAll('#tbodyItens tr').forEach(tr => {
+            const id = tr.id.split('-')[1];
+            const nomeProd = document.getElementById(`nome_${id}`).value.toUpperCase();
+            const codProd = document.getElementById(`cod_${id}`).value;
+            const qtd = parseFloat(document.getElementById(`qtd_${id}`).value) || 0;
+
+            if (nomeProd.includes('CHOPP')) {
+                totalChopp += qtd;
+            }
+            
+            if (codProd === CODIGO_COPO) {
+                linhaCopo = id;
+            }
+        });
+
+        // 2. Lógica de Adição/Atualização/Remoção
+        if (totalChopp > 0) {
+            if (!linhaCopo) {
+                // Se não tem a linha do copo, adiciona uma nova
+                addLinha();
+                // O contadorItens terá subido após o addLinha()
+                const novaId = contadorItens;
+                document.getElementById(`nome_${novaId}`).value = DESCRICAO_COPO;
+                document.getElementById(`cod_${novaId}`).value = CODIGO_COPO;
+                document.getElementById(`preco_${novaId}`).value = "0.00";
+                document.getElementById(`qtd_${novaId}`).value = totalChopp;
+                calc(novaId);
+            } else {
+                // Se já existe, apenas atualiza a quantidade para ser igual ao total de chopp
+                document.getElementById(`qtd_${linhaCopo}`).value = totalChopp;
+                document.getElementById(`preco_${linhaCopo}`).value = "0.00"; // Garante que é zerado
+                calc(linhaCopo);
+            }
+        } else if (linhaCopo) {
+            // Se não tem mais chopp mas o copo sobrou, remove a linha do copo
+            document.getElementById(`linha-${linhaCopo}`).remove();
+            calcularTotalGeral();
+        }
+    }
+
+    // Injetar a validação nas funções existentes sem alterá-las drasticamente
+    const originalCalc = calc;
+    calc = function(id) {
+        originalCalc(id);
+        // Evita loop infinito: não valida a regra se a alteração veio do próprio copo
+        const cod = document.getElementById(`cod_${id}`).value;
+        if (cod !== '000072') {
+            validarRegraCopo();
+        }
+    };
+
+    // Monitorar também a remoção de linhas para atualizar os copos
+    const originalRemover = removerLinha;
+    removerLinha = function(id) {
+        originalRemover(id);
+        validarRegraCopo();
+    };
+
+</script>
+{% endblock %}

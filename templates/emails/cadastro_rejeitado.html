@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body, table, td, h1, p, a {
+            font-family: 'Montserrat', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f4;">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+        <tr>
+            <td align="center" style="padding: 20px 0;">
+                <table border="0" cellpadding="0" cellspacing="0" width="600" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e0e0e0;">
+                    
+                    <tr>
+                        <td align="center" style="background-color: #1a1a1a; padding: 40px 20px; border-bottom: 4px solid #dc3545;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;">
+                                CADASTRO RECUSADO
+                            </h1>
+                            <p style="color: #dc3545; margin: 10px 0 0 0; font-size: 14px; font-weight: 400; letter-spacing: 1px;">
+                                LAUT BEER
+                            </p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="padding: 40px 35px;">
+                            <h2 style="color: #1a1a1a; font-size: 20px; margin-bottom: 20px;">❌ Cadastro Reprovado</h2>
+                            
+                            <p style="font-size: 15px; color: #555555; line-height: 1.8;">
+                                Olá! Informamos que o cadastro do cliente <strong>{{ cadastro.razao_social }}</strong>, CPF/CNPJ <strong>{{ cadastro.cgc }}</strong> não pôde ser aprovado no momento.
+                            </p>
+
+                            <div style="background-color: #fff8f8; border: 1px solid #f8d7da; border-radius: 8px; padding: 25px; margin: 30px 0;">
+                                <p style="margin: 0 0 10px 0; font-size: 12px; color: #721c24; font-weight: 700; text-transform: uppercase;">Motivo da Recusa:</p>
+                                <p style="margin: 0; font-size: 16px; color: #1a1a1a; font-style: italic;">
+                                    "{{ cadastro.motivo_rejeicao|default:'O avaliador não detalhou o motivo.' }}"
+                                </p>
+                            </div>
+
+                            <p style="font-size: 14px; color: #666666; margin-bottom: 30px;">
+                                Por favor, revise as informações e, se necessário, realize os ajustes para submeter o cadastro novamente.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="background-color: #1a1a1a; padding: 30px; text-align: center;">
+                            <p style="font-size: 11px; color: #888888; margin: 0;">
+                                &copy; 2026 LAUT BEER
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

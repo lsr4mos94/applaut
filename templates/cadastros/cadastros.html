@@ -1,0 +1,299 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 style="color: #bca464; font-weight: 600;">Cadastro de Clientes</h3>
+    </div>
+    <a href="{% url 'criar_cadastro' %}" class="btn text-white shadow-sm" style="background-color: #bca464;">
+        <i class="bi bi-plus-circle"></i><strong> Novo Cadastro</strong>
+    </a>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body bg-light rounded p-4">
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                <label class="small fw-bold text-muted">Nome ou CPF/CNPJ</label>
+                <input type="text" name="busca" class="form-control form-control-sm" placeholder="Buscar..." value="{{ request.GET.busca|default:'' }}">
+            </div>
+            <div class="col-md-2">
+                <label class="small fw-bold text-muted">Data Cadastro</label>
+                <input type="date" name="data" class="form-control form-control-sm" value="{{ request.GET.data }}">
+            </div>
+            <div class="col-md-3">
+                <label class="small fw-bold text-muted">Vendedor</label>
+                <select name="vendedor" class="form-select form-select-sm">
+                    <option value="">Todos os Vendedores</option>
+                    {% for user in usuarios %}
+                        <option value="{{ user.id }}" {% if request.GET.vendedor == user.id|stringformat:"s" %}selected{% endif %}>
+                            {{ user.get_full_name|default:user.username }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="small fw-bold text-muted">Status</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    <option value="PENDENTE" {% if request.GET.status == 'PENDENTE' %}selected{% endif %}>Pendente</option>
+                    <option value="CADASTRADO" {% if request.GET.status == 'CADASTRADO' %}selected{% endif %}>Cadastrado</option>
+                    <option value="LIBERADO" {% if request.GET.status == 'LIBERADO' %}selected{% endif %}>Liberado</option>
+                    <option value="REJEITADO" {% if request.GET.status == 'REJEITADO' %}selected{% endif %}>Rejeitado</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">FILTRAR</button>
+                <a href="{% url request.resolver_match.url_name %}" class="btn btn-link btn-sm text-muted text-decoration-none border-0 p-0 mb-1" style="font-size: 0.85rem;">Limpar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="table-responsive shadow-sm rounded">
+    <table class="table table-hover align-middle mb-0 bg-white" id="tabelaClientes">
+        <thead>
+            <tr style="cursor: pointer;">
+                <th onclick="sortTable(0)" style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 px-3">Razão Social <i class="bi bi-arrow-down-up small"></i></th>
+                <th onclick="sortTable(1)" style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3">CGC <i class="bi bi-arrow-down-up small"></i></th>
+                <th onclick="sortTable(2)" style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3">Vendedor <i class="bi bi-arrow-down-up small"></i></th>
+                <th onclick="sortTable(3)" style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3">Situação <i class="bi bi-arrow-down-up small"></i></th>
+                <th style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 text-center">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cliente in cadastros %}
+            <tr class="border-bottom">
+                <td class="px-3">
+                    <strong style="color: #5e4d26;">{{ cliente.razao_social }}</strong><br>
+                    <small class="text-muted">{{ cliente.nome_fantasia|default:"" }}</small>
+                </td>
+                <td>{{ cliente.cgc }}</td>
+                <td><small>{{ cliente.vendedor.get_full_name|default:cliente.vendedor.username }}</small></td>
+                <td>
+                    {% if cliente.situacao == 'PENDENTE' %}
+                        <span class="badge rounded-pill bg-warning text-dark">Pendente</span>
+                    {% elif cliente.situacao == 'CADASTRADO' %}
+                        <span class="badge rounded-pill bg-info text-dark">Cadastrado</span>
+                    {% elif cliente.situacao == 'LIBERADO' %}
+                        <span class="badge rounded-pill bg-success">Liberado</span>
+                    {% elif cliente.situacao == 'REJEITADO' %}
+                        <span class="badge rounded-pill bg-danger">Rejeitado</span>
+                    {% endif %}
+                </td>
+                <td class="text-center" style="white-space: nowrap;">
+                    <button class="btn btn-sm btn-outline-secondary border-0" data-bs-toggle="modal" data-bs-target="#modalVer{{ cliente.id }}" title="Visualizar Detalhes">
+                        <i class="bi bi-eye-fill"></i>
+                    </button>
+
+                    {% if cliente.vendedor == request.user and cliente.situacao == 'PENDENTE' or cliente.situacao == 'REJEITADO' %}
+                    <a href="{% url 'editar_cadastro' cliente.id %}" class="btn btn-sm btn-outline-primary border-0" title="Editar">
+                        <i class="bi bi-pencil-square"></i>
+                    </a>
+                    {% endif %}
+
+                    {% if not cliente.situacao == 'LIBERADO' and not cliente.situacao == 'REJEITADO' %}
+                        {% if request.user.is_superuser or cliente.situacao == 'PENDENTE' and user_no_grupo_cadastro or cliente.situacao == 'CADASTRADO' and user_no_grupo_financeiro %}
+                            
+                            <button class="btn btn-sm btn-outline-success border-0" data-bs-toggle="modal" data-bs-target="#modalAprovar{{ cliente.id }}" title="Aprovar">
+                                <i class="bi bi-check-circle-fill"></i>
+                            </button>
+
+                            <button class="btn btn-sm btn-outline-danger border-0" data-bs-toggle="modal" data-bs-target="#modalReprovar{{ cliente.id }}" title="Reprovar">
+                                <i class="bi bi-x-circle-fill"></i>
+                            </button>
+
+                        {% endif %}
+                    {% endif %}
+                </td>
+            </tr>
+
+            <div class="modal fade" id="modalVer{{ cliente.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                    <div class="modal-content border-0 shadow-lg">
+                        <div class="modal-header text-white" style="background-color: #bca464;">
+                            <h5 class="modal-title"><i class="bi bi-person-vcard me-2"></i>Cadastro do Cliente: {{ cliente.razao_social }}</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <div class="row">
+                                <div class="col-md-3 border-end">
+                                    <h6 class="fw-bold mb-3" style="color: #bca464;"><i class="bi bi-geo-alt"></i> Identificação e Fiscal</h6>
+                                    <p class="mb-1 small"><strong>Plataforma:</strong><br><span class="badge bg-secondary">{{ cliente.plataforma|default:"Não informada" }}</span></p>
+                                    <hr class="my-2">
+                                    <p class="mb-1 small"><strong>Razão Social:</strong><br>{{ cliente.razao_social }}</p>
+                                    <p class="mb-1 small"><strong>Nome Fantasia:</strong><br>{{ cliente.nome_fantasia }}</p>
+                                    <p class="mb-1 small"><strong>CNPJ/CPF:</strong><br>{{ cliente.cgc }}</p>
+                                    <p class="mb-1 small"><strong>Inscrição Estadual:</strong><br>{{ cliente.inscricao_estadual|default:"ISENTO" }}</p>
+                                    <hr class="my-2">
+                                    <p class="mb-1 small"><strong>CEP:</strong> {{ cliente.cep }}</p>
+                                    <p class="mb-1 small"><strong>Endereço:</strong> {{ cliente.endereco }}, {{ cliente.numero }}, {{ cliente.complemento }}</p>
+                                    <p class="mb-1 small"><strong>Bairro:</strong> {{ cliente.bairro }}</p>
+                                    <p class="mb-1 small"><strong>Cidade/UF:</strong> {{ cliente.cidade }} - {{ cliente.estado }}</p>
+                                </div>
+
+                                <div class="col-md-3 border-end">
+                                    <h6 class="fw-bold mb-3" style="color: #bca464;"><i class="bi bi-people"></i> Dados do Sócio</h6>
+                                    <p class="mb-1 small"><strong>Nome:</strong><br>{{ cliente.socio_nome|default:"-" }}</p>
+                                    <p class="mb-1 small"><strong>CPF Sócio:</strong><br>{{ cliente.socio_cpf|default:"-" }}</p>
+                                    <p class="mb-1 small"><strong>Endereço do Sócio:</strong><br>
+                                        {{ cliente.socio_endereco|default:"Não informado" }}, 
+                                        {{ cliente.socio_numero|default:"" }} - 
+                                        {{ cliente.socio_complemento|default:"" }} - 
+                                        {{ cliente.socio_bairro|default:"" }} - 
+                                        {{ cliente.socio_cidade|default:"" }}/{{ cliente.socio_estado|default:"" }}
+                                    </p>
+                                    <hr class="my-3">
+                                    <h6 class="fw-bold mb-3" style="color: #bca464;"><i class="bi bi-cash-stack"></i> Financeiro</h6>
+                                    <p class="mb-1 small"><strong>Resp. Financeiro:</strong><br>{{ cliente.finan_nome|default:"-" }}</p>
+                                    <p class="mb-1 small"><strong>CPF:</strong><br>{{ cliente.finan_cpf|default:"-" }}</p>
+                                    <p class="mb-1 small"><strong>Comprador:</strong><br>{{ cliente.compra_nome|default:"-" }}</p>
+                                    <p class="mb-1 small"><strong>CPF:</strong><br>{{ cliente.compra_cpf|default:"-" }}</p>
+                                </div>
+
+                                <div class="col-md-3 border-end">
+                                    <h6 class="fw-bold mb-3" style="color: #bca464;"><i class="bi bi-truck"></i> Logística e Entrega</h6>
+                                    <p class="mb-1 small"><strong>Local de Entrega:</strong><br>
+                                        {{ cliente.entrega_endereco|default:"Mesmo endereço fiscal" }}, 
+                                        {{ cliente.entrega_numero|default:"" }} - 
+                                        {{ cliente.entrega_complemento|default:""}}<br>
+                                        {{ cliente.entrega_bairro|default:"" }} - {{ cliente.entrega_cidade|default:"" }}/{{ cliente.entrega_estado|default:"" }}
+                                    </p>
+                                    <hr class="my-2">
+                                    <p class="mb-1 small"><strong>Horário de Entrega:</strong><br>{{ cliente.horario_entrega|default:"Horário Comercial" }}</p>
+                                    <p class="mb-1 small"><strong>Tipo/Grupo:</strong><br>{{ cliente.tipo_cliente }} / {{ cliente.grupo_cliente }}</p>
+                                    <hr class="my-2">
+                                    <p class="mb-1 small"><strong>Condição Pagto:</strong><br>{{ cliente.condicao_pagamento }}</p>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <h6 class="fw-bold mb-3" style="color: #bca464;"><i class="bi bi-paperclip"></i> Documentos</h6>
+                                    <div class="d-grid gap-2 mb-4">
+                                        {% for anexo in cliente.anexos.all %}
+                                        <a href="{{ anexo.arquivo.url }}" target="_blank" class="btn btn-sm btn-outline-secondary text-start">
+                                            <i class="bi bi-file-earmark-arrow-down"></i> {{ anexo.nome }}
+                                        </a>
+                                        {% empty %}
+                                        <div class="alert alert-light border small py-2">Sem anexos.</div>
+                                        {% endfor %}
+                                    </div>
+                                    <div class="bg-light p-2 rounded border">
+                                        <p class="mb-1 small"><strong>Status:</strong> 
+                                            <span class="badge {% if cliente.situacao == 'LIBERADO' %}bg-success{% elif cliente.situacao == 'REJEITADO' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                                                {{ cliente.situacao }}
+                                            </span>
+                                        </p>
+                                        <p class="mb-0 small text-muted"><strong>Vendedor:</strong> {{ cliente.vendedor.get_full_name }}</p>
+                                        <p class="mb-0 small text-muted"><strong>Data Cadastro:</strong> {{ cliente.data_cadastro|date:"d/m/Y H:i" }}</p>
+                                        <p class="mb-0 small text-muted"><strong>Motivo Recusa:</strong> {{ cliente.observacoes|default:"-" }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="modalAprovar{{ cliente.id }}" tabindex="-1">
+                <div class="modal-dialog">
+                    <form method="POST" action="{% url 'processar_status' cliente.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="acao" value="aprovar">
+                        <div class="modal-content">
+                            <div class="modal-header bg-success text-white">
+                                <h5 class="modal-title">Confirmar Aprovação</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>Deseja aprovar o cliente <strong>{{ cliente.razao_social }}</strong>?</p>
+                                
+                                <div class="alert alert-info small">
+                                    {% if cliente.situacao == 'PENDENTE' %}
+                                        Sua aprovação enviará este cadastro para o <strong>Setor Financeiro</strong>.
+                                    {% elif cliente.situacao == 'CADASTRADO' %}
+                                        Sua aprovação irá <strong>LIBERAR</strong> este cliente para faturamento.
+                                    {% endif %}
+                                </div>
+
+                                <label class="form-label small fw-bold">Observação (Opcional):</label>
+                                <textarea name="observacao" class="form-control" rows="3" placeholder="Notas sobre a aprovação..."></textarea>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="submit" class="btn btn-success">Confirmar Aprovação</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="modal fade" id="modalReprovar{{ cliente.id }}" tabindex="-1">
+                <div class="modal-dialog">
+                    <form method="POST" action="{% url 'processar_status' cliente.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="acao" value="reprovar">
+                        <div class="modal-content">
+                            <div class="modal-header bg-danger text-white">
+                                <h5 class="modal-title">Reprovar Cliente</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>Informe o motivo da reprovação para <strong>{{ cliente.razao_social }}</strong>:</p>
+                                <textarea name="observacao" class="form-control" rows="4" required placeholder="Descreva aqui por que o cadastro foi rejeitado..."></textarea>
+                                <small class="text-muted mt-2 d-block italic">* O vendedor receberá um e-mail com este motivo.</small>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="submit" class="btn btn-danger">Confirmar Reprovação</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {% empty %}
+            <tr><td colspan="5" class="text-center py-4 text-muted">Nenhum cadastro encontrado.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+function sortTable(n) {
+  var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+  table = document.getElementById("tabelaClientes");
+  switching = true;
+  dir = "asc"; 
+  while (switching) {
+    switching = false;
+    rows = table.rows;
+    for (i = 1; i < (rows.length - 1); i++) {
+      shouldSwitch = false;
+      x = rows[i].getElementsByTagName("TD")[n];
+      y = rows[i + 1].getElementsByTagName("TD")[n];
+      if (dir == "asc") {
+        if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+          shouldSwitch = true;
+          break;
+        }
+      } else if (dir == "desc") {
+        if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+          shouldSwitch = true;
+          break;
+        }
+      }
+    }
+    if (shouldSwitch) {
+      rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+      switching = true;
+      switchcount ++;      
+    } else {
+      if (switchcount == 0 && dir == "asc") {
+        dir = "desc";
+        switching = true;
+      }
+    }
+  }
+}
+</script>
+{% endblock %}

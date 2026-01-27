@@ -1,0 +1,319 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<style>
+    .form-check-input:checked { background-color: #bca464 !important; border-color: #bca464 !important; }
+    .form-control:focus, .form-select:focus { border-color: #bca464; box-shadow: 0 0 0 0.2rem rgba(188, 164, 100, 0.15); }
+    .list-group-item-action:hover { background-color: #fcfaf5; }
+    .bg-custom-light { background-color: #fcfaf5; }
+    .border-gold { border-color: #bca464 !important; }
+</style>
+
+<div class="container py-4">
+    <div class="mb-5">
+        <h3 style="color: #bca464; font-weight: 600;">{% if editando %}Editar{% else %}Nova Solicitação de{% endif %} Plantão</h3>
+    </div>
+
+    <div class="card border-0 shadow-sm mx-auto" style="max-width: 900px;">
+        <div class="card-body p-4">
+            
+            <h5 class="mb-3" style="color: #bca464;"><i class="bi bi-search me-2"></i>Localizar Cliente</h5>
+            <div class="row g-3 mb-4 p-3 rounded border border-gold bg-custom-light">
+                <div class="col-md-12">
+                    <div class="input-group">
+                        <input type="text" id="input_busca_cliente" class="form-control" placeholder="Digite Nome, Código ou CNPJ...">
+                        <button class="btn text-white fw-bold px-4" type="button" id="btn_buscar_cliente" style="background-color: #bca464;">
+                            <span id="btn_texto_busca"><i class="bi bi-search me-1"></i> BUSCAR</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <form id="formPlantao" method="POST">
+                {% csrf_token %}
+                
+                <h5 class="mb-4" style="color: #bca464;"><i class="bi bi-person-badge-fill me-2"></i>Identificação do Cliente</h5>
+                <div class="row g-3">
+                    <div class="col-md-2">
+                        <label class="small fw-bold text-muted mb-2 d-block text-uppercase">Código</label>
+                        <input type="text" name="codigo_cliente" id="res_codigo" class="form-control bg-light" value="{{ plantao.codigo_cliente|default:'' }}" readonly required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="small fw-bold text-muted mb-2 d-block text-uppercase">Loja</label>
+                        <input type="text" name="loja_cliente" id="res_loja" class="form-control bg-light" value="{{ plantao.loja_cliente|default:'' }}" readonly required>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="small fw-bold text-muted mb-2 d-block text-uppercase">Nome do Cliente</label>
+                        <input type="text" name="nome_cliente" id="res_cliente" class="form-control bg-light" value="{{ plantao.nome_cliente|default:'' }}" readonly required>
+                    </div>
+
+                    <div class="col-md-12 mt-4">
+                        <h5 style="color: #bca464;"><i class="bi bi-geo-alt-fill me-2"></i>Local do Atendimento</h5>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="small fw-bold text-muted mb-2 d-block text-uppercase">CEP</label>
+                        <input type="text" name="cep" id="id_cep" class="form-control" value="{{ plantao.cep|default:'' }}" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="small fw-bold text-muted mb-2 d-block text-uppercase">UF</label>
+                        <input type="text" name="estado" id="id_estado" class="form-control bg-light" value="{{ plantao.estado|default:'' }}" readonly required>
+                    </div>
+                    <div class="col-md-7">
+                        <label class="small fw-bold text-muted mb-2 d-block text-uppercase">Cidade</label>
+                        <input type="text" name="cidade" id="id_cidade" class="form-control bg-light" value="{{ plantao.cidade|default:'' }}" readonly required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="small fw-bold text-muted mb-2 d-block text-uppercase">Bairro</label>
+                        <input type="text" name="bairro" id="id_bairro" class="form-control" value="{{ plantao.bairro|default:'' }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="small fw-bold text-muted mb-2 d-block text-uppercase">Rua</label>
+                        <input type="text" name="endereco" id="id_endereco" class="form-control" value="{{ plantao.endereco|default:'' }}" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="small fw-bold text-muted mb-2 d-block text-uppercase">Nº</label>
+                        <input type="text" name="numero" id="id_numero" class="form-control" value="{{ plantao.numero|default:'' }}" required>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="small fw-bold text-muted mb-2 d-block text-uppercase">Complemento</label>
+                        <input type="text" name="complemento" id="id_complemento" class="form-control" value="{{ plantao.complemento|default:'' }}">
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+                <h5 class="mb-4" style="color: #bca464;"><i class="bi bi-info-circle-fill me-2"></i>Detalhes do Plantão</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="small fw-bold text-muted mb-2 d-block text-uppercase">Tipo de Plantão</label>
+                        <div class="d-flex gap-4 mt-2">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="tipo" id="t1" value="PLANTÃO TÉCNICO" {% if plantao.tipo == 'PLANTÃO TÉCNICO' or not plantao %}checked{% endif %}>
+                                <label class="form-check-label fw-bold" for="t1">Técnico</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="tipo" id="t2" value="PLANTÃO DE REPOSIÇÃO" {% if plantao.tipo == 'PLANTÃO DE REPOSIÇÃO' %}checked{% endif %}>
+                                <label class="form-check-label fw-bold" for="t2">Reposição</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="small fw-bold text-muted mb-2 d-block text-uppercase">Ocorrência</label>
+                        <select name="ocorrencia" id="id_ocorrencia" class="form-select" required onchange="ajustarOcorrencia()">
+                            <option value="CHOPEIRA" {% if plantao.ocorrencia == 'CHOPEIRA' %}selected{% endif %}>CHOPEIRA</option>
+                            <option value="MANÔMETRO" {% if plantao.ocorrencia == 'MANÔMETRO' %}selected{% endif %}>MANÔMETRO</option>
+                            <option value="CILINDRO" {% if plantao.ocorrencia == 'CILINDRO' %}selected{% endif %}>CILINDRO</option>
+                            <option value="EXTRATORA" {% if plantao.ocorrencia == 'EXTRATORA' %}selected{% endif %}>EXTRATORA</option>
+                            <option value="TROCA DE BARRIL" {% if plantao.ocorrencia == 'TROCA DE BARRIL' %}selected{% endif %}>TROCA DE BARRIL</option>
+                            <option value="ENTREGA DE BARRIL" {% if plantao.ocorrencia == 'ENTREGA DE BARRIL' %}selected{% endif %}>ENTREGA DE BARRIL</option>
+                            <option value="OUTRO" {% if plantao.ocorrencia == 'OUTRO' %}selected{% endif %}>OUTRO</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="small fw-bold text-muted mb-2 d-block text-uppercase">Taxa?</label>
+                        <select name="taxa" id="id_taxa" class="form-select" onchange="ajustarTaxa()">
+                            <option value="NÃO" {% if not plantao.taxa %}selected{% endif %}>NÃO</option>
+                            <option value="SIM" {% if plantao.taxa %}selected{% endif %}>SIM</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="small fw-bold text-muted mb-2 d-block text-uppercase">Valor</label>
+                        <input type="text" name="valor_taxa" id="id_valor_taxa" class="form-control" value="{{ plantao.valor_taxa|default:'0,00' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="small fw-bold text-muted mb-2 d-block text-uppercase">Horário</label>
+                        <input type="time" name="horario" id="id_horario" class="form-control" value="{{ plantao.horario|default:'' }}" required>
+                    </div>
+                    <div class="col-12">
+                        <label class="small fw-bold text-muted mb-2 d-block text-uppercase">Observações</label>
+                        <textarea name="observacoes" id="id_obs" class="form-control" rows="2">{{ plantao.observacoes|default:'' }}</textarea>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end mt-5 gap-2">
+                    <a href="{% url 'plantao_list' %}" class="btn btn-light px-4 fw-bold">CANCELAR</a>
+                    <button type="button" onclick="gerarResumo()" class="btn btn-success px-5 fw-bold shadow">
+                        <i class="bi bi-whatsapp me-2"></i>SALVAR E GERAR MENSAGEM
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalResultadosBusca" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header text-white" style="background-color: #bca464;">
+                <h6 class="modal-title fw-bold"><i class="bi bi-people-fill me-2"></i>Selecionar Cliente</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0" style="max-height: 400px; overflow-y: auto;">
+                <div id="lista_resultados_cliente" class="list-group list-group-flush"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalZap" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-0 p-4" style="background-color: #bca464;"><h5 class="modal-title fw-bold text-white">Gravado com Sucesso!</h5></div>
+            <div class="modal-body p-4"><div class="p-3 bg-light border rounded-3" id="textoWhats" style="white-space: pre-wrap; font-family: monospace; font-size: 0.9rem;"></div></div>
+            <div class="modal-footer bg-light border-0"><button type="button" class="btn btn-primary fw-bold" style="background-color: #bca464; border:0;" onclick="copiarTexto()">COPIAR E SAIR</button></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/imask"></script>
+<script>
+    // Variáveis globais para os Modais
+    let modalBusca;
+    let modalZap;
+    let maskValor;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Inicializa Máscaras
+        IMask(document.getElementById('id_cep'), { mask: '00000-000' });
+        maskValor = IMask(document.getElementById('id_valor_taxa'), { 
+            mask: 'R$ num', 
+            blocks: { num: { mask: Number, thousandsSeparator: '.', padFractionalZeros: true, radix: ',' } } 
+        });
+        
+        // Inicializa Modais
+        modalBusca = new bootstrap.Modal(document.getElementById('modalResultadosBusca'));
+        modalZap = new bootstrap.Modal(document.getElementById('modalZap'));
+
+        // Lógica de Busca de Cliente
+        const btnBuscar = document.getElementById('btn_buscar_cliente');
+        const inputBusca = document.getElementById('input_busca_cliente');
+
+        btnBuscar.onclick = function() {
+            const termo = inputBusca.value.trim();
+            if(termo.length < 3) { alert('Digite ao menos 3 caracteres.'); return; }
+
+            const btnTexto = document.getElementById('btn_texto_busca');
+            const originalHtml = btnTexto.innerHTML;
+            btnTexto.innerHTML = '<span class="spinner-border spinner-border-sm"></span>...';
+            btnBuscar.disabled = true;
+
+            fetch("{% url 'api_busca_clientes' %}?q=" + encodeURIComponent(termo))
+                .then(res => res.json())
+                .then(data => {
+                    const lista = document.getElementById('lista_resultados_cliente');
+                    lista.innerHTML = '';
+                    if(data.length === 0) lista.innerHTML = '<div class="p-4 text-center">Nenhum cliente.</div>';
+
+                    data.forEach(c => {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'list-group-item list-group-item-action p-3';
+                        btn.innerHTML = `<strong>${c.nome}</strong><br><small>Cód: ${c.codigo} | Loja: ${c.loja}</small>`;
+                        btn.onclick = () => {
+                            document.getElementById('res_cliente').value = c.nome;
+                            document.getElementById('res_codigo').value = c.codigo;
+                            document.getElementById('res_loja').value = c.loja;
+                            modalBusca.hide();
+                        };
+                        lista.appendChild(btn);
+                    });
+                    modalBusca.show();
+                })
+                .finally(() => {
+                    btnTexto.innerHTML = originalHtml;
+                    btnBuscar.disabled = false;
+                });
+        };
+
+        // Lógica de CEP
+        document.getElementById('id_cep').addEventListener('blur', function(e) {
+            let cep = e.target.value.replace(/\D/g, '');
+            if (cep.length === 8) {
+                fetch(`https://viacep.com.br/ws/${cep}/json/`).then(r => r.json()).then(d => {
+                    if (!d.erro) {
+                        document.getElementById('id_estado').value = d.uf;
+                        document.getElementById('id_cidade').value = d.localidade;
+                        document.getElementById('id_bairro').value = d.bairro;
+                        document.getElementById('id_endereco').value = d.logradouro;
+                        document.getElementById('id_numero').focus();
+                    }
+                });
+            }
+        });
+    });
+
+    // FUNÇÕES GLOBAIS (FORA DO DOMContentLoaded)
+    function ajustarOcorrencia() {
+        const occ = document.getElementById('id_ocorrencia').value;
+        const selectTaxa = document.getElementById('id_taxa');
+        const inputVal = document.getElementById('id_valor_taxa');
+        if (occ === 'ENTREGA DE BARRIL') { 
+            selectTaxa.value = 'SIM'; 
+            maskValor.value = '250,00';
+            inputVal.readOnly = true;
+        } else { 
+            inputVal.readOnly = (selectTaxa.value === 'NÃO'); 
+        }
+    }
+
+    function ajustarTaxa() {
+        const selectTaxa = document.getElementById('id_taxa').value;
+        const inputVal = document.getElementById('id_valor_taxa');
+        inputVal.readOnly = (selectTaxa === 'NÃO');
+        if (selectTaxa === 'NÃO') maskValor.value = '0,00';
+    }
+
+    function gerarResumo() {
+        const form = document.getElementById('formPlantao');
+        if (!form.checkValidity()) { form.reportValidity(); return; }
+
+        const formData = new FormData(form);
+
+        fetch(window.location.pathname, {
+            method: 'POST',
+            body: formData,
+            headers: { 
+                'X-Requested-With': 'XMLHttpRequest', 
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value 
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === 'sucesso') {
+                const tipo = document.querySelector('input[name="tipo"]:checked').value;
+                const endFinal = `${document.getElementById('id_endereco').value}, ${document.getElementById('id_numero').value} - ${document.getElementById('id_bairro').value}`;
+                
+                const texto = `🚨 *SOLICITAÇÃO DE PLANTÃO* 🚨\n` +
+                              `📍 *TIPO:* ${tipo}\n` +
+                              `🏢 *CLIENTE:* ${document.getElementById('res_cliente').value}\n` +
+                              `🏷️ *CÓDIGO/LOJA:* ${document.getElementById('res_codigo').value} - ${document.getElementById('res_loja').value}\n` +
+                              `🗺️ *ENDEREÇO:* ${endFinal}\n` +
+                              `⚙️ *OCORRÊNCIA:* ${document.getElementById('id_ocorrencia').value}\n` +
+                              `⏰ *HORÁRIO:* ${document.getElementById('id_horario').value}\n` +
+                              `💰 *TAXA:* ${document.getElementById('id_taxa').value} (${document.getElementById('id_valor_taxa').value})`;
+
+                document.getElementById('textoWhats').innerText = texto;
+                modalZap.show();
+            } else {
+                alert("Erro ao salvar: " + (data.message || "Verifique os dados."));
+            }
+        })
+        .catch(e => {
+            console.error(e);
+            alert("Erro técnico ao salvar.");
+        });
+    }
+
+    function copiarTexto() {
+        const texto = document.getElementById('textoWhats').innerText;
+        navigator.clipboard.writeText(texto).then(() => {
+            window.location.href = "{% url 'plantao_list' %}";
+        });
+    }
+
+    window.onload = ajustarOcorrencia;
+</script>
+{% endblock %}

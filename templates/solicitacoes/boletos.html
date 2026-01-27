@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 style="color: #bca464; font-weight: 600; font-family: 'Montserrat', sans-serif;">Solicitação de Boletos</h3>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card border-0 shadow-sm rounded-3">
+                <div class="card-body p-5">
+                    <form method="POST" id="formBusca">
+                        {% csrf_token %}
+                        <div class="mb-4">
+                            <label class="small fw-bold text-muted mb-2 d-block" style="letter-spacing: 0.5px;">
+                                Número da Nota Fiscal
+                            </label>
+                            <input type="text" name="numero_nota" class="form-control border-2" maxlength="9" 
+                                minlength="9" pattern="\d*" title="O número da nota deve ter exatamente 9 dígitos" 
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '');" required autofocus>
+                        </div>
+                        
+                        <button type="submit" id="btnBuscar" class="btn text-white w-100 py-3 shadow-sm" 
+                                style="background-color: #bca464; border: none; font-weight: 700;">
+                            <span id="btnText"><i class="bi bi-search me-2"></i> Buscar Boletos</span>
+                            <span id="btnLoader" class="d-none">
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                Buscando no Servidor...
+                            </span>
+                        </button>
+                    </form>
+
+                    {% if mensagem %}
+                    <div class="alert alert-danger mt-4 border-0 rounded-3 small text-center shadow-sm">
+                        <i class="bi bi-exclamation-circle me-1"></i> {{ mensagem }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if abrir_modal %}
+<div class="modal fade" id="modalBoletos" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4">
+            <div class="modal-header text-white p-4" style="background-color: #bca464;">
+                <h5 class="modal-title fw-bold"><i class="bi bi-file-pdf me-2"></i>Arquivos Encontrados</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="list-group shadow-sm">
+                    {% for boleto in lista_boletos %}
+                    <a href="{% url 'baixar_boleto' boleto.caminho %}" target="_blank"
+                       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center p-3">
+                        <span class="text-truncate fw-bold" style="max-width: 85%; color: #5e4d26;">
+                            {{ boleto.nome }}
+                        </span>
+                        <i class="bi bi-download text-primary"></i>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var myModal = new bootstrap.Modal(document.getElementById('modalBoletos'));
+        myModal.show();
+    });
+</script>
+{% endif %}
+
+<script>
+    document.getElementById('formBusca').onsubmit = function() {
+        var btn = document.getElementById('btnBuscar');
+        var text = document.getElementById('btnText');
+        var loader = document.getElementById('btnLoader');
+
+        btn.disabled = true;
+        text.classList.add('d-none');
+        loader.classList.remove('d-none');
+    };
+</script>
+{% endblock %}

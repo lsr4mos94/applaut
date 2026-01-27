@@ -1,0 +1,462 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 style="color: #bca464; font-weight: 600;">Acordos Comerciais</h3>
+    <button class="btn text-white shadow-sm" style="background-color: #bca464;" data-bs-toggle="modal" data-bs-target="#modalAcordo">
+        <i class="bi bi-plus-circle"></i><strong> Novo Acordo</strong>
+    </button>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body bg-light rounded p-4">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-5">
+                <label class="small fw-bold text-muted">Cliente (Nome, CPF ou CNPJ)</label>
+                <input type="text" name="busca" class="form-control form-control-sm shadow-sm" placeholder="Buscar cliente..." value="{{ request.GET.busca|default:'' }}">
+            </div>
+            <div class="col-md-2">
+                <label class="small fw-bold text-muted">Vigência Até</label>
+                <input type="date" name="data_fim" class="form-control form-control-sm shadow-sm" value="{{ request.GET.data_fim }}">
+            </div>
+            <div class="col-md-3">
+                <label class="small fw-bold text-muted">Tipo de Acordo</label>
+                <select name="tipo_acordo" class="form-select form-select-sm shadow-sm">
+                    <option value="">Todos os Tipos</option>
+                    <option value="valor" {% if request.GET.tipo_acordo == 'valor' %}selected{% endif %}>Por Valor</option>
+                    <option value="produto" {% if request.GET.tipo_acordo == 'produto' %}selected{% endif %}>Por Produto</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">FILTRAR</button>
+                <a href="{% url request.resolver_match.url_name %}" class="btn btn-link btn-sm text-muted text-decoration-none border-0 p-0 mb-1" style="font-size: 0.85rem;">Limpar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="table-responsive shadow-sm rounded">
+    <table class="table table-hover align-middle mb-0 bg-white">
+        <thead>
+            <tr>
+                <th style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 px-3">Cliente</th>
+                <th style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3">Data Acordo</th>
+                <th style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3">Vigência</th>
+                <th style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3">Tipo</th>
+                <th style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 text-center">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for acordo in acordos %}
+            <tr class="border-bottom">
+                <td class="px-3">
+                    <strong style="color: #5e4d26;">{{ acordo.cliente_nome }}</strong><br>
+                    <small class="text-muted">{{ acordo.cliente_codigo }}/{{ acordo.cliente_loja }}</small>
+                </td>
+                <td>{{ acordo.data_acordo|date:"d/m/Y" }}</td>
+                <td>
+                    <small class="fw-bold">{{ acordo.vigencia_inicio|date:"d/m/y" }}</small> 
+                    <span class="text-muted small">até</span> 
+                    <small class="fw-bold">{{ acordo.vigencia_fim|date:"d/m/y" }}</small>
+                </td>
+                <td>
+                    <span class="badge bg-light text-dark border px-2" style="border-color: #bca464 !important;">
+                        {{ acordo.get_tipo_acordo_display }}
+                    </span>
+                </td>
+                <td class="text-center">
+                    <div class="d-flex justify-content-center gap-1">
+                        <button class="btn btn-sm btn-outline-dark border-0" onclick="abrirHistorico('{{ acordo.id }}')" title="Ver Progresso e NFs">
+                            <i class="bi bi-bar-chart-line-fill fs-5" style="color: #1a1a1a;"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary border-0" data-bs-toggle="modal" data-bs-target="#modalVisualizar{{ acordo.id }}" title="Ver Detalhes">
+                            <i class="bi bi-eye-fill fs-5" style="color: #bca464;"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger border-0" data-bs-toggle="modal" data-bs-target="#modalExcluir{{ acordo.id }}" title="Excluir">
+                            <i class="bi bi-trash3-fill fs-5"></i>
+                        </button>
+                    </div>
+
+                    <div class="modal fade" id="modalVisualizar{{ acordo.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-lg modal-dialog-centered">
+                            <div class="modal-content border-0 shadow-lg text-start">
+                                <div class="modal-header text-white border-0" style="background-color: #bca464;">
+                                    <h5 class="modal-title fw-bold"><i class="bi bi-info-circle-fill me-2"></i>Detalhes do Acordo #{{ acordo.id }}</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body p-4 text-dark">
+                                    <div class="row mb-4 bg-light p-3 rounded mx-0 border">
+                                        <div class="col-md-7 border-end text-start">
+                                            <label class="text-muted small d-block text-uppercase fw-bold">Dados do Cliente</label>
+                                            <span class="fw-bold h6" style="color: #bca464;">{{ acordo.cliente_nome }}</span><br>
+                                            <small class="text-muted">Código: {{ acordo.cliente_codigo }} | Loja: {{ acordo.cliente_loja }}</small>
+                                        </div>
+                                        <div class="col-md-5 ps-md-4 text-md-end text-start mt-2 mt-md-0">
+                                            <label class="text-muted small d-block text-uppercase fw-bold">Tipo de Acordo</label>
+                                            <span class="badge" style="background-color: #1a1a1a; color: #bca464;">
+                                                {{ acordo.get_tipo_acordo_display|upper }}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="row mb-4 p-3 rounded mx-0" style="background-color: #fcfaf5; border-left: 4px solid #bca464;">
+                                        <div class="col-md-4">
+                                            <label class="text-muted small d-block fw-bold">Vigência</label>
+                                            <span class="fw-bold text-dark">{{ acordo.vigencia_inicio|date:"d/m/Y" }} a {{ acordo.vigencia_fim|date:"d/m/Y" }}</span>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="text-muted small d-block fw-bold">Data de Emissão</label>
+                                            <span>{{ acordo.data_acordo|date:"d/m/Y" }}</span>
+                                        </div>
+                                        <div class="col-md-4 text-md-end">
+                                            {% if acordo.tipo_acordo == 'valor' %}
+                                                <label class="text-muted small d-block fw-bold">Investimento Total</label>
+                                                <span class="fw-bold text-success h5">R$ {{ acordo.valor_acordo|floatformat:2 }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    {% if acordo.tipo_acordo == 'produto' %}
+                                    <h6 class="fw-bold mb-3" style="color: #bca464;"><i class="bi bi-box-seam me-2"></i>Produtos Acordados</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered align-middle">
+                                            <thead class="bg-light small">
+                                                <tr>
+                                                    <th class="ps-3">Cód. Produto</th>
+                                                    <th>Descrição</th>
+                                                    <th class="text-center" style="width: 150px;">Qtd. Acordada</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="small">
+                                                {% for item in acordo.itens.all %}
+                                                <tr>
+                                                    <td class="ps-3 text-muted">{{ item.produto_codigo }}</td>
+                                                    <td class="fw-medium">{{ item.produto_descricao }}</td>
+                                                    <td class="text-center fw-bold text-dark">
+                                                        {{ item.qtd_faturada|default:"0" }}
+                                                    </td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr><td colspan="3" class="text-center text-muted py-3">Nenhum produto listado.</td></tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="modal-footer bg-light border-0">
+                                    <button type="button" class="btn btn-secondary px-4 shadow-sm" data-bs-dismiss="modal">Fechar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal fade" id="modalExcluir{{ acordo.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered modal-sm">
+                            <div class="modal-content border-0 shadow">
+                                <div class="modal-header border-0 bg-danger text-white">
+                                    <h6 class="modal-title fw-bold">Confirmar Exclusão</h6>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body text-center py-4">
+                                    Deseja realmente excluir o acordo de <strong>{{ acordo.cliente_nome }}</strong>?
+                                </div>
+                                <div class="modal-footer border-0 bg-light d-flex justify-content-center">
+                                    <form action="{% url 'excluir_acordo' acordo.id %}" method="POST">
+                                        {% csrf_token %}
+                                        <button type="button" class="btn btn-sm btn-secondary px-3" data-bs-dismiss="modal">Não</button>
+                                        <button type="submit" class="btn btn-sm btn-danger px-3">Sim, Excluir</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center py-5 text-muted">Nenhum acordo comercial encontrado.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="modal fade" id="modalAcordo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0" style="background-color: #bca464; color: white;">
+                <h5 class="modal-title fw-bold">Novo Acordo Comercial</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formNovoAcordo" method="POST" action="{% url 'salvar_acordo' %}">
+                {% csrf_token %}
+                <div class="modal-body p-4 text-start">
+                    
+                    <div class="row g-3 mb-3 p-3 rounded border" style="background-color: #fcfaf5; border-color: #bca464 !important;">
+                        <div class="col-md-12">
+                            <label class="form-label small fw-bold" style="color: #bca464;">Pesquisar Cliente</label>
+                            <div class="input-group">
+                                <input type="text" id="input_busca_cliente" class="form-control" placeholder="Razão Social ou CNPJ..." style="border-color: #bca464;">
+                                <button class="btn text-white fw-bold px-4" type="button" id="btn_buscar_cliente" style="background-color: #bca464;">BUSCAR</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4 border-bottom pb-4">
+                        <input type="hidden" name="cliente_codigo" id="id_cliente_codigo">
+                        <input type="hidden" name="cliente_loja" id="id_cliente_loja">
+                        <input type="hidden" name="cliente_nome" id="id_cliente_nome">
+                        <div class="col-md-12">
+                            <div id="display_cliente_selecionado" class="p-2 fw-bold text-muted small">Nenhum cliente selecionado</div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="small fw-bold">Início Vigência</label>
+                            <input type="date" name="vigencia_inicio" class="form-control" required style="border-color: #bca464;">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small fw-bold">Fim Vigência</label>
+                            <input type="date" name="vigencia_fim" class="form-control" required style="border-color: #bca464;">
+                        </div>
+                    </div>
+                    
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-12">
+                            <label class="small fw-bold">Tipo de Acordo</label>
+                            <select name="tipo_acordo" id="select_tipo" class="form-select" required style="border-color: #bca464;">
+                                <option value="">Selecione...</option>
+                                <option value="valor">Por Valor (R$)</option>
+                                <option value="produto">Por Produto (Quantidade)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4 d-none" id="div_valor">
+                        <div class="col-md-6">
+                            <label class="small fw-bold" style="color: #bca464;">Valor Total do Acordo (R$)</label>
+                            <input type="number" step="0.01" name="valor_acordo" class="form-control" style="border-color: #bca464;">
+                        </div>
+                    </div>
+
+                    <div id="section_produtos" class="d-none">
+                        <div class="p-3 mb-3 rounded border" style="background-color: #fcfaf5; border-color: #bca464 !important;">
+                            <label class="small fw-bold" style="color: #bca464;">Adicionar Produtos ao Acordo</label>
+                            <div class="input-group">
+                                <input type="text" id="input_busca_produto" class="form-control" placeholder="Nome do produto..." style="border-color: #bca464;">
+                                <button class="btn text-white fw-bold px-3" type="button" id="btn_buscar_produto" style="background-color: #bca464;"><i class="bi bi-search"></i></button>
+                            </div>
+                        </div>
+                        <div id="lista_produtos"></div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-link text-muted text-decoration-none" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn px-5 text-white fw-bold shadow-sm" style="background-color: #bca464;">SALVAR ACORDO</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalHistorico" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header text-white" style="background-color: #bca464;">
+                <h5 class="modal-title fw-bold"><i class="bi bi-clock-history me-2"></i>Acompanhamento do Acordo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="small fw-bold text-muted">Progresso das Bonificações</span>
+                        <span id="label_porcentagem" class="small fw-bold">0%</span>
+                    </div>
+                    <div class="progress" style="height: 15px; background-color: #e9ecef; border-radius: 10px;">
+                        <div id="barra_progresso" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%; border-radius: 10px;"></div>
+                    </div>
+                    <div class="text-center mt-2">
+                        <small class="text-muted">Realizado: <strong id="hist_realizado" class="text-dark">---</strong></small>
+                    </div>
+                </div>
+                <hr>
+                <h6 class="fw-bold mb-3 text-muted small text-uppercase">Detalhamento por Nota Fiscal (Protheus)</h6>
+                <div class="table-responsive" style="max-height: 350px;">
+                    <table class="table table-sm table-hover align-middle">
+                        <thead class="bg-light sticky-top">
+                            <tr class="small text-muted">
+                                <th>DATA</th>
+                                <th>NF/SÉRIE</th>
+                                <th>PRODUTO</th>
+                                <th class="text-center">QTD</th>
+                                <th class="text-end">VALOR</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpo_historico_nfs" class="small">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalResultadosBusca" tabindex="-1" style="z-index: 2060;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header text-white" style="background-color: #bca464;"><h6 class="modal-title">Clientes encontrados</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body p-0" style="max-height: 400px; overflow-y: auto;"><div id="lista_resultados_cliente" class="list-group list-group-flush"></div></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalResProdutos" tabindex="-1" style="z-index: 2070;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header text-white" style="background-color: #bca464;"><h6 class="modal-title">Produtos encontrados</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body p-0" style="max-height: 400px; overflow-y: auto;"><div id="lista_res_prod" class="list-group list-group-flush"></div></div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modalResCli = new bootstrap.Modal(document.getElementById('modalResultadosBusca'));
+    const modalResProd = new bootstrap.Modal(document.getElementById('modalResProdutos'));
+    const selectTipo = document.getElementById('select_tipo');
+
+    // Busca de Cliente
+    document.getElementById('btn_buscar_cliente').onclick = function() {
+        const t = document.getElementById('input_busca_cliente').value;
+        if(t.length < 3) return alert('Mínimo 3 caracteres');
+        fetch("{% url 'api_busca_clientes' %}?q=" + encodeURIComponent(t))
+            .then(res => res.json())
+            .then(data => {
+                const l = document.getElementById('lista_resultados_cliente');
+                l.innerHTML = '';
+                data.forEach(c => {
+                    const b = document.createElement('button');
+                    b.type = 'button'; b.className = 'list-group-item list-group-item-action p-3';
+                    b.innerHTML = `<strong style="color: #bca464;">${c.nome}</strong><br><small>CNPJ: ${c.cnpj} | Cód: ${c.codigo}</small>`;
+                    b.onclick = () => {
+                        document.getElementById('id_cliente_nome').value = c.nome;
+                        document.getElementById('id_cliente_codigo').value = c.codigo;
+                        document.getElementById('id_cliente_loja').value = c.loja;
+                        document.getElementById('display_cliente_selecionado').innerHTML = `<i class="bi bi-check-circle-fill text-success"></i> ${c.nome} (${c.codigo}-${c.loja})`;
+                        modalResCli.hide();
+                    };
+                    l.appendChild(b);
+                });
+                modalResCli.show();
+            });
+    };
+
+    // Busca de Produto
+    document.getElementById('btn_buscar_produto').onclick = function() {
+        const t = document.getElementById('input_busca_produto').value;
+        if(t.length < 3) return alert('Mínimo 3 caracteres');
+        fetch("{% url 'api_busca_produtos' %}?q=" + encodeURIComponent(t))
+            .then(res => res.json())
+            .then(data => {
+                const l = document.getElementById('lista_res_prod');
+                l.innerHTML = '';
+                data.forEach(p => {
+                    const b = document.createElement('button');
+                    b.type = 'button'; b.className = 'list-group-item list-group-item-action p-3';
+                    b.innerHTML = `<strong style="color: #bca464;">${p.descricao}</strong><br><small>${p.codigo} - ${p.grupo_familia}</small>`;
+                    b.onclick = () => { addProdutoRow(p); modalResProd.hide(); };
+                    l.appendChild(b);
+                });
+                modalResProd.show();
+            });
+    };
+
+    // Alternar campos baseados no Tipo
+    selectTipo.onchange = function() {
+        const val = this.value;
+        document.getElementById('div_valor').classList.toggle('d-none', val !== 'valor');
+        document.getElementById('section_produtos').classList.toggle('d-none', val !== 'produto');
+        document.getElementById('lista_produtos').innerHTML = '';
+    };
+
+    // Adicionar linha de produto
+    window.addProdutoRow = function(p) {
+        const container = document.getElementById('lista_produtos');
+        const div = document.createElement('div');
+        div.className = 'row g-2 mb-2 align-items-center border-bottom pb-2 bg-white p-2 rounded shadow-sm mx-0';
+        
+        div.innerHTML = `
+            <div class="col-md-7">
+                <input type="hidden" name="prod_codigo[]" value="${p.codigo}">
+                <input type="hidden" name="prod_desc[]" value="${p.descricao}">
+                <span class="small fw-bold" style="color: #bca464;">${p.descricao}</span><br>
+                <small class="text-muted">${p.codigo}</small>
+            </div>
+            <div class="col-md-4">
+                <input type="number" name="prod_qtd[]" class="form-control form-control-sm" placeholder="Qtd. Total" required>
+            </div>
+            <div class="col-md-1 text-end">
+                <button type="button" class="btn btn-sm text-danger border-0" onclick="this.closest('.row').remove()"><i class="bi bi-trash-fill"></i></button>
+            </div>`;
+        container.appendChild(div);
+        document.getElementById('input_busca_produto').value = '';
+    };
+
+    // FUNÇÃO HISTÓRICO AJAX (Nova)
+    window.abrirHistorico = function(acordoId) {
+        const modalHist = new bootstrap.Modal(document.getElementById('modalHistorico'));
+        const barra = document.getElementById('barra_progresso');
+        const labelPct = document.getElementById('label_porcentagem');
+        const corpo = document.getElementById('corpo_historico_nfs');
+
+        corpo.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border spinner-border-sm text-warning"></div> Consultando Protheus...</td></tr>';
+        modalHist.show();
+
+        fetch(`/cadastros/api/historico/${acordoId}/`)
+            .then(res => res.json())
+            .then(data => {
+                const pct = data.porcentagem;
+                
+                // Lógica de Cores da Barra
+                barra.className = "progress-bar progress-bar-striped progress-bar-animated"; 
+                if (pct <= 50) {
+                    barra.classList.add("bg-danger");
+                    labelPct.style.color = "#dc3545";
+                } else if (pct < 100) {
+                    barra.classList.add("bg-warning");
+                    labelPct.style.color = "#ffc107";
+                } else {
+                    barra.classList.add("bg-success");
+                    labelPct.style.color = "#198754";
+                }
+
+                barra.style.width = Math.min(pct, 100) + '%';
+                labelPct.innerText = pct + '%';
+                document.getElementById('hist_realizado').innerText = data.label_progresso;
+
+                corpo.innerHTML = '';
+                if (data.nfs.length === 0) {
+                    corpo.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Nenhuma NF de bonificação encontrada no período.</td></tr>';
+                } else {
+                    data.nfs.forEach(nf => {
+                        const dt = nf.data;
+                        const dataFmt = dt.substring(6,8)+'/'+dt.substring(4,6)+'/'+dt.substring(0,4);
+                        corpo.innerHTML += `
+                            <tr>
+                                <td>${dataFmt}</td>
+                                <td class="fw-bold">${nf.nf}</td>
+                                <td>${nf.produto}</td>
+                                <td class="text-center">${nf.qtd}</td>
+                                <td class="text-end text-success">R$ ${nf.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+                            </tr>`;
+                    });
+                }
+            })
+            .catch(err => {
+                corpo.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Erro ao carregar dados: ${err}</td></tr>`;
+            });
+    };
+});
+</script>
+{% endblock %}

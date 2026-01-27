@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 style="color: #bca464; font-weight: 600;">Detalhes do Cliente: {{ cadastro.razao_social }}</h3>
+        <div>
+            <a href="{% url 'lista_cadastros' %}" class="btn btn-secondary btn-sm">Voltar</a>
+            <button onclick="window.print()" class="btn btn-dark btn-sm">Imprimir</button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white fw-bold" style="color: #bca464;">Dados Básicos e Endereço</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="text-muted small">Razão Social</label><br><strong>{{ cadastro.razao_social }}</strong></div>
+                        <div class="col-md-6"><label class="text-muted small">Nome Fantasia</label><br>{{ cadastro.nome_fantasia|default:"-" }}</div>
+                        <div class="col-md-4"><label class="text-muted small">CGC (CPF/CNPJ)</label><br>{{ cadastro.cgc }}</div>
+                        <div class="col-md-4"><label class="text-muted small">Inscrição Estadual</label><br>{{ cadastro.inscricao_estadual|default:"Isento" }}</div>
+                        <div class="col-md-4"><label class="text-muted small">Tipo</label><br>{{ cadastro.tipo_cliente }}</div>
+                        <div class="col-md-12"><hr></div>
+                        <div class="col-md-8"><label class="text-muted small">Endereço</label><br>{{ cadastro.endereco }}, {{ cadastro.numero }}</div>
+                        <div class="col-md-4"><label class="text-muted small">Bairro</label><br>{{ cadastro.bairro }}</div>
+                        <div class="col-md-4"><label class="text-muted small">Cidade/UF</label><br>{{ cadastro.cidade }} - {{ cadastro.estado }}</div>
+                        <div class="col-md-4"><label class="text-muted small">CEP</label><br>{{ cadastro.cep }}</div>
+                        <div class="col-md-4"><label class="text-muted small">Complemento</label><br>{{ cadastro.complemento|default:"-" }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white fw-bold" style="color: #bca464;">Dados do Sócio e Contatos</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="text-muted small">Nome do Sócio</label><br>{{ cadastro.socio_nome }}</div>
+                        <div class="col-md-6"><label class="text-muted small">CPF Sócio</label><br>{{ cadastro.socio_cpf }}</div>
+                        <div class="col-md-4"><label class="text-muted small">E-mail</label><br>{{ cadastro.email }}</div>
+                        <div class="col-md-4"><label class="text-muted small">Telefone</label><br>{{ cadastro.telefone }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 mb-4 bg-light">
+                <div class="card-header fw-bold border-0">Logística e Financeiro</div>
+                <div class="card-body">
+                    <p class="mb-1"><small class="text-muted">Grupo:</small><br>{{ cadastro.grupo_cliente }}</p>
+                    <p class="mb-1"><small class="text-muted">Horário Entrega:</small><br>{{ cadastro.horario_entrega }}</p>
+                    <p class="mb-1"><small class="text-muted">Cond. Pagamento:</small><br>{{ cadastro.condicao_pagamento }} {{ cadastro.condicao_pagamento_outro|default:"" }}</p>
+                    <hr>
+                    <p class="mb-1"><small class="text-muted">Status Atual:</small><br>
+                        <span class="badge rounded-pill {% if cadastro.situacao == 'LIBERADO' %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                            {{ cadastro.situacao }}
+                        </span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0">
+                <div class="card-header fw-bold bg-dark text-white">Documentos Anexos</div>
+                <div class="list-group list-group-flush">
+                    {% for anexo in cadastro.anexos.all %}
+                        <a href="{{ anexo.arquivo.url }}" target="_blank" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-file-earmark-pdf text-danger"></i> {{ anexo.nome }}</span>
+                            <i class="bi bi-box-arrow-up-right small"></i>
+                        </a>
+                    {% empty %}
+                        <div class="list-group-item text-muted">Nenhum anexo encontrado.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

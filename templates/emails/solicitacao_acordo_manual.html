@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body, table, td, h1, p, a {
+            font-family: 'Montserrat', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f4;">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+        <tr>
+            <td align="center" style="padding: 20px 0;">
+                <table border="0" cellpadding="0" cellspacing="0" width="600" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e0e0e0;">
+                    
+                    <tr>
+                        <td align="center" style="background-color: #1a1a1a; padding: 40px 20px; border-bottom: 4px solid #bca464;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;">
+                                SOLICITAÇÃO DE BONIFICAÇÃO PENDENTE
+                            </h1>
+                            <p style="color: #bca464; margin: 10px 0 0 0; font-size: 14px; font-weight: 400; letter-spacing: 1px;">
+                                ACORDO COMERCIAL NÃO LOCALIZADO
+                            </p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="padding: 40px 35px;">
+                            <h2 style="color: #1a1a1a; font-size: 18px; margin-bottom: 20px;">⚠️ Atenção,</h2>
+                            
+                            <p style="font-size: 14px; color: #555555; line-height: 1.8;">
+                                Uma nova solicitação de bonificação do tipo <strong>Acordo Comercial</strong> foi enviada pelo vendedor 
+                                <strong style="color: #1a1a1a;">{{ bonificacao.vendedor.get_full_name|default:bonificacao.vendedor.username }}</strong>.
+                                <br><br>
+                                <span style="color: #d9534f; font-weight: 700;">Motivo da Retenção:</span> O sistema não localizou um acordo vigente.
+                            </p>
+
+                            <div style="background-color: #fcfcfc; border: 1px solid #eeeeee; border-radius: 8px; padding: 25px; margin: 30px 0;">
+                                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                    <tr>
+                                        <td style="padding-bottom: 8px; font-size: 11px; color: #999999; text-transform: uppercase; font-weight: 700;">Cliente / Razão Social</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding-bottom: 15px; font-size: 15px; color: #1a1a1a; font-weight: 700;">{{ bonificacao.cliente_razao_social }} ({{ bonificacao.cliente_codigo }})</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding-bottom: 8px; font-size: 11px; color: #999999; text-transform: uppercase; font-weight: 700;">Valor da Solicitação</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding-bottom: 15px; font-size: 15px; color: #1a1a1a; font-weight: 700;">R$ {{ total_geral }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding-bottom: 8px; font-size: 11px; color: #999999; text-transform: uppercase; font-weight: 700;">Justificativa do Vendedor</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-size: 14px; color: #555555; font-style: italic;">"{{ bonificacao.justificativa }}"</td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                <tr>
+                                    <td align="center" style="padding: 10px 0;">
+                                        <a href="{{ request.scheme }}://{{ domain }}/admin/" 
+                                           style="background-color: #bca464; color: #ffffff !important; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: 700; display: inline-block; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;">
+                                            ANALISAR SOLICITAÇÃO NO PAINEL
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="background-color: #1a1a1a; padding: 30px; text-align: center;">
+                            <p style="font-size: 11px; color: #888888; margin: 0; text-transform: uppercase; letter-spacing: 1px;">
+                                &copy; 2026 LAUT BEER
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

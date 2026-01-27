@@ -1,0 +1,558 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="text-center mb-5">
+        <h3 style="color: #bca464; font-weight: 600; font-family: 'Montserrat', sans-serif;">Novo Cadastro de Cliente</h3>
+        <p class="text-muted small">Preencha os dados para solicitação de cadastro.</p>
+        <div style="height: 2px; width: 40px; background-color: #d4a017; margin: 10px auto;"></div>
+    </div>
+
+    <div class="row mb-5 justify-content-center">
+        <div class="col-md-10">
+            <div class="d-flex justify-content-between position-relative">
+                <div class="progress-line"></div>
+                <div class="step-item active" id="dot-1">1</div>
+                <div class="step-item" id="dot-2">2</div>
+                <div class="step-item" id="dot-3">3</div>
+                <div class="step-item" id="dot-4">4</div>
+            </div>
+            <div class="d-flex justify-content-between mt-2 px-1 small fw-bold text-muted text-center">
+                <div style="width: 80px;">Dados Gerais</div>
+                <div style="width: 80px;">Entrega e Pagamento</div>
+                <div style="width: 80px;">Responsáveis</div>
+                <div style="width: 80px;">Anexos</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mx-auto" style="max-width: 900px;">
+        <div class="card-body p-4">
+            <form id="formCadastro" method="POST" enctype="multipart/form-data" action="{% if editando %}{% url 'editar_cadastro' cadastro.id %}{% else %}{% url 'criar_cadastro' %}{% endif %}">
+                {% csrf_token %}
+                
+                <div class="step-content" id="step-1">
+                    <h5 class="mb-4" style="color: #bca464;"><i class="bi bi-person-vcard me-2"></i>Informações Principais</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Plataforma</label>
+                            <div class="d-flex gap-3 mt-1">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="plataforma" id="p1" value="CIEC" {% if cadastro.plataforma == 'CIEC' %}checked{% endif %} checked>
+                                    <label class="form-check-label small" for="p1">CIEC</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="plataforma" id="p2" value="ISLA" {% if cadastro.plataforma == 'ISLA' %}checked{% endif %}>
+                                    <label class="form-check-label small" for="p2">ISLA</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="plataforma" id="p3" value="CIEC e ISLA" {% if cadastro.plataforma == 'CIEC e ISLA' %}checked{% endif %}>
+                                    <label class="form-check-label small" for="p3">CIEC e ISLA</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Tipo de Cliente</label>
+                            <div class="d-flex gap-3 mt-1">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="tipo_cliente" id="pj" value="PJ" onchange="ajustarTipoPessoa('PJ')" {% if cadastro.tipo_cliente == 'PJ' %}checked{% endif %} checked>
+                                    <label class="form-check-label small" for="pj">Pessoa Jurídica</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="tipo_cliente" id="pf" value="PF" onchange="ajustarTipoPessoa('PF')" {% if cadastro.tipo_cliente == 'PF' %}checked{% endif %}>
+                                    <label class="form-check-label small" for="pf">Pessoa Física</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold mb-2 d-block" id="label_razao">Razão Social</label>
+                            <input type="text" name="razao_social" id="id_razao" class="form-control" value="{{ cadastro.razao_social|default:'' }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold mb-2 d-block" id="label_fantasia">Nome Fantasia</label>
+                            <input type="text" name="nome_fantasia" id="id_fantasia" class="form-control" value="{{ cadastro.nome_fantasia|default:'' }}" required>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold mb-2 d-block" id="label_cgc">CNPJ</label>
+                            <input type="text" name="cgc" id="id_cgc" class="form-control" value="{{ cadastro.cgc|default:'' }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold mb-2 d-block" id="label_ie">Inscrição Estadual</label>
+                            <input type="text" name="inscricao_estadual" id="id_ie" class="form-control" value="{{ cadastro.inscricao_estadual|default:'' }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold mb-2 d-block">E-mail</label>
+                            <input type="email" name="email" id="id_email" class="form-control" value="{{ cadastro.email|default:'' }}" required>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold mb-2 d-block">Telefone Celular</label>
+                            <input type="text" name="telefone" id="id_telefone" class="form-control" value="{{ cadastro.telefone|default:'' }}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold mb-2 d-block">CEP</label>
+                            <input type="text" name="cep" id="id_cep" class="form-control" value="{{ cadastro.cep|default:'' }}" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold mb-2 d-block">Estado</label>
+                            <input type="text" name="estado" id="id_estado" class="form-control" value="{{ cadastro.estado|default:'' }}" readonly required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold mb-2 d-block">Cidade</label>
+                            <input type="text" name="cidade" id="id_cidade" class="form-control" value="{{ cadastro.cidade|default:'' }}" readonly required>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold mb-2 d-block">Bairro</label>
+                            <input type="text" name="bairro" id="id_bairro" class="form-control" value="{{ cadastro.bairro|default:'' }}" required>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label small fw-bold mb-2 d-block">Endereço</label>
+                            <input type="text" name="endereco" id="id_endereco" class="form-control" value="{{ cadastro.endereco|default:'' }}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold mb-2 d-block">Número</label>
+                            <input type="text" name="numero" id="id_numero" class="form-control" value="{{ cadastro.numero|default:'' }}" required>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label small fw-bold mb-2 d-block">Complemento</label>
+                            <input type="text" name="complemento" id="id_complemento" class="form-control" value="{{ cadastro.complemento|default:'' }}">
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end mt-4">
+                        <button type="button" class="btn text-white px-5 fw-bold" style="background-color: #bca464;" onclick="validarAvancar(1, 2)">Próximo <i class="bi bi-arrow-right ms-2"></i></button>
+                    </div>
+                </div>
+
+                <div class="step-content d-none" id="step-2">
+                    <h5 class="mb-4" style="color: #bca464;"><i class="bi bi-truck me-2"></i>Logística e Pagamento</h5>
+                    <div class="row g-3">
+                        <div class="col-md-12 text-end">
+                            <div class="form-check form-switch d-inline-block">
+                                <input class="form-check-input" type="checkbox" id="copiar_endereco" onchange="clonarEndereco()">
+                                <label class="form-check-label small fw-bold" for="copiar_endereco">Mesmo endereço de cadastro</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold mb-2 d-block">CEP Entrega</label>
+                            <input type="text" name="entrega_cep" id="id_entrega_cep" class="form-control" value="{{ cadastro.entrega_cep|default:'' }}" required placeholder="Busca automática">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold mb-2 d-block">Estado</label>
+                            <input type="text" name="entrega_estado" id="id_entrega_estado" class="form-control" value="{{ cadastro.entrega_estado|default:'' }}" readonly required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold mb-2 d-block">Cidade</label>
+                            <input type="text" name="entrega_cidade" id="id_entrega_cidade" class="form-control" value="{{ cadastro.entrega_cidade|default:'' }}" readonly required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold mb-2 d-block">Bairro Entrega</label>
+                            <input type="text" name="entrega_bairro" id="id_entrega_bairro" class="form-control" value="{{ cadastro.entrega_bairro|default:'' }}" required>
+                        </div>
+                        <div class="col-md-7">
+                            <label class="form-label small fw-bold mb-2 d-block">Endereço de Entrega</label>
+                            <input type="text" name="entrega_endereco" id="id_entrega_endereco" class="form-control" value="{{ cadastro.entrega_endereco|default:'' }}" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold mb-2 d-block">Número</label>
+                            <input type="text" name="entrega_numero" id="id_entrega_numero" class="form-control" value="{{ cadastro.entrega_numero|default:'' }}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold mb-2 d-block">Complemento</label>
+                            <input type="text" name="entrega_complemento" id="id_entrega_complemento" class="form-control" value="{{ cadastro.entrega_complemento|default:'' }}">
+                        </div>
+
+                        <div class="col-md-12"><hr class="my-3 text-muted"></div>
+
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold mb-2 d-block">Grupo de Cliente</label>
+                            <select name="grupo_cliente" class="form-select" required>
+                                <option value="" selected disabled>Selecione...</option>
+                                <optgroup label="Pessoa Jurídica">
+                                    <option value="BAR_RESTAURANTE" {% if cadastro.grupo_cliente == 'BAR_RESTAURANTE' %}selected{% endif %}>BAR E RESTAURANTE</option>
+                                    <option value="VAREJO_PJ" {% if cadastro.grupo_cliente == 'VAREJO_PJ' %}selected{% endif %}>VAREJO - PESSOA JURÍDICA</option>
+                                    <option value="DISTRIBUIDOR_PJ" {% if cadastro.grupo_cliente == 'DISTRIBUIDOR_PJ' %}selected{% endif %}>DISTRIBUIDOR MULTIMARCAS - PESSOAS JURÍDICA</option>
+                                    <option value="LAUT_EXPRESS_PJ" {% if cadastro.grupo_cliente == 'LAUT_EXPRESS_PJ' %}selected{% endif %}>LAUT EXPRESS - PESSOA JURÍDICA</option>
+                                    <option value="REDES_SUPERMERCADOS_PJ" {% if cadastro.grupo_cliente == 'REDES_SUPERMERCADOS_PJ' %}selected{% endif %}>REDES SUPERMERCADOS - PESSOA JURÍDICA</option>
+                                    <option value="BUFFET_PJ" {% if cadastro.grupo_cliente == 'BUFFET_PJ' %}selected{% endif %}>BUFFET - PESSOA JURÍDICA</option>
+                                </optgroup>
+                                <optgroup label="Pessoa Física">
+                                    <option value="FUNCIONARIO_PF" {% if cadastro.grupo_cliente == 'FUNCIONARIO_PF' %}selected{% endif %}>FUNCIONÁRIO - PESSOA FÍSICA</option>
+                                    <option value="DELIVERY_PF" {% if cadastro.grupo_cliente == 'DELIVERY_PF' %}selected{% endif %}>DELIVERY - PESSOA FÍSICA</option>
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold mb-2 d-block">Horário de Entrega</label>
+                            <div class="d-flex gap-3 mt-1">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="horario_entrega" id="h1" value="MANHA" {% if cadastro.horario_entrega == 'MANHA' %}checked{% endif %} checked>
+                                    <label class="form-check-label small" for="h1">Manhã</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="horario_entrega" id="h2" value="TARDE" {% if cadastro.horario_entrega == 'TARDE' %}checked{% endif %}>
+                                    <label class="form-check-label small" for="h2">Tarde</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="horario_entrega" id="h3" value="NOITE" {% if cadastro.horario_entrega == 'NOITE' %}checked{% endif %}>
+                                    <label class="form-check-label small" for="h3">Noite</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-12">
+                            <label class="form-label small fw-bold mb-2 d-block">Condição de Pagamento</label>
+                            <div class="d-flex flex-wrap gap-4 mt-1">
+                                <div class="form-check"><input class="form-check-input" type="radio" name="cond_pagto" id="cp1" value="7_DIAS" checked onchange="toggleOutroPagto(false)"><label class="form-check-label small" for="cp1">7 Dias</label></div>
+                                <div class="form-check"><input class="form-check-input" type="radio" name="cond_pagto" id="cp2" value="14_DIAS" onchange="toggleOutroPagto(false)"><label class="form-check-label small" for="cp2">14 Dias</label></div>
+                                <div class="form-check"><input class="form-check-input" type="radio" name="cond_pagto" id="cp3" value="21_DIAS" onchange="toggleOutroPagto(false)"><label class="form-check-label small" for="cp3">21 Dias</label></div>
+                                <div class="form-check"><input class="form-check-input" type="radio" name="cond_pagto" id="cp4" value="OUTRO" onchange="toggleOutroPagto(true)"><label class="form-check-label small" for="cp4">Outro</label></div>
+                            </div>
+                            <input type="text" name="cond_pagto_outro" id="id_cond_outro" class="form-control mt-2 d-none" placeholder="Especifique a condição...">
+                        </div>
+
+                        <div class="col-md-12 mt-3">
+                            <label class="form-label small fw-bold mb-2 d-block">Vendedor</label>
+                            <input type="text" name="vendedor_nome" class="form-control bg-light" value="{{ request.user.get_full_name|default:request.user.username }}" readonly>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between mt-4">
+                        <button type="button" class="btn btn-outline-secondary px-4 fw-bold" onclick="changeStep(1)">Anterior</button>
+                        <button type="button" class="btn text-white px-5 fw-bold" style="background-color: #bca464;" onclick="validarAvancar(2, 3)">Próximo <i class="bi bi-arrow-right ms-2"></i></button>
+                    </div>
+                </div>
+
+                <div class="step-content d-none" id="step-3">
+                    <h5 class="mb-4" style="color: #bca464;"><i class="bi bi-people-fill me-2"></i>Dados dos Sócios e Responsáveis</h5>
+                    
+                    <div id="container-responsaveis">
+                        <div class="row g-3 mb-4 p-3 border rounded">
+                            <div class="col-12"><h6 class="fw-bold">Sócio Principal</h6></div>
+                            <div class="col-md-8">
+                                <label class="form-label small fw-bold mb-2 d-block">Nome do Sócio</label>
+                                <input type="text" name="socio_nome" id="id_socio_nome" class="form-control field-pj" value="{{ cadastro.socio_nome|default:'' }}" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold mb-2 d-block">CPF</label>
+                                <input type="text" name="socio_cpf" id="id_socio_cpf" class="form-control field-pj" value="{{ cadastro.socio_cpf|default:'' }}" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold mb-2 d-block">CEP</label>
+                                <input type="text" name="socio_cep" id="id_socio_cep" class="form-control field-pj" value="{{ cadastro.socio_cep|default:'' }}" required placeholder="Busca automática">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-bold mb-2 d-block">Estado</label>
+                                <input type="text" name="socio_estado" id="id_socio_estado" class="form-control field-pj" value="{{ cadastro.socio_estado|default:'' }}" readonly required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold mb-2 d-block">Cidade</label>
+                                <input type="text" name="socio_cidade" id="id_socio_cidade" class="form-control field-pj" value="{{ cadastro.socio_cidade|default:'' }}" readonly required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold mb-2 d-block">Bairro</label>
+                                <input type="text" name="socio_bairro" id="id_socio_bairro" class="form-control field-pj" value="{{ cadastro.socio_bairro|default:'' }}" required>
+                            </div>
+                            <div class="col-md-7">
+                                <label class="form-label small fw-bold mb-2 d-block">Endereço</label>
+                                <input type="text" name="socio_endereco" id="id_socio_endereco" class="form-control field-pj" value="{{ cadastro.socio_endereco|default:'' }}" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-bold mb-2 d-block">Número</label>
+                                <input type="text" name="socio_numero" id="id_socio_numero" class="form-control field-pj" value="{{ cadastro.socio_numero|default:'' }}" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold mb-2 d-block">Complemento</label>
+                                <input type="text" name="socio_complemento" id="id_socio_complemento" class="form-control field-pj" value="{{ cadastro.socio_complemento|default:'' }}">
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-4 p-3 border rounded">
+                            <div class="col-12 d-flex justify-content-between">
+                                <h6 class="fw-bold">Responsável Financeiro</h6>
+                                <button type="button" class="btn btn-sm btn-link text-decoration-none field-pj" onclick="copiarSocio('financeiro')">Mesmo que o sócio</button>
+                            </div>
+                            <div class="col-md-8">
+                                <input type="text" name="finan_nome" id="id_finan_nome" class="form-control field-pj" placeholder="Nome" value="{{ cadastro.finan_nome|default:'' }}" required>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="text" name="finan_cpf" id="id_finan_cpf" class="form-control field-pj" placeholder="CPF" value="{{ cadastro.finan_cpf|default:'' }}" required>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 p-3 border rounded">
+                            <div class="col-12 d-flex justify-content-between">
+                                <h6 class="fw-bold">Responsável por Compras</h6>
+                                <button type="button" class="btn btn-sm btn-link text-decoration-none field-pj" onclick="copiarSocio('compras')">Mesmo que o sócio</button>
+                            </div>
+                            <div class="col-md-8">
+                                <input type="text" name="compra_nome" id="id_compra_nome" class="form-control field-pj" placeholder="Nome" value="{{ cadastro.compra_nome|default:'' }}" required>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="text" name="compra_cpf" id="id_compra_cpf" class="form-control field-pj" placeholder="CPF" value="{{ cadastro.compra_cpf|default:'' }}" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <button type="button" class="btn btn-outline-secondary px-4 fw-bold" onclick="changeStep(2)">Anterior</button>
+                        <button type="button" class="btn text-white px-5 fw-bold" style="background-color: #bca464;" onclick="validarAvancar(3, 4)">Próximo <i class="bi bi-arrow-right ms-2"></i></button>
+                    </div>
+                </div>
+
+                <div class="step-content d-none" id="step-4">
+                    <h5 class="mb-4" style="color: #bca464;"><i class="bi bi-cloud-arrow-up-fill me-2"></i>Documentação</h5>
+                    <p class="text-muted small mb-4">Envie documentos em PDF ou Imagem para agilizar a análise.</p>
+                    
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Cartão CNPJ</label>
+                            {% if editando %}
+                                {% for a in cadastro.anexos.all %}
+                                    {% if a.nome == 'Cartão CNPJ' %}
+                                        <div class="mb-2 p-1 bg-light border rounded d-flex align-items-center justify-content-between">
+                                            <small class="text-success ms-2"><i class="bi bi-check-circle"></i> Já enviado</small>
+                                            <a href="{{ a.arquivo.url }}" target="_blank" class="btn btn-sm btn-link py-0 text-decoration-none">Ver atual</a>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                            <input type="file" name="anexo_cnpj" class="form-control" accept=".pdf, image/*" {% if not editando %}required{% endif %}>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Contrato Social</label>
+                            {% if editando %}
+                                {% for a in cadastro.anexos.all %}
+                                    {% if a.nome == 'Contrato Social' %}
+                                        <div class="mb-2 p-1 bg-light border rounded d-flex align-items-center justify-content-between">
+                                            <small class="text-success ms-2"><i class="bi bi-check-circle"></i> Já enviado</small>
+                                            <a href="{{ a.arquivo.url }}" target="_blank" class="btn btn-sm btn-link py-0 text-decoration-none">Ver atual</a>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                            <input type="file" name="anexo_contrato" class="form-control" accept=".pdf, image/*" {% if not editando %}required{% endif %}>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Comprovante de Endereço</label>
+                            {% if editando %}
+                                {% for a in cadastro.anexos.all %}
+                                    {% if a.nome == 'Comprovante Endereço' %}
+                                        <div class="mb-2 p-1 bg-light border rounded d-flex align-items-center justify-content-between">
+                                            <small class="text-success ms-2"><i class="bi bi-check-circle"></i> Já enviado</small>
+                                            <a href="{{ a.arquivo.url }}" target="_blank" class="btn btn-sm btn-link py-0 text-decoration-none">Ver atual</a>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                            <input type="file" name="anexo_endereco" class="form-control" accept=".pdf, image/*" {% if not editando %}required{% endif %}>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Doc. Identificação do Sócio</label>
+                            {% if editando %}
+                                {% for a in cadastro.anexos.all %}
+                                    {% if a.nome == 'Identidade Sócio' %}
+                                        <div class="mb-2 p-1 bg-light border rounded d-flex align-items-center justify-content-between">
+                                            <small class="text-success ms-2"><i class="bi bi-check-circle"></i> Já enviado</small>
+                                            <a href="{{ a.arquivo.url }}" target="_blank" class="btn btn-sm btn-link py-0 text-decoration-none">Ver atual</a>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                            <input type="file" name="anexo_identidade" class="form-control" accept=".pdf, image/*" {% if not editando %}required{% endif %}>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-5">
+                        <button type="button" class="btn btn-outline-secondary px-4 fw-bold" onclick="voltarDaEtapa4()"><i class="bi bi-arrow-left me-2"></i> Voltar</button>
+                        
+                        <button type="submit" id="btnFinalizar" class="btn btn-success px-5 fw-bold shadow">
+                            <span id="btnTextFinalizar">
+                                {% if editando %}SALVAR ALTERAÇÕES{% else %}FINALIZAR E ENVIAR CADASTRO{% endif %}
+                            </span>
+                            <span id="btnLoaderFinalizar" class="d-none">
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                ENVIANDO DADOS E ANEXOS...
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-check-input:checked { background-color: #bca464 !important; border-color: #bca464 !important; }
+    .step-item { width: 40px; height: 40px; border-radius: 50%; background: #e9ecef; display: flex; align-items: center; justify-content: center; z-index: 2; position: relative; font-weight: bold; color: #6c757d; transition: all 0.3s ease; }
+    .step-item.active { background: #bca464; color: white; box-shadow: 0 0 0 4px rgba(188, 164, 100, 0.2); }
+    .progress-line { position: absolute; top: 20px; left: 0; width: 100%; height: 2px; background: #e9ecef; z-index: 1; }
+    .is-invalid { border-color: #dc3545 !important; }
+    .bg-disabled { background-color: #f8f9fa !important; cursor: not-allowed; opacity: 0.7; }
+</style>
+
+<script src="https://unpkg.com/imask"></script>
+<script>
+    // Inicialização de Máscaras
+    const masks = {
+    cgc: IMask(document.getElementById('id_cgc'), { 
+        mask: '{% if cadastro.tipo_cliente == "PF" %}000.000.000-00{% else %}00.000.000/0000-00{% endif %}' 
+    }),
+    cpf_s: IMask(document.getElementById('id_socio_cpf'), { mask: '000.000.000-00' }),
+    cpf_f: IMask(document.getElementById('id_finan_cpf'), { mask: '000.000.000-00' }),
+    cpf_c: IMask(document.getElementById('id_compra_cpf'), { mask: '000.000.000-00' }),
+    cep_f: IMask(document.getElementById('id_cep'), { mask: '00000-000' }),
+    cep_e: IMask(document.getElementById('id_entrega_cep'), { mask: '00000-000' }),
+    cep_s: IMask(document.getElementById('id_socio_cep'), { mask: '00000-000' }),
+    tel: IMask(document.getElementById('id_telefone'), { mask: '(00) 00000-0000' })
+    };
+
+    // Controle de Loader no Submit
+    document.getElementById('formCadastro').onsubmit = function() {
+        const btn = document.getElementById('btnFinalizar');
+        const text = document.getElementById('btnTextFinalizar');
+        const loader = document.getElementById('btnLoaderFinalizar');
+
+        btn.classList.add('disabled');
+        btn.style.pointerEvents = 'none'; 
+        text.classList.add('d-none');
+        loader.classList.remove('d-none');
+    };
+
+    function ajustarTipoPessoa(tipo) {
+        const fieldFantasia = document.getElementById('id_fantasia');
+        const fieldIe = document.getElementById('id_ie');
+        const labelRazao = document.getElementById('label_razao');
+        const labelCgc = document.getElementById('label_cgc');
+        const camposPJ = document.querySelectorAll('.field-pj');
+        const etapaSocios = document.getElementById('container-responsaveis');
+
+        if (tipo === 'PF') {
+            labelRazao.innerText = 'Nome Completo';
+            labelCgc.innerText = 'CPF';
+            masks.cgc.updateOptions({ mask: '000.000.000-00' });
+            fieldFantasia.required = false; 
+            fieldFantasia.readOnly = true;
+            fieldFantasia.classList.add('bg-disabled');
+            fieldIe.required = false;
+            fieldIe.value = "ISENTO";
+            etapaSocios.classList.add('d-none');
+            camposPJ.forEach(campo => { campo.required = false; campo.value = ""; });
+        } else {
+            labelRazao.innerText = 'Razão Social';
+            labelCgc.innerText = 'CNPJ';
+            masks.cgc.updateOptions({ mask: '00.000.000/0000-00' });
+            fieldFantasia.required = true;
+            fieldFantasia.readOnly = false;
+            fieldFantasia.classList.remove('bg-disabled');
+            fieldIe.required = true;
+            fieldIe.value = "";
+            etapaSocios.classList.remove('d-none');
+            camposPJ.forEach(campo => { if (!campo.name.includes('complemento')) campo.required = true; });
+        }
+    }
+
+    function toggleOutroPagto(show) {
+        const input = document.getElementById('id_cond_outro');
+        if (show) { input.classList.remove('d-none'); input.required = true; } 
+        else { input.classList.add('d-none'); input.required = false; input.value = ""; }
+    }
+
+    function buscarCEP(cep, prefixo) {
+        cep = cep.replace(/\D/g, '');
+        if (cep.length === 8) {
+            fetch(`https://viacep.com.br/ws/${cep}/json/`)
+                .then(r => r.json())
+                .then(d => {
+                    if (!d.erro) {
+                        document.getElementById(`id_${prefixo}estado`).value = d.uf;
+                        document.getElementById(`id_${prefixo}cidade`).value = d.localidade;
+                        document.getElementById(`id_${prefixo}bairro`).value = d.bairro;
+                        document.getElementById(`id_${prefixo}endereco`).value = d.logradouro;
+                    }
+                });
+        }
+    }
+
+    document.getElementById('id_cep').addEventListener('blur', (e) => buscarCEP(e.target.value, ''));
+    document.getElementById('id_entrega_cep').addEventListener('blur', (e) => buscarCEP(e.target.value, 'entrega_'));
+    document.getElementById('id_socio_cep').addEventListener('blur', (e) => buscarCEP(e.target.value, 'socio_'));
+
+    function clonarEndereco() {
+        if (document.getElementById('copiar_endereco').checked) {
+            masks.cep_e.value = masks.cep_f.value;
+            document.getElementById('id_entrega_estado').value = document.getElementById('id_estado').value;
+            document.getElementById('id_entrega_cidade').value = document.getElementById('id_cidade').value;
+            document.getElementById('id_entrega_bairro').value = document.getElementById('id_bairro').value;
+            document.getElementById('id_entrega_endereco').value = document.getElementById('id_endereco').value;
+            document.getElementById('id_entrega_numero').value = document.getElementById('id_numero').value;
+            document.getElementById('id_entrega_complemento').value = document.getElementById('id_complemento').value;
+        }
+    }
+
+    function copiarSocio(destino) {
+        const nome = document.getElementById('id_socio_nome').value;
+        const cpf = document.getElementById('id_socio_cpf').value;
+        if (destino === 'financeiro') {
+            document.getElementById('id_finan_nome').value = nome;
+            masks.cpf_f.value = cpf;
+        } else {
+            document.getElementById('id_compra_nome').value = nome;
+            masks.cpf_c.value = cpf;
+        }
+    }
+
+    function validarAvancar(atual, proximo) {
+        const etapaAtual = document.getElementById('step-' + atual);
+        const campos = etapaAtual.querySelectorAll('input[required]:not([readonly]), select[required]');
+        let valido = true;
+
+        campos.forEach(campo => {
+            if (!campo.value.trim()) {
+                valido = false;
+                campo.classList.add('is-invalid');
+            } else {
+                campo.classList.remove('is-invalid');
+            }
+        });
+
+        if (valido) {
+            const tipoPessoa = document.querySelector('input[name="tipo_cliente"]:checked').value;
+            if (tipoPessoa === 'PF') {
+                if (atual === 2) { changeStep(4); return; }
+                if (atual === 4 && proximo === 3) { changeStep(2); return; }
+            }
+            changeStep(proximo);
+        } else {
+            alert("Por favor, preencha todos os campos obrigatórios.");
+        }
+    }
+
+    function changeStep(step) {
+        document.querySelectorAll('.step-content').forEach(s => s.classList.add('d-none'));
+        document.getElementById('step-' + step).classList.remove('d-none');
+        document.querySelectorAll('.step-item').forEach((dot, index) => {
+            if (index + 1 <= step) dot.classList.add('active');
+            else dot.classList.remove('active');
+        });
+        window.scrollTo(0,0);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const tipoInicial = document.querySelector('input[name="tipo_cliente"]:checked').value;
+        ajustarTipoPessoa(tipoInicial);
+    });
+
+    function voltarDaEtapa4() {
+        const tipoPessoa = document.querySelector('input[name="tipo_cliente"]:checked').value;
+        if (tipoPessoa === 'PF') changeStep(2);
+        else changeStep(3);
+    }
+</script>
+{% endblock %}
