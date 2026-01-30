@@ -61,13 +61,12 @@ def buscar_produto_protheus_unificado(request):
         FROM {tabela} AS SB1
         LEFT JOIN SBM{empresa} AS SBM ON 
             RTRIM(SBM.BM_GRUPO) = RTRIM(SB1.B1_GRUPO) AND SBM.D_E_L_E_T_ <> '*'
-        LEFT JOIN DA1{empresa} AS DA1 ON 
+        INNER JOIN DA1{empresa} AS DA1 ON 
             DA1.DA1_CODTAB = '214' 
             AND RTRIM(DA1.DA1_CODPRO) = RTRIM(SB1.B1_COD) 
             AND DA1.D_E_L_E_T_ <> '*'
         WHERE SB1.D_E_L_E_T_ <> '*' 
         AND SB1.B1_MSBLQL <> '1' 
-        AND SB1.B1_TIPO = 'PA'
         AND (SB1.B1_DESC LIKE %s OR SB1.B1_COD LIKE %s)
     """
     
@@ -92,7 +91,7 @@ def buscar_produto_protheus_unificado(request):
                                 'codigo': cod_limpo,
                                 'descricao': row[1].strip(),
                                 'grupo_familia': row[2].strip(),
-                                'preco': float(row[3])
+                                'preco': float(row[3]) if row[3] is not None else 0.0
                             }
             except Exception as e:
                 print(f"Erro produtos {db} {tabela}: {e}")

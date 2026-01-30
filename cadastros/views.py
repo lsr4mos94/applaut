@@ -16,18 +16,22 @@ from django.db import connections
 
 @login_required
 def verbas_mensais(request):
-    verbas = VerbaMensal.objects.all().order_by('-data_criacao')
+    if request.user.groups.filter(name='Vendedores').exists():
+        verbas = VerbaMensal.objects.filter(vendedor=request.user).order_by('-data_criacao')
+        vendedores = User.objects.filter(id=request.user.id)
+    else:
+        verbas = VerbaMensal.objects.all().order_by('-data_criacao')
+        vendedores = User.objects.filter(groups__name='Vendedor')
     
     mes = request.GET.get('mes')
     vendedor_id = request.GET.get('vendedor')
 
     if mes:
         verbas = verbas.filter(mes_referencia=mes)
+    
     if vendedor_id:
         verbas = verbas.filter(vendedor_id=vendedor_id)
 
-    vendedores = User.objects.filter(groups__name='Vendedor')
-    
     context = {
         'verbas': verbas,
         'vendedores': vendedores,
