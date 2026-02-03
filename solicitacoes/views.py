@@ -308,6 +308,16 @@ def bonificacao_list(request):
     status = request.GET.get('status')
 
     bonificacoes = Bonificacao.objects.all().order_by('-data_solicitacao')
+    
+    eh_vendedor = request.user.groups.filter(name='Vendedores').exists()
+
+    if eh_vendedor:
+        bonificacoes = bonificacoes.filter(vendedor=request.user)
+
+    if eh_vendedor:
+        usuarios = User.objects.filter(pk=request.user.pk)
+    else:
+        usuarios = User.objects.filter(groups__name='Vendedores', is_active=True).order_by('first_name')
 
     if busca:
         bonificacoes = bonificacoes.filter(
@@ -319,12 +329,13 @@ def bonificacao_list(request):
         bonificacoes = bonificacoes.filter(tipo=tipo)
 
     if vendedor_id:
-        bonificacoes = bonificacoes.filter(vendedor_id=vendedor_id)
+        if eh_vendedor:
+            bonificacoes = bonificacoes.filter(vendedor=request.user)
+        else:
+            bonificacoes = bonificacoes.filter(vendedor_id=vendedor_id)
 
     if status:
         bonificacoes = bonificacoes.filter(status=status)
-
-    usuarios = User.objects.filter(is_active=True).order_by('first_name')
 
     context = {
         'bonificacoes': bonificacoes,
