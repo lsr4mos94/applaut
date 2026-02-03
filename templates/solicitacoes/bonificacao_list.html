@@ -112,13 +112,23 @@
                             <i class="bi bi-eye-fill fs-5"></i>
                         </button>
 
-                        {% if b.tipo == 'NEGOCIACAO_ESPECIAL' and b.status == 'PENDENTE' %}
-                            <a href="{% url 'gerenciar_solicitacao' b.id 'aprovar' %}" class="btn btn-sm btn-outline-success border-0" title="Aprovar">
-                                <i class="bi bi-check-circle-fill fs-5"></i>
-                            </a>
-                            <button class="btn btn-sm btn-outline-danger border-0" data-bs-toggle="modal" data-bs-target="#modalReprovar{{ b.id }}" title="Reprovar">
-                                <i class="bi bi-x-circle-fill fs-5"></i>
-                            </button>
+                        {# REGRAS DE PERMISSÃO: NÃO VENDEDOR #}
+                        {% if not request.user.groups.all.0.name == 'Vendedores' %}
+                            {% if b.status == 'PENDENTE' %}
+                                <a href="{% url 'gerenciar_solicitacao' b.id 'aprovar' %}" class="btn btn-sm btn-outline-success border-0" title="Aprovar">
+                                    <i class="bi bi-check-circle-fill fs-5"></i>
+                                </a>
+                                <button class="btn btn-sm btn-outline-danger border-0" data-bs-toggle="modal" data-bs-target="#modalReprovar{{ b.id }}" title="Reprovar">
+                                    <i class="bi bi-x-circle-fill fs-5"></i>
+                                </button>
+                            {% endif %}
+
+                            {# BOTÃO EXCLUIR PARA QUEM NÃO É VENDEDOR E NÃO ESTÁ CONCLUÍDO #}
+                            {% if b.status != 'CONCLUIDO' %}
+                                <button class="btn btn-sm btn-outline-dark border-0" data-bs-toggle="modal" data-bs-target="#modalExcluir{{ b.id }}" title="Excluir">
+                                    <i class="bi bi-trash3-fill fs-5"></i>
+                                </button>
+                            {% endif %}
                         {% endif %}
 
                         {% if b.status == 'APROVADO' %}
@@ -161,7 +171,6 @@
                                                 </span>
                                             </p>
 
-                                            {# INFORMAÇÕES DE APROVAÇÃO E PEDIDO ERP #}
                                             {% if b.status != 'PENDENTE' %}
                                                 <div class="mt-2 pt-2 border-top">
                                                     <p class="mb-1 small">
@@ -271,6 +280,28 @@
                         </div>
                     </div>
                     {% endif %}
+
+                    {% if b.status != 'CONCLUIDO' %}
+                    <div class="modal fade" id="modalExcluir{{ b.id }}" tabindex="-1">
+                        <div class="modal-dialog modal-dialog-centered modal-sm">
+                            <div class="modal-content border-0 shadow-lg text-start">
+                                <div class="modal-header text-white border-0 bg-dark">
+                                    <h6 class="modal-title fw-bold small"><i class="bi bi-exclamation-triangle me-2"></i>Confirmar Exclusão</h6>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body p-4 text-center text-dark">
+                                    <p class="small mb-0">Deseja realmente excluir a solicitação de <strong>{{ b.cliente_razao_social }}</strong>?</p>
+                                    <p class="text-muted mt-2" style="font-size: 0.75rem;">Esta ação não poderá ser desfeita.</p>
+                                </div>
+                                <div class="modal-footer border-0 p-2">
+                                    <button type="button" class="btn btn-light btn-sm fw-bold" data-bs-dismiss="modal">CANCELAR</button>
+                                    <a href="{% url 'excluir_bonificacao' b.id %}" class="btn btn-danger btn-sm fw-bold px-3">EXCLUIR AGORA</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
                 </td>
             </tr>
             {% empty %}

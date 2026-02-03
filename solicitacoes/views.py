@@ -67,7 +67,6 @@ def buscar_produto_protheus_unificado(request):
             AND DA1.D_E_L_E_T_ <> '*'
         WHERE SB1.D_E_L_E_T_ <> '*' 
         AND SB1.B1_MSBLQL <> '1' 
-        AND SB1.B1_TIPO = 'PA'
         AND (SB1.B1_DESC LIKE %s OR SB1.B1_COD LIKE %s)
     """
     
@@ -310,6 +309,9 @@ def bonificacao_list(request):
 
     bonificacoes = Bonificacao.objects.all().order_by('-data_solicitacao')
 
+    if request.user.groups.filter(name='Vendedores').exists():
+        bonificacoes = bonificacoes.filter(vendedor=request.user)
+
     if busca:
         bonificacoes = bonificacoes.filter(
             Q(cliente_razao_social__icontains=busca) | 
@@ -335,15 +337,14 @@ def bonificacao_list(request):
     return render(request, 'solicitacoes/bonificacao_list.html', context)
 
 def enviar_emails_bonificacao(bonificacao, request):
-    # 1. Definição do fluxo de aprovação manual para Acordos sem saldo/cadastro
     if bonificacao.tipo == 'ACORDO_COMERCIAL' and bonificacao.status == 'PENDENTE':
-        destinatario = 'admcomercial@lautbeer.com.br' # Substitua pelo e-mail correto do aprovador
+        destinatario = 'admcomercial@lautbeer.com.br'
         assunto = f"BONIFICAÇÃO PENDENTE (SEM ACORDO) - {bonificacao.cliente_razao_social}"
-        template_name = 'solicitacoes/bonificacao_email_acordo.html' # Template específico se desejar
+        template_name = 'solicitacoes/bonificacao_email_acordo.html'
     elif bonificacao.tipo == 'NEGOCIACAO_ESPECIAL' and bonificacao.status == 'PENDENTE':
-        destinatario = 'wellington@lautbeer.com.br' # Substitua pelo e-mail correto do aprovador
+        destinatario = 'wellington@lautbeer.com.br'
         assunto = f"BONIFICAÇÃO PENDENTE DE APROVAÇÃO - {bonificacao.cliente_razao_social}"
-        template_name = 'solicitacoes/bonificacao_email_aprovacao.html' # Template específico se desejar
+        template_name = 'solicitacoes/bonificacao_email_aprovacao.html'
     
     # 2. Fluxo padrão para solicitações APROVADAS ou outros tipos
     else:
@@ -648,3 +649,13 @@ def confirmar_plantao(request, pk):
         messages.success(request, f"Plantão de {plantao.nome_cliente} confirmado com sucesso!")
         
     return redirect('plantao_list') # Substitua pelo nome da sua URL de listagem
+
+@login_required
+def excluir_bonificacao(request, pk):
+    bonificacao = get_object_or_404(Bonificacao, pk=pk)
+    if not request.user.groups.filter(name='Vendedores').exists() and bonificacao.status != 'CONCLUIDO':
+        bonificacao.delete()
+        messages.success(request, "Solicitação excluída com sucesso.")
+    else:
+        messages.error(request, "Não é permitido excluir esta solicitação.")
+    return redirect('bonificacao_list')

@@ -15,6 +15,7 @@ urlpatterns = [
     path('bonificacoes/', views.bonificacao_list, name='bonificacao_list'),
     path('bonificacoes/nova/', views.criar_bonificacao, name='criar_bonificacao'),
     path('bonificacoes/gerenciar/<int:pk>/<str:acao>/', views.gerenciar_solicitacao, name='gerenciar_solicitacao'),
+    path('bonificacao/excluir/<int:pk>/', views.excluir_bonificacao, name='excluir_bonificacao'),
 
     path('api/clientes/', views.api_busca_clientes, name='api_busca_clientes'),
     path('api/busca-produtos/', views.buscar_produto_protheus_unificado, name='api_busca_produtos'),
