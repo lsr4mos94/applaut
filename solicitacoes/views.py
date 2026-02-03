@@ -61,7 +61,7 @@ def buscar_produto_protheus_unificado(request):
         FROM {tabela} AS SB1
         LEFT JOIN SBM{empresa} AS SBM ON 
             RTRIM(SBM.BM_GRUPO) = RTRIM(SB1.B1_GRUPO) AND SBM.D_E_L_E_T_ <> '*'
-        LEFT JOIN DA1{empresa} AS DA1 ON 
+        INNER JOIN DA1{empresa} AS DA1 ON 
             DA1.DA1_CODTAB = '214' 
             AND RTRIM(DA1.DA1_CODPRO) = RTRIM(SB1.B1_COD) 
             AND DA1.D_E_L_E_T_ <> '*'
@@ -91,7 +91,7 @@ def buscar_produto_protheus_unificado(request):
                                 'codigo': cod_limpo,
                                 'descricao': row[1].strip(),
                                 'grupo_familia': row[2].strip(),
-                                'preco': float(row[3])
+                                'preco': float(row[3]) if row[3] is not None else 0.0
                             }
             except Exception as e:
                 print(f"Erro produtos {db} {tabela}: {e}")
@@ -308,6 +308,16 @@ def bonificacao_list(request):
     status = request.GET.get('status')
 
     bonificacoes = Bonificacao.objects.all().order_by('-data_solicitacao')
+    
+    eh_vendedor = request.user.groups.filter(name='Vendedores').exists()
+
+    if eh_vendedor:
+        bonificacoes = bonificacoes.filter(vendedor=request.user)
+
+    if eh_vendedor:
+        usuarios = User.objects.filter(pk=request.user.pk)
+    else:
+        usuarios = User.objects.filter(groups__name='Vendedores', is_active=True).order_by('first_name')
 
     if request.user.groups.filter(name='Vendedores').exists():
         bonificacoes = bonificacoes.filter(vendedor=request.user)
@@ -322,12 +332,13 @@ def bonificacao_list(request):
         bonificacoes = bonificacoes.filter(tipo=tipo)
 
     if vendedor_id:
-        bonificacoes = bonificacoes.filter(vendedor_id=vendedor_id)
+        if eh_vendedor:
+            bonificacoes = bonificacoes.filter(vendedor=request.user)
+        else:
+            bonificacoes = bonificacoes.filter(vendedor_id=vendedor_id)
 
     if status:
         bonificacoes = bonificacoes.filter(status=status)
-
-    usuarios = User.objects.filter(is_active=True).order_by('first_name')
 
     context = {
         'bonificacoes': bonificacoes,

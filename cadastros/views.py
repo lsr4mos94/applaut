@@ -16,7 +16,11 @@ from django.db import connections
 
 @login_required
 def verbas_mensais(request):
+<<<<<<< HEAD
     if request.user.groups.filter(name='Vendedor').exists():
+=======
+    if request.user.groups.filter(name='Vendedores').exists():
+>>>>>>> 850978df10e196ba29f15e22ec085cce75e6e77b
         verbas = VerbaMensal.objects.filter(vendedor=request.user).order_by('-data_criacao')
         vendedores = User.objects.filter(id=request.user.id)
     else:
