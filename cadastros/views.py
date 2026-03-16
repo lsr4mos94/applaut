@@ -13,19 +13,18 @@ from django.conf import settings
 from django.utils import timezone
 from django.db.models import Q
 from django.db import connections
+from django.db.models import Sum
+from solicitacoes.models import Bonificacao, BonificacaoItem 
 
 @login_required
 def verbas_mensais(request):
-<<<<<<< HEAD
-    if request.user.groups.filter(name='Vendedor').exists():
-=======
+    vendedores = User.objects.filter(is_active=True).order_by('first_name')
+
     if request.user.groups.filter(name='Vendedores').exists():
->>>>>>> 850978df10e196ba29f15e22ec085cce75e6e77b
         verbas = VerbaMensal.objects.filter(vendedor=request.user).order_by('-data_criacao')
-        vendedores = User.objects.filter(id=request.user.id)
+        vendedores = vendedores.filter(id=request.user.id)
     else:
         verbas = VerbaMensal.objects.all().order_by('-data_criacao')
-        vendedores = User.objects.filter(groups__name='Vendedor')
     
     mes = request.GET.get('mes')
     vendedor_id = request.GET.get('vendedor')
@@ -38,7 +37,7 @@ def verbas_mensais(request):
 
     context = {
         'verbas': verbas,
-        'vendedores': vendedores,
+        'vendedores': vendedores, # Agora garantido que existe
         'meses': VerbaMensal.MESES_CHOICES
     }
     return render(request, 'cadastros/verbas.html', context)
@@ -63,7 +62,6 @@ def salvar_verba(request):
         mes = request.POST.get('mes')
         ano = request.POST.get('ano')
         valor = request.POST.get('valor')
-        # Novo campo capturado do formulário
         percentual = request.POST.get('percentual_limite', 100)
 
         VerbaMensal.objects.create(
@@ -71,7 +69,7 @@ def salvar_verba(request):
             mes_referencia=mes,
             ano_referencia=ano,
             valor=valor,
-            percentual_limite_por_cliente=percentual, # Salva o limite
+            percentual_limite_por_cliente=percentual,
             usuario_cadastro=request.user
         )
         messages.success(request, "Verba cadastrada com sucesso!")
@@ -84,12 +82,10 @@ def editar_verba(request, pk):
         novo_valor = float(request.POST.get('valor').replace(',', '.'))
         valor_ja_gasto = float(verba.valor_utilizado)
         
-        # VALIDAÇÃO DE SEGURANÇA
         if novo_valor < valor_ja_gasto:
             messages.error(request, f"Erro: O vendedor já utilizou R$ {valor_ja_gasto:.2f} em bonificações. Você não pode reduzir a verba para menos que isso.")
             return redirect('verbas_mensais')
         
-        # Se passar na validação, salva
         verba.valor = novo_valor
         verba.mes_referencia = request.POST.get('mes')
         verba.ano_referencia = request.POST.get('ano')
@@ -134,7 +130,6 @@ def acordos_comerciais(request):
 def salvar_acordo(request):
     if request.method == 'POST':
         try:
-            # 1. Criar o Cabeçalho do Acordo
             acordo = AcordoComercial(
                 cliente_codigo=request.POST.get('cliente_codigo'),
                 cliente_loja=request.POST.get('cliente_loja'),
@@ -148,11 +143,9 @@ def salvar_acordo(request):
             )
             acordo.save()
 
-            # 2. Processar os Itens (Produtos)
             if acordo.tipo_acordo == 'produto':
                 codigos = request.POST.getlist('prod_codigo[]')
                 descricoes = request.POST.getlist('prod_desc[]')
-                # CAPTURA O NOME CORRETO QUE ESTÁ NO HTML (prod_qtd[])
                 quantidades = request.POST.getlist('prod_qtd[]')
 
                 for i in range(len(codigos)):
@@ -160,7 +153,6 @@ def salvar_acordo(request):
                         acordo=acordo,
                         produto_codigo=codigos[i],
                         produto_descricao=descricoes[i],
-                        # Salva a quantidade enviada no campo qtd_faturada (ou o que você usa no modal)
                         qtd_faturada=quantidades[i] if i < len(quantidades) and quantidades[i] else 0
                     )
 
@@ -282,7 +274,6 @@ def criar_cadastro(request):
             return redirect('lista_cadastros')
         
         except Exception as e:
-            print(f"--- ERRO NO CADASTRO: {str(e)} ---") 
             messages.error(request, f"Erro ao processar cadastro: {str(e)}")
             return render(request, 'cadastros/novo_cadastro.html', {'dados': request.POST})
         
@@ -425,11 +416,6 @@ def enviar_email_fluxo(cadastro, fase):
         )
         email.content_subtype = "html"
         
-#        if fase in ['novo_cadastro', 'financeiro']:
-#            for anexo in cadastro.anexos.all():
-#                if anexo.arquivo:
-#                    email.attach_file(anexo.arquivo.path)
-        
         email.send(fail_silently=False)
         return True
     except Exception:
@@ -484,23 +470,44 @@ def api_historico_acordo(request, acordo_id):
         cliente_loja = acordo.cliente_loja
         d1 = acordo.vigencia_inicio.strftime('%Y%m%d')
         d2 = acordo.vigencia_fim.strftime('%Y%m%d')
-        
-        # Mapeamento das instâncias e suas respectivas tabelas de itens de nota (SD2)
+
+        grupos_permitidos = []
+        if acordo.tipo_acordo == 'produto' and itens_acordados.exists():
+            codigos_vínculo = [item.produto_codigo for item in itens_acordados]
+            
+            with connections['protheus_ciec'].cursor() as cursor:
+                format_placeholders = ', '.join(['%s'] * len(codigos_vínculo))
+                query_grupos = f"""
+                    SELECT DISTINCT B1_GRUPO 
+                    FROM SB1010 
+                    WHERE B1_COD IN ({format_placeholders}) AND D_E_L_E_T_ <> '*'
+                """
+                cursor.execute(query_grupos, codigos_vínculo)
+                grupos_permitidos = [row[0].strip() for row in cursor.fetchall() if row[0]]
+
         bases_de_consulta = {
             'protheus_ciec': ['SD2010', 'SD2020'],
             'protheus_wrp': ['SD2010']
         }
 
         query_base = """
-            SELECT D2_DOC, D2_SERIE, D2_EMISSAO, D2_COD, D2_DESC, D2_QUANT, D2_TOTAL
+            SELECT D2_DOC, D2_SERIE, D2_EMISSAO, D2_COD, B1_DESC, D2_QUANT, D2_TOTAL
             FROM {tabela} AS SD2
-            INNER JOIN SF4{empresa} AS SF4 ON SF4.F4_CODIGO = SD2.D2_TES AND SF4.D_E_L_E_T_ <> '*'
+            INNER JOIN SF4{empresa} AS SF4 ON SF4.F4_FILIAL = SD2.D2_FILIAL AND SF4.F4_CODIGO = SD2.D2_TES AND SF4.D_E_L_E_T_ <> '*'
+            INNER JOIN SB1{empresa} AS SB1 ON SB1.B1_FILIAL = SD2.D2_FILIAL AND SB1.B1_COD = SD2.D2_COD AND SB1.D_E_L_E_T_ <> '*'
+            INNER JOIN SC5{empresa} AS SC5 ON SC5.C5_FILIAL = SD2.D2_FILIAL AND SC5.C5_NUM = SD2.D2_PEDIDO AND SC5.D_E_L_E_T_ <> '*'
             WHERE SD2.D_E_L_E_T_ <> '*' 
             AND SD2.D2_CLIENTE = %s AND SD2.D2_LOJA = %s
             AND SD2.D2_EMISSAO BETWEEN %s AND %s
             AND SF4.F4_BONIF = 'S' AND SD2.D2_TES <> '802'
-            ORDER BY D2_EMISSAO DESC
+            AND SC5.C5_ZTPBONI = '1'
         """
+
+        if grupos_permitidos:
+            placeholders_grp = ', '.join(['%s'] * len(grupos_permitidos))
+            query_base += f" AND SB1.B1_GRUPO IN ({placeholders_grp})"
+
+        query_base += " ORDER BY D2_EMISSAO DESC"
 
         historico_nfs = []
         realizado_valor = 0.0
@@ -508,36 +515,46 @@ def api_historico_acordo(request, acordo_id):
 
         for db_alias, tabelas in bases_de_consulta.items():
             for tabela in tabelas:
-                # Extrai o sufixo da empresa (010 ou 020) para bater com a SF4 correspondente
                 empresa_sufixo = tabela[-3:] 
                 
-                with connections[db_alias].cursor() as cursor:
-                    cursor.execute(query_base.format(tabela=tabela, empresa=empresa_sufixo), 
-                                 [cliente_cod, cliente_loja, d1, d2])
-                    
-                    rows = cursor.fetchall()
-                    for row in rows:
-                        qtd = float(row[5])
-                        valor = float(row[6])
-                        
-                        realizado_valor += valor
-                        realizado_qtd += qtd
-                        
-                        historico_nfs.append({
-                            'nf': f"{row[0].strip()}/{row[1].strip()}",
-                            'data': row[2].strip(),
-                            'produto': f"{row[3].strip()} - {row[4].strip()}",
-                            'qtd': qtd,
-                            'valor': valor
-                        })
+                params = [cliente_cod, cliente_loja, d1, d2]
+                if grupos_permitidos:
+                    params.extend(grupos_permitidos)
 
-        # Lógica de cálculo de progresso
+                with connections[db_alias].cursor() as cursor:
+                    cursor.execute(query_base.format(tabela=tabela, empresa=empresa_sufixo), params)
+                    rows = cursor.fetchall()
+
+                    for row in rows:
+                        try:
+                            doc = str(row[0]).strip()
+                            serie = str(row[1]).strip()
+                            data_emissao = str(row[2]).strip()
+                            cod_prod = str(row[3]).strip()
+                            desc_prod = str(row[4]).strip()
+                            
+                            qtd = float(row[5] or 0)
+                            valor = float(row[6] or 0)
+
+                            realizado_valor += valor
+                            realizado_qtd += qtd
+                            
+                            historico_nfs.append({
+                                'nf': f"{doc}/{serie}",
+                                'data': data_emissao,
+                                'produto': f"{cod_prod} - {desc_prod}",
+                                'qtd': qtd,
+                                'valor': valor
+                            })
+                        except Exception as e:
+                            print(f"Erro ao processar linha: {e}")
+                            continue
+
         if acordo.tipo_acordo == 'valor':
             objetivo = float(acordo.valor_acordo or 0)
             atual = realizado_valor
             label_unidade = f"R$ {atual:,.2f} de R$ {objetivo:,.2f}"
         else:
-            # Soma a quantidade acordada de todos os itens vinculados
             objetivo = sum(item.qtd_faturada for item in itens_acordados)
             atual = realizado_qtd
             label_unidade = f"{int(atual)} de {int(objetivo)} UN"
@@ -551,4 +568,64 @@ def api_historico_acordo(request, acordo_id):
         })
 
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        print(f"Erro Crítico API Histórico: {str(e)}")
+        return JsonResponse({'error': str(e), 'nfs': []}, status=500)
+
+    except Exception as e:
+            print(f"Erro na API de Histórico: {e}") 
+            
+            return JsonResponse({
+                'error': str(e),
+                'nfs': [],
+                'porcentagem': 0,
+                'label_progresso': "Erro ao buscar dados no Protheus"
+            }, status=500)
+
+@login_required
+def historico_utilizacao_verba(request, verba_id):
+    try:
+        verba = get_object_or_404(VerbaMensal, id=verba_id)
+        
+        utilizacoes = Bonificacao.objects.filter(
+            vendedor=verba.vendedor,
+            tipo='VERBA_VENDEDOR',
+            data_solicitacao__month=verba.mes_referencia,
+            data_solicitacao__year=verba.ano_referencia
+        ).exclude(status='PENDENTE').prefetch_related('itens')
+
+        lista_dados = []
+        total_acumulado = 0
+        
+        for bonif in utilizacoes:
+            valor_bonif = bonif.itens.aggregate(total=Sum('valor_total'))['total'] or 0
+            total_acumulado += float(valor_bonif)
+            
+            lista_dados.append({
+                'id': bonif.id,
+                'cliente': bonif.cliente_nome_fantasia,
+                'valor': float(valor_bonif),
+                'pedido': bonif.pedido_protheus or 'Pendente'
+            })
+
+        objetivo = float(verba.valor or 0)
+        saldo = objetivo - total_acumulado
+        porcentagem = (total_acumulado / objetivo * 100) if objetivo > 0 else 0
+
+        def format_br(valor):
+            return f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+        utilizado_str = format_br(total_acumulado)
+        disponivel_str = format_br(saldo)
+
+        label_personalizado = f"Utilizado: R$ {utilizado_str} | Disponível: R$ {disponivel_str}"
+
+        return JsonResponse({
+            'sucesso': True,
+            'porcentagem': round(porcentagem, 1),
+            'total_gasto': total_acumulado,
+            'saldo': saldo,
+            'registros': lista_dados,
+            'label_progresso': label_personalizado
+        })
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)

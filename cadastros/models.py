@@ -12,7 +12,7 @@ class VerbaMensal(models.Model):
     vendedor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='verbas')
     mes_referencia = models.IntegerField(choices=MESES_CHOICES, verbose_name="Mês de Referência")
     ano_referencia = models.IntegerField(verbose_name="Ano de Referência")
-    valor = models.DecimalField(max_digits=10, decimal_places=2)
+    valor = models.DecimalField(max_digits=10, decimal_places=2) # Campo correto usado no views.py
     usuario_cadastro = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='cadastros_realizados')
     data_criacao = models.DateTimeField(auto_now_add=True)
     percentual_limite_por_cliente = models.DecimalField(
@@ -24,7 +24,7 @@ class VerbaMensal(models.Model):
 
     @property
     def tem_movimentacao(self):
-        # Verifica se existem bonificações para este vendedor no mês/ano desta verba
+        from solicitacoes.models import Bonificacao
         return Bonificacao.objects.filter(
             vendedor=self.vendedor,
             data_solicitacao__month=self.mes_referencia,
@@ -34,21 +34,22 @@ class VerbaMensal(models.Model):
 
     @property
     def limite_por_cliente(self):
-        # Calcula o valor nominal do limite (ex: 20% de 10k = 2k)
-        return (self.valor_mensal * self.percentual_limite_por_cliente) / 100
+        # CORREÇÃO: Alterado de self.valor_mensal para self.valor
+        # Isso elimina o AttributeError apresentado na tela de erro
+        return (self.valor * self.percentual_limite_por_cliente) / 100
     
     @property
     def valor_utilizado(self):
         from solicitacoes.models import Bonificacao
         from django.db.models import Sum
 
-        # Filtramos as bonificações do vendedor no período
         bonificacoes = Bonificacao.objects.filter(
             vendedor=self.vendedor,
             data_solicitacao__month=self.mes_referencia,
             data_solicitacao__year=self.ano_referencia,
             tipo='VERBA_VENDEDOR',
-            status__in=['APROVADO', 'PROCESSADO', 'FINALIZADO']
+            # Sugestão: incluir PENDENTE para evitar que o vendedor exceda o limite real
+            status__in=['APROVADO', 'PENDENTE', 'PROCESSADO', 'FINALIZADO'] 
         )
 
         total = bonificacoes.aggregate(total_gasto=Sum('itens__valor_total'))['total_gasto']
@@ -61,6 +62,9 @@ class VerbaMensal(models.Model):
     class Meta:
         verbose_name = "Verba Mensal"
         verbose_name_plural = "Verbas Mensais"
+        # Garante que não haja duplicidade de verba para o mesmo período e vendedor
+        unique_together = ('vendedor', 'mes_referencia', 'ano_referencia')
+
 
 class AcordoComercial(models.Model):
     TIPOS_ACORDO = [

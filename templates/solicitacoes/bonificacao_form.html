@@ -9,6 +9,7 @@
     .form-label-custom { font-size: 0.75rem; font-weight: 700; color: #6c757d; text-transform: uppercase; margin-bottom: 5px; }
     .bg-busca { background-color: #fcfbf7; border: 1px solid #bca464 !important; }
     .list-group-item-action:hover { background-color: #fcfaf5; color: #bca464; }
+    .box-selecao { background-color: #fcfbf7; border: 1px solid #f1ece0; }
 </style>
 
 <div class="mb-4">
@@ -17,12 +18,30 @@
 
 <div class="card border-0 shadow-sm">
     <div class="card-body p-4">
-        <form method="POST" action="{% url 'criar_bonificacao' %}" id="formBonificacao">
+        <form method="POST" action="{% url 'criar_bonificacao' %}" id="formBonificacao" enctype="multipart/form-data">
             {% csrf_token %}
             
-            <div class="mb-4 p-3 rounded" style="background-color: #fcfbf7; border: 1px solid #f1ece0;">
+            <div class="mb-3 p-3 rounded box-selecao">
+                <label class="form-label-custom d-block mb-3">Plataforma</label>
+                <div class="d-flex gap-5 flex-wrap">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="plataforma" id="plat_ciec" value="CIEC" checked>
+                        <label class="form-check-label" for="plat_ciec">CIEC</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="plataforma" id="plat_isla" value="ISLA">
+                        <label class="form-check-label" for="plat_isla">ISLA</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="plataforma" id="plat_wrp" value="WRP">
+                        <label class="form-check-label" for="plat_wrp">WRP</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3 p-3 rounded box-selecao">
                 <label class="form-label-custom d-block mb-3">Tipo de Bonificação</label>
-                <div class="d-flex gap-5">
+                <div class="d-flex gap-5 flex-wrap">
                     <div class="form-check">
                         <input class="form-check-input" type="radio" name="tipo" id="verba" value="VERBA_VENDEDOR" checked>
                         <label class="form-check-label" for="verba">Verba Vendedor</label>
@@ -34,6 +53,10 @@
                     <div class="form-check">
                         <input class="form-check-input" type="radio" name="tipo" id="negociacao" value="NEGOCIACAO_ESPECIAL">
                         <label class="form-check-label" for="negociacao">Negociação Especial</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="tipo" id="tipo_sac" value="SAC">
+                        <label class="form-check-label" for="tipo_sac">SAC</label>
                     </div>
                 </div>
             </div>
@@ -79,9 +102,37 @@
                 </div>
             </div>
 
-            <div class="mb-5">
+            <div class="mb-4 p-3 rounded box-selecao">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <label class="form-label-custom d-block mb-3">Método de Recebimento</label>
+                        <div class="d-flex gap-5">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="metodo_entrega" id="met_entrega" value="ENTREGA" checked>
+                                <label class="form-check-label" for="met_entrega">Entrega</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="metodo_entrega" id="met_retirada" value="RETIRADA">
+                                <label class="form-check-label" for="met_retirada">Retirada</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label-custom">Data Prevista Entrega/Retirada</label>
+                        <input type="date" name="data_entrega_retirada" class="form-control form-control-sm">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-4">
                 <label class="form-label-custom">Justificativa da Bonificação</label>
                 <textarea name="justificativa" class="form-control" rows="2" placeholder="Descreva o motivo..." required></textarea>
+            </div>
+
+            <div class="mb-5" id="div_foto_sac" style="display: none;">
+                <label class="form-label-custom">Foto do SAC (Obrigatório para este tipo)</label>
+                <input type="file" name="foto_sac" id="id_foto_sac" class="form-control form-control-sm" accept="image/*">
+                <small class="text-muted">Anexe uma imagem para comprovação do SAC.</small>
             </div>
 
             <h6 class="section-title"><i class="bi bi-box-seam me-2"></i>Itens da Bonificação</h6>
@@ -162,7 +213,7 @@
         mCli = new bootstrap.Modal(document.getElementById('modalCliente'));
         mProd = new bootstrap.Modal(document.getElementById('modalProduto'));
 
-        // Busca Cliente
+        // Busca de Cliente
         document.getElementById('btn_buscar_cliente').onclick = function() {
             const termo = document.getElementById('input_busca_cliente').value.trim();
             if(termo.length < 3) return alert('Digite ao menos 3 caracteres.');
@@ -192,18 +243,15 @@
                 });
         };
 
-        // Lógica de Busca de Produto (ao digitar no modal)
+        // Busca de Produto
         document.getElementById('filtro_produto').onkeyup = function() {
             const termo = this.value.trim();
             const lista = document.getElementById('lista_produtos');
-
             if(termo.length < 3) {
                 lista.innerHTML = '<div class="p-3 text-center text-muted small">Continue digitando...</div>';
                 return;
             }
-
             lista.innerHTML = '<div class="p-3 text-center"><span class="spinner-border spinner-border-sm text-primary"></span> Consultando Protheus...</div>';
-
             fetch("{% url 'api_busca_produtos' %}?q=" + encodeURIComponent(termo))
                 .then(res => res.json())
                 .then(data => {
@@ -224,7 +272,6 @@
                                 </div>
                                 <span class="badge bg-success">R$ ${parseFloat(p.preco).toLocaleString('pt-br', {minimumFractionDigits: 2})}</span>
                             </div>`;
-                        
                         b.onclick = () => {
                             document.getElementById(`nome_${linhaAtiva}`).value = p.descricao;
                             document.getElementById(`cod_${linhaAtiva}`).value = p.codigo;
@@ -238,6 +285,34 @@
         };
 
         addLinha(); 
+        toggleCamposAdicionais();
+    });
+
+    function toggleCamposAdicionais() {
+        const tipoSelecionado = document.querySelector('input[name="tipo"]:checked').value;
+        const divFoto = document.getElementById('div_foto_sac');
+        const infoBox = document.getElementById('info-acordo');
+
+        // Foto SAC
+        divFoto.style.display = (tipoSelecionado === 'SAC') ? 'block' : 'none';
+
+        // Alerta de Acordo Comercial
+        if (tipoSelecionado === 'ACORDO_COMERCIAL') {
+            if (!infoBox) {
+                const alerta = `
+                    <div id="info-acordo" class="alert alert-warning mt-2 py-2 shadow-sm" style="border-left: 5px solid #bca464; font-size: 0.85rem;">
+                        <i class="bi bi-shield-check me-2"></i>
+                        <strong>Validação Automática:</strong> O sistema consultará o saldo do acordo vigente no Protheus.
+                    </div>`;
+                document.querySelector('input[name="tipo"]').closest('.box-selecao').insertAdjacentHTML('afterend', alerta);
+            }
+        } else if (infoBox) {
+            infoBox.remove();
+        }
+    }
+
+    document.querySelectorAll('input[name="tipo"]').forEach(radio => {
+        radio.addEventListener('change', toggleCamposAdicionais);
     });
 
     function addLinha() {
@@ -245,7 +320,6 @@
         const tbody = document.getElementById('tbodyItens');
         const tr = document.createElement('tr');
         tr.id = `linha-${contadorItens}`;
-        
         tr.innerHTML = `
             <td>
                 <div class="input-group input-group-sm">
@@ -281,7 +355,6 @@
     function abrirBuscaProduto(id) {
         linhaAtiva = id;
         document.getElementById('filtro_produto').value = '';
-        document.getElementById('lista_produtos').innerHTML = '<div class="p-3 text-center text-muted small">Digite o nome do produto para buscar...</div>';
         mProd.show();
         setTimeout(() => document.getElementById('filtro_produto').focus(), 500);
     }
@@ -308,55 +381,22 @@
         document.getElementById('totalGeral').innerText = `R$ ${total.toLocaleString('pt-br', {minimumFractionDigits: 2})}`;
     }
 
-    // Adicione isso dentro do seu bloco <script> existente
-    document.querySelectorAll('input[name="tipo"]').forEach(radio => {
-        radio.addEventListener('change', function() {
-            const infoBox = document.getElementById('info-acordo');
-            if (this.value === 'ACORDO_COMERCIAL') {
-                if (!infoBox) {
-                    const alerta = `
-                        <div id="info-acordo" class="alert alert-warning mt-2 py-2 shadow-sm" style="border-left: 5px solid #bca464; font-size: 0.85rem;">
-                            <i class="bi bi-shield-check me-2"></i>
-                            <strong>Validação Automática:</strong> O sistema consultará o saldo do acordo vigente no Protheus. 
-                            Caso não haja saldo ou acordo, a solicitação irá para aprovação manual da Controladoria.
-                        </div>`;
-                    document.querySelector('input[id="acordo"]').closest('.col-md-4').insertAdjacentHTML('afterend', alerta);
-                }
-            } else {
-                if (infoBox) infoBox.remove();
-            }
-        });
-    });
-
     function validarRegraCopo() {
         const CODIGO_COPO = '000072';
         const DESCRICAO_COPO = 'COPO DESCARTAVEL 300ML C/LOGO';
-        
         let totalChopp = 0;
         let linhaCopo = null;
-
-        // 1. Calcular total de Chopp e verificar se o copo já existe na lista
         document.querySelectorAll('#tbodyItens tr').forEach(tr => {
             const id = tr.id.split('-')[1];
             const nomeProd = document.getElementById(`nome_${id}`).value.toUpperCase();
             const codProd = document.getElementById(`cod_${id}`).value;
             const qtd = parseFloat(document.getElementById(`qtd_${id}`).value) || 0;
-
-            if (nomeProd.includes('CHOPP')) {
-                totalChopp += qtd;
-            }
-            
-            if (codProd === CODIGO_COPO) {
-                linhaCopo = id;
-            }
+            if (nomeProd.includes('CHOPP')) totalChopp += qtd;
+            if (codProd === CODIGO_COPO) linhaCopo = id;
         });
-
-        // 2. Lógica de Adição/Atualização/Remoção
         if (totalChopp > 0) {
             if (!linhaCopo) {
-                // Se não tem a linha do copo, adiciona uma nova
                 addLinha();
-                // O contadorItens terá subido após o addLinha()
                 const novaId = contadorItens;
                 document.getElementById(`nome_${novaId}`).value = DESCRICAO_COPO;
                 document.getElementById(`cod_${novaId}`).value = CODIGO_COPO;
@@ -364,35 +404,26 @@
                 document.getElementById(`qtd_${novaId}`).value = totalChopp;
                 calc(novaId);
             } else {
-                // Se já existe, apenas atualiza a quantidade para ser igual ao total de chopp
                 document.getElementById(`qtd_${linhaCopo}`).value = totalChopp;
-                document.getElementById(`preco_${linhaCopo}`).value = "0.00"; // Garante que é zerado
+                document.getElementById(`preco_${linhaCopo}`).value = "0.00";
                 calc(linhaCopo);
             }
         } else if (linhaCopo) {
-            // Se não tem mais chopp mas o copo sobrou, remove a linha do copo
             document.getElementById(`linha-${linhaCopo}`).remove();
             calcularTotalGeral();
         }
     }
 
-    // Injetar a validação nas funções existentes sem alterá-las drasticamente
     const originalCalc = calc;
     calc = function(id) {
         originalCalc(id);
-        // Evita loop infinito: não valida a regra se a alteração veio do próprio copo
-        const cod = document.getElementById(`cod_${id}`).value;
-        if (cod !== '000072') {
-            validarRegraCopo();
-        }
+        if (document.getElementById(`cod_${id}`).value !== '000072') validarRegraCopo();
     };
 
-    // Monitorar também a remoção de linhas para atualizar os copos
     const originalRemover = removerLinha;
     removerLinha = function(id) {
         originalRemover(id);
         validarRegraCopo();
     };
-
 </script>
 {% endblock %}

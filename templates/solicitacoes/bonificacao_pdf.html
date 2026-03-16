@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: A4;
+            margin: 1cm;
+        }
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            color: #000; /* Preto absoluto para leitura */
+            line-height: 1.4;
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* Cabeçalho Robusto */
+        .header {
+            border-bottom: 4px solid #bca464;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .title {
+            color: #bca464;
+            text-transform: uppercase;
+            font-size: 26px;
+            font-weight: bold;
+            margin: 0;
+        }
+        .header-meta {
+            font-size: 12px;
+            font-weight: bold;
+            text-align: right;
+        }
+
+        /* Tabelas de Informação com maior contraste */
+        .info-table {
+            width: 100%;
+            margin-bottom: 15px;
+            border: 2px solid #eee;
+        }
+        .info-td {
+            padding: 12px;
+            vertical-align: top;
+            background-color: #fff;
+        }
+        .label {
+            font-weight: bold;
+            color: #bca464;
+            text-transform: uppercase;
+            font-size: 11px;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .data-value {
+            font-size: 13px;
+            font-weight: bold;
+            color: #000;
+        }
+
+        /* Tabela de Produtos - Fonte Maior */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .items-table th {
+            background-color: #bca464;
+            color: #fff;
+            text-align: left;
+            padding: 10px;
+            font-size: 12px;
+            text-transform: uppercase;
+            border: 1px solid #bca464;
+        }
+        .items-table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            font-size: 13px; /* Aumentado */
+            color: #000;
+        }
+        .col-qtd { text-align: center; width: 60px; font-weight: bold; }
+        .col-valor { text-align: right; width: 120px; font-weight: bold; }
+
+        /* Banner de Total - Visualização Imediata */
+        .total-banner {
+            margin-top: 15px;
+            background-color: #f8f5ee;
+            border: 2px solid #bca464;
+            padding: 15px;
+            text-align: right;
+        }
+        .total-label {
+            font-size: 14px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #5e4d26;
+        }
+        .total-amount {
+            font-size: 24px;
+            font-weight: bold;
+            color: #000;
+            margin-left: 20px;
+        }
+
+        /* Justificativa */
+        .obs-box {
+            margin-top: 15px;
+            padding: 10px;
+            border: 1px dashed #bca464;
+            background-color: #fff;
+        }
+
+        /* Rodapé Fixado */
+        .footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 11px;
+            border-top: 1px solid #000;
+            padding-top: 5px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <table width="100%">
+            <tr>
+                <td><h1 class="title">SOLICITAÇÃO DE BONIFICAÇÃO</h1></td>
+                <td class="header-meta">
+                    Nº #{{ b.id }}<br>
+                    EMISSÃO: {{ data|date:"d/m/Y H:i" }}
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <table class="info-table" cellspacing="0">
+        <tr>
+            <td class="info-td" style="border-right: 2px solid #eee; width: 50%;">
+                <span class="label">DADOS DO CLIENTE</span>
+                <div class="data-value">{{ b.cliente_razao_social }}</div>
+                <div class="data-value">FANTASIA: {{ b.cliente_nome_fantasia }}</div>
+                <div class="data-value">CNPJ/CPF: {{ b.cliente_cpf_cnpj }}</div>
+                <div class="data-value">CÓD/LOJA: {{ b.cliente_codigo }} / {{ b.cliente_loja }}</div>
+            </td>
+            <td class="info-td">
+                <span class="label">INFORMAÇÕES DE VENDA</span>
+                <div class="data-value">VENDEDOR: {{ b.vendedor.get_full_name|upper }}</div>
+                <div class="data-value">TIPO: {{ b.get_tipo_display|upper }}</div>
+                <div class="data-value">PLATAFORMA: {{ b.plataforma|upper }}</div>
+                <div class="data-value">ENTREGA: {{ b.metodo_entrega|upper }}</div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="obs-box">
+        <span class="label">JUSTIFICATIVA</span>
+        <div class="data-value" style="font-weight: normal; font-style: italic;">
+            {{ b.justificativa|default:"Nenhuma observação informada." }}
+        </div>
+    </div>
+
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th>CÓDIGO</th>
+                <th>DESCRIÇÃO DO PRODUTO</th>
+                <th class="col-qtd">QTD</th>
+                <th class="col-valor">TOTAL ITEM</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in b.itens.all %}
+            <tr>
+                <td style="width: 100px;">{{ item.produto_codigo }}</td>
+                <td><strong>{{ item.produto_descricao }}</strong></td>
+                <td class="col-qtd">{{ item.quantidade }}</td>
+                <td class="col-valor">R$ {{ item.valor_total|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="total-banner">
+        <span class="total-label">VALOR TOTAL DA SOLICITAÇÃO:</span>
+        <span class="total-amount">R$ {{ b.get_total|floatformat:2 }}</span>
+    </div>
+
+    {% if b.status == 'REPROVADO' %}
+    <div style="margin-top: 15px; border: 2px solid #d9534f; padding: 10px;">
+        <span class="label" style="color: #d9534f;">MOTIVO DA REPROVAÇÃO</span>
+        <div class="data-value">{{ b.observacao_reprovacao }}</div>
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        STATUS: {{ b.get_status_display|upper }} 
+        {% if b.pedido_protheus %} | PEDIDO PROTHEUS: {{ b.pedido_protheus }}{% endif %}
+        | SISTEMA LÄUT
+    </div>
+
+</body>
+</html>

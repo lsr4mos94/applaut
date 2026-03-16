@@ -54,10 +54,31 @@
     <table class="table table-hover align-middle mb-0 bg-white" id="tabelaClientes">
         <thead>
             <tr style="cursor: pointer;">
-                <th onclick="sortTable(0)" style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 px-3">Razão Social <i class="bi bi-arrow-down-up small"></i></th>
-                <th onclick="sortTable(1)" style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3">CGC <i class="bi bi-arrow-down-up small"></i></th>
-                <th onclick="sortTable(2)" style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3">Vendedor <i class="bi bi-arrow-down-up small"></i></th>
-                <th onclick="sortTable(3)" style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3">Situação <i class="bi bi-arrow-down-up small"></i></th>
+                <th onclick="sortTable(0)" style="background-color: #bca464 !important; color: white !important; border: none; white-space: nowrap;" class="py-3 px-3">
+                    <div class="d-flex align-items-center justify-content-between">
+                        Razão Social <i class="bi bi-arrow-down-up small ms-2"></i>
+                    </div>
+                </th>
+                <th onclick="sortTable(1)" style="background-color: #bca464 !important; color: white !important; border: none; white-space: nowrap;" class="py-3">
+                    <div class="d-flex align-items-center justify-content-between">
+                        CGC <i class="bi bi-arrow-down-up small ms-2"></i>
+                    </div>
+                </th>
+                <th onclick="sortTable(2)" style="background-color: #bca464 !important; color: white !important; border: none; white-space: nowrap;" class="py-3">
+                    <div class="d-flex align-items-center justify-content-between">
+                        Data Cadastro <i class="bi bi-arrow-down-up small ms-2"></i>
+                    </div>
+                </th>
+                <th onclick="sortTable(3)" style="background-color: #bca464 !important; color: white !important; border: none; white-space: nowrap;" class="py-3">
+                    <div class="d-flex align-items-center justify-content-between">
+                        Vendedor <i class="bi bi-arrow-down-up small ms-2"></i>
+                    </div>
+                </th>
+                <th onclick="sortTable(4)" style="background-color: #bca464 !important; color: white !important; border: none; white-space: nowrap;" class="py-3">
+                    <div class="d-flex align-items-center justify-content-between">
+                        Situação <i class="bi bi-arrow-down-up small ms-2"></i>
+                    </div>
+                </th>
                 <th style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 text-center">Ações</th>
             </tr>
         </thead>
@@ -69,6 +90,7 @@
                     <small class="text-muted">{{ cliente.nome_fantasia|default:"" }}</small>
                 </td>
                 <td>{{ cliente.cgc }}</td>
+                <td>{{ cliente.data_cadastro|date:"d/m/Y" }}</td>
                 <td><small>{{ cliente.vendedor.get_full_name|default:cliente.vendedor.username }}</small></td>
                 <td>
                     {% if cliente.situacao == 'PENDENTE' %}
@@ -125,6 +147,8 @@
                                     <p class="mb-1 small"><strong>Nome Fantasia:</strong><br>{{ cliente.nome_fantasia }}</p>
                                     <p class="mb-1 small"><strong>CNPJ/CPF:</strong><br>{{ cliente.cgc }}</p>
                                     <p class="mb-1 small"><strong>Inscrição Estadual:</strong><br>{{ cliente.inscricao_estadual|default:"ISENTO" }}</p>
+                                    <p class="mb-1 small"><strong>E-mail</strong>:</strong><br>{{ cliente.email }}</p>
+                                    <p class="mb-1 small"><strong>Telefone:</strong><br>{{ cliente.telefone }}</p>
                                     <hr class="my-2">
                                     <p class="mb-1 small"><strong>CEP:</strong> {{ cliente.cep }}</p>
                                     <p class="mb-1 small"><strong>Endereço:</strong> {{ cliente.endereco }}, {{ cliente.numero }}, {{ cliente.complemento }}</p>

@@ -135,7 +135,6 @@
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enviando...';
 
-        // Envia para a view padrão de reset do Django
         fetch("{% url 'password_reset' %}", {
             method: 'POST',
             headers: {
@@ -145,7 +144,6 @@
             body: new URLSearchParams({'email': email})
         })
         .then(response => {
-            // O Django sempre retorna 200 aqui por segurança (para não revelar se o e-mail existe)
             msg.classList.remove('d-none');
             btn.classList.add('d-none');
             document.getElementById('formRecuperarSenha').reset();

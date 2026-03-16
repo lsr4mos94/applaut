@@ -40,6 +40,18 @@ class Bonificacao(models.Model):
         ('VERBA_VENDEDOR', 'Verba Vendedor'),
         ('ACORDO_COMERCIAL', 'Acordo Comercial'),
         ('NEGOCIACAO_ESPECIAL', 'Negociação Especial'),
+        ('SAC', 'SAC'),
+    ]
+
+    PLATAFORMA_CHOICES = [
+        ('CIEC', 'CIEC'),
+        ('ISLA', 'ISLA'),
+        ('WRP', 'WRP'),
+    ]
+
+    METODO_CHOICES = [
+        ('ENTREGA', 'Entrega'),
+        ('RETIRADA', 'Retirada'),
     ]
 
     STATUS_CHOICES = [
@@ -68,12 +80,21 @@ class Bonificacao(models.Model):
 
     pedido_protheus = models.CharField(max_length=20, blank=True, null=True)
 
+    plataforma = models.CharField(max_length=10, choices=PLATAFORMA_CHOICES, null=True, blank=True)
+    metodo_entrega = models.CharField(max_length=10, choices=METODO_CHOICES, null=True, blank=True)
+    data_entrega_retirada = models.DateField(null=True, blank=True)
+    foto_sac = models.ImageField(upload_to='bonificacoes/sac/', null=True, blank=True)
+
     def get_total(self):
         return sum(item.valor_total for item in self.itens.all())
     
     @property
     def pode_aprovar(self):
         return self.tipo == 'NEGOCIACAO_ESPECIAL' and self.status == 'PENDENTE'
+    
+    @property
+    def pode_aprovar(self):
+        return self.tipo in ['NEGOCIACAO_ESPECIAL', 'SAC'] and self.status == 'PENDENTE'
 
     class Meta:
         verbose_name = "Bonificação"

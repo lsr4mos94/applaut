@@ -7,6 +7,7 @@ urlpatterns = [
     path('verbas/salvar/', views.salvar_verba, name='salvar_verba'),
     path('verbas/editar/<int:pk>/', views.editar_verba, name='editar_verba'),
     path('verbas/excluir/<int:pk>/', views.excluir_verba, name='excluir_verba'),
+    path('verbas/historico/<int:verba_id>/', views.historico_utilizacao_verba, name='historico_utilizacao_verba'),
 
     path('acordos/', views.acordos_comerciais, name='acordos_comerciais'),
     path('acordos/salvar/', views.salvar_acordo, name='salvar_acordo'),

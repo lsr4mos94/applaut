@@ -326,7 +326,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const modalResProd = new bootstrap.Modal(document.getElementById('modalResProdutos'));
     const selectTipo = document.getElementById('select_tipo');
 
-    // Busca de Cliente
     document.getElementById('btn_buscar_cliente').onclick = function() {
         const t = document.getElementById('input_busca_cliente').value;
         if(t.length < 3) return alert('Mínimo 3 caracteres');
@@ -340,7 +339,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     b.type = 'button'; b.className = 'list-group-item list-group-item-action p-3';
                     b.innerHTML = `<strong style="color: #bca464;">${c.nome}</strong><br><small>CNPJ: ${c.cnpj} | Cód: ${c.codigo}</small>`;
                     b.onclick = () => {
-                        document.getElementById('id_cliente_nome').value = c.nome;
+                        document.getElementById('id_cliente_nome').value = c.fantasia;
                         document.getElementById('id_cliente_codigo').value = c.codigo;
                         document.getElementById('id_cliente_loja').value = c.loja;
                         document.getElementById('display_cliente_selecionado').innerHTML = `<i class="bi bi-check-circle-fill text-success"></i> ${c.nome} (${c.codigo}-${c.loja})`;
@@ -352,7 +351,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     };
 
-    // Busca de Produto
     document.getElementById('btn_buscar_produto').onclick = function() {
         const t = document.getElementById('input_busca_produto').value;
         if(t.length < 3) return alert('Mínimo 3 caracteres');
@@ -372,7 +370,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     };
 
-    // Alternar campos baseados no Tipo
     selectTipo.onchange = function() {
         const val = this.value;
         document.getElementById('div_valor').classList.toggle('d-none', val !== 'valor');
@@ -380,7 +377,6 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('lista_produtos').innerHTML = '';
     };
 
-    // Adicionar linha de produto
     window.addProdutoRow = function(p) {
         const container = document.getElementById('lista_produtos');
         const div = document.createElement('div');
@@ -403,7 +399,6 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('input_busca_produto').value = '';
     };
 
-    // FUNÇÃO HISTÓRICO AJAX (Nova)
     window.abrirHistorico = function(acordoId) {
         const modalHist = new bootstrap.Modal(document.getElementById('modalHistorico'));
         const barra = document.getElementById('barra_progresso');
@@ -418,7 +413,6 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 const pct = data.porcentagem;
                 
-                // Lógica de Cores da Barra
                 barra.className = "progress-bar progress-bar-striped progress-bar-animated"; 
                 if (pct <= 50) {
                     barra.classList.add("bg-danger");

@@ -170,24 +170,20 @@
 
 <script src="https://unpkg.com/imask"></script>
 <script>
-    // Variáveis globais para os Modais
     let modalBusca;
     let modalZap;
     let maskValor;
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Inicializa Máscaras
         IMask(document.getElementById('id_cep'), { mask: '00000-000' });
         maskValor = IMask(document.getElementById('id_valor_taxa'), { 
             mask: 'R$ num', 
             blocks: { num: { mask: Number, thousandsSeparator: '.', padFractionalZeros: true, radix: ',' } } 
         });
         
-        // Inicializa Modais
         modalBusca = new bootstrap.Modal(document.getElementById('modalResultadosBusca'));
         modalZap = new bootstrap.Modal(document.getElementById('modalZap'));
 
-        // Lógica de Busca de Cliente
         const btnBuscar = document.getElementById('btn_buscar_cliente');
         const inputBusca = document.getElementById('input_busca_cliente');
 
@@ -228,7 +224,6 @@
                 });
         };
 
-        // Lógica de CEP
         document.getElementById('id_cep').addEventListener('blur', function(e) {
             let cep = e.target.value.replace(/\D/g, '');
             if (cep.length === 8) {
@@ -245,7 +240,6 @@
         });
     });
 
-    // FUNÇÕES GLOBAIS (FORA DO DOMContentLoaded)
     function ajustarOcorrencia() {
         const occ = document.getElementById('id_ocorrencia').value;
         const selectTaxa = document.getElementById('id_taxa');

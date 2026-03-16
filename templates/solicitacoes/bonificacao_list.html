@@ -10,23 +10,47 @@
     </a>
 </div>
 
+<style>
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+    }
+</style>
+
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body bg-light rounded">
-        <form method="GET" class="row g-3">
-            <div class="col-md-4">
-                <label class="small fw-bold text-muted">Razão Social/Nome ou CPF/CNPJ</label>
-                <input type="text" name="busca" class="form-control form-control-sm" placeholder="Buscar..." value="{{ request.GET.busca }}">
+        <form method="GET" class="row g-2 align-items-end">
+            <div class="col-md">
+                <label class="small fw-bold text-muted">Busca</label>
+                <input type="text" name="busca" class="form-control form-control-sm" placeholder="Nome ou CPF/CNPJ" value="{{ request.GET.busca }}">
             </div>
-            <div class="col-md-2">
-                <label class="small fw-bold text-muted">Tipo</label>
-                <select name="tipo" class="form-select form-select-sm">
-                    <option value="">Todos os Tipos</option>
-                    <option value="VERBA_VENDEDOR" {% if request.GET.tipo == 'VERBA_VENDEDOR' %}selected{% endif %}>Verba Vendedor</option>
-                    <option value="ACORDO_COMERCIAL" {% if request.GET.tipo == 'ACORDO_COMERCIAL' %}selected{% endif %}>Acordo Comercial</option>
-                    <option value="NEGOCIACAO_ESPECIAL" {% if request.GET.tipo == 'NEGOCIACAO_ESPECIAL' %}selected{% endif %}>Negociação Especial</option>
+
+            <div class="col-md">
+                <label class="small fw-bold text-muted">Plataforma</label>
+                <select name="plataforma" class="form-select form-select-sm">
+                    <option value="">Todas</option>
+                    <option value="CIEC" {% if request.GET.plataforma == 'CIEC' %}selected{% endif %}>CIEC</option>
+                    <option value="ISLA" {% if request.GET.plataforma == 'ISLA' %}selected{% endif %}>ISLA</option>
+                    <option value="WRP" {% if request.GET.plataforma == 'WRP' %}selected{% endif %}>WRP</option>
                 </select>
             </div>
-            <div class="col-md-2">
+
+            <div class="col-md">
+                <label class="small fw-bold text-muted">Tipo</label>
+                <select name="tipo" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    <option value="VERBA_VENDEDOR" {% if request.GET.tipo == 'VERBA_VENDEDOR' %}selected{% endif %}>Verba Vendedor</option>
+                    <option value="ACORDO_COMERCIAL" {% if request.GET.tipo == 'ACORDO_COMERCIAL' %}selected{% endif %}>Acordo Com.</option>
+                    <option value="NEGOCIACAO_ESPECIAL" {% if request.GET.tipo == 'NEGOCIACAO_ESPECIAL' %}selected{% endif %}>Negoc. Especial</option>
+                    <option value="SAC" {% if request.GET.tipo == 'SAC' %}selected{% endif %}>SAC</option>
+                </select>
+            </div>
+
+            <div class="col-md">
                 <label class="small fw-bold text-muted">Vendedor</label>
                 <select name="vendedor" class="form-select form-select-sm">
                     <option value="">Todos</option>
@@ -37,7 +61,8 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-2">
+
+            <div class="col-md">
                 <label class="small fw-bold text-muted">Status</label>
                 <select name="status" class="form-select form-select-sm">
                     <option value="">Todos</option>
@@ -47,9 +72,23 @@
                     <option value="CONCLUIDO" {% if request.GET.status == 'CONCLUIDO' %}selected{% endif %}>Confirmado</option>
                 </select>
             </div>
-            <div class="col-md-2 d-flex align-items-end gap-2">
-                <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">FILTRAR</button>
-                <a href="{% url request.resolver_match.url_name %}" class="btn btn-link btn-sm text-muted text-decoration-none border-0 p-0 mb-1" style="font-size: 0.85rem;">Limpar</a>
+
+            <div class="col-md">
+                <label class="small fw-bold text-muted">Emissão</label>
+                <input type="date" name="data_solicitacao" class="form-control form-control-sm" value="{{ request.GET.data_solicitacao }}">
+            </div>
+
+            <div class="col-auto d-flex gap-1 pb-1">
+                <button type="submit" class="btn btn-dark btn-sm d-inline-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="Filtrar">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M1.5 1.5A.5.5 0 0 1 2 1h12a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.128.334L10 8.692V13.5a.5.5 0 0 1-.342.474l-3 1A.5.5 0 0 1 6 14.5V8.692L1.628 3.834A.5.5 0 0 1 1.5 3.5v-2z"/>
+                    </svg>
+                </button>
+                <a href="{% url request.resolver_match.url_name %}" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="Limpar Filtros">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M8.086 2.207a2 2 0 0 1 2.828 0l3.879 3.879a2 2 0 0 1 0 2.828l-5.5 5.5A2 2 0 0 1 7.879 15H5.12a2 2 0 0 1-1.414-.586l-2.5-2.5a2 2 0 0 1 0-2.828l6.879-6.879zm.66 11.34L3.453 8.254 1.914 9.793a1 1 0 0 0 0 1.414l2.5 2.5a1 1 0 0 0 .707.293H7.88a1 1 0 0 0 .707-.293l.16-.16z"/>
+                    </svg>
+                </a>
             </div>
         </form>
     </div>
@@ -63,7 +102,8 @@
                 <th onclick="sortTable(1)" style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 text-center">Tipo</th>
                 <th onclick="sortTable(2)" style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 text-center">Vendedor</th>
                 <th onclick="sortTable(3)" style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 text-center">Data</th>
-                <th onclick="sortTable(4)" style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 text-center">Status</th>
+                <th onclick="sortTable(4)" style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 text-center">Valor</th>
+                <th onclick="sortTable(5)" style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 text-center">Status</th>
                 <th style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 text-center">Ações</th>
             </tr>
         </thead>
@@ -71,7 +111,7 @@
             {% for b in bonificacoes %}
             <tr class="border-bottom">
                 <td class="px-3">
-                    <strong style="color: #5e4d26;">{{ b.cliente_razao_social }}</strong><br>
+                    <strong style="color: #5e4d26;">{{ b.cliente_nome_fantasia }}</strong><br>
                     <div class="d-flex align-items-center gap-2 mt-1">
                         <small class="text-muted">
                             {% if b.cliente_cpf_cnpj|length == 14 %}
@@ -82,12 +122,10 @@
                                 {{ b.cliente_codigo|default:"" }}
                             {% endif %}
                         </small>
-                        
-                        {% if "CHOPP" in b.itens.all.0.produto_descricao|upper %}
-                            <span class="badge bg-dark text-white" style="font-size: 0.65rem; padding: 2px 5px;">WRP</span>
-                        {% else %}
-                            <span class="badge border text-dark bg-light" style="font-size: 0.65rem; padding: 2px 5px;">CIEC</span>
-                        {% endif %}
+                        <span class="badge rounded-pill {% if b.plataforma == 'WRP' %}bg-primary{% elif b.plataforma == 'CIEC' %}bg-info{% else %}bg-secondary{% endif %}" 
+                            style="font-size: 0.65rem;">
+                            {{ b.plataforma|default:"N/A" }}
+                        </span>
                     </div>
                 </td>
                 <td class="text-center small">
@@ -95,6 +133,7 @@
                 </td>
                 <td class="text-center small">{{ b.vendedor.get_full_name|default:b.vendedor.username }}</td>
                 <td class="text-center small">{{ b.data_solicitacao|date:"d/m/Y H:i" }}</td>
+                <td class="text-center small">{{ b.get_total|floatformat:2 }}</td>
                 <td class="text-center">
                     {% if b.status == 'PENDENTE' %}
                         <span class="badge rounded-pill bg-warning text-dark px-3">Pendente</span>
@@ -112,7 +151,10 @@
                             <i class="bi bi-eye-fill fs-5"></i>
                         </button>
 
-                        {# REGRAS DE PERMISSÃO: NÃO VENDEDOR #}
+                        <a href="{% url 'gerar_pdf_bonificacao' b.id %}" target="_blank" class="btn btn-sm btn-outline-danger border-0" title="Gerar PDF">
+                            <i class="bi bi-file-earmark-pdf-fill fs-5"></i>
+                        </a>
+
                         {% if not request.user.groups.all.0.name == 'Vendedores' %}
                             {% if b.status == 'PENDENTE' %}
                                 <a href="{% url 'gerenciar_solicitacao' b.id 'aprovar' %}" class="btn btn-sm btn-outline-success border-0" title="Aprovar">
@@ -123,7 +165,6 @@
                                 </button>
                             {% endif %}
 
-                            {# BOTÃO EXCLUIR PARA QUEM NÃO É VENDEDOR E NÃO ESTÁ CONCLUÍDO #}
                             {% if b.status != 'CONCLUIDO' %}
                                 <button class="btn btn-sm btn-outline-dark border-0" data-bs-toggle="modal" data-bs-target="#modalExcluir{{ b.id }}" title="Excluir">
                                     <i class="bi bi-trash3-fill fs-5"></i>
@@ -142,55 +183,38 @@
                         <div class="modal-dialog modal-lg modal-dialog-centered">
                             <div class="modal-content border-0 shadow-lg text-start">
                                 <div class="modal-header text-white" style="background-color: #bca464;">
-                                    <h5 class="modal-title small fw-bold text-uppercase mt-1"><i class="bi bi-info-circle-fill me-2"></i>Detalhes da Bonificação</h5>
+                                    <h5 class="modal-title small fw-bold text-uppercase mt-1"><i class="bi bi-info-circle-fill me-2"></i>Detalhes da Bonificação #{{ b.id }}</h5>
                                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                 </div>
                                 <div class="modal-body p-4 text-dark">
                                     <div class="row mb-4 bg-light p-3 rounded mx-0 border">
-                                        <div class="col-md-6 border-end">
+                                        <div class="col-md-4 border-end">
                                             <h6 class="fw-bold text-uppercase small text-muted mb-3">Dados do Cliente</h6>
                                             <p class="mb-1 small"><strong>Razão Social:</strong> {{ b.cliente_razao_social }}</p>
-                                            <p class="mb-1 small"><strong>CPF/CNPJ:</strong> 
-                                                {% if b.cliente_cpf_cnpj|length == 14 %}
-                                                    {{ b.cliente_cpf_cnpj|slice:"0:2" }}.{{ b.cliente_cpf_cnpj|slice:"2:5" }}.{{ b.cliente_cpf_cnpj|slice:"5:8" }}/{{ b.cliente_cpf_cnpj|slice:"8:12" }}-{{ b.cliente_cpf_cnpj|slice:"12:14" }}
-                                                {% elif b.cliente_cpf_cnpj|length == 11 %}
-                                                    {{ b.cliente_cpf_cnpj|slice:"0:3" }}.{{ b.cliente_cpf_cnpj|slice:"3:6" }}.{{ b.cliente_cpf_cnpj|slice:"6:9" }}-{{ b.cliente_cpf_cnpj|slice:"9:11" }}
-                                                {% else %}
-                                                    {{ b.cliente_codigo|default:"" }}
-                                                {% endif %}
-                                            </p>
-                                            <p class="mb-1 small"><strong>Tipo:</strong> <span class="badge bg-dark text-white">{{ b.get_tipo_display }}</span></p>
+                                            <p class="mb-1 small"><strong>Nome Fantasia:</strong> {{ b.cliente_nome_fantasia }}</p>
+                                            <p class="mb-1 small"><strong>CPF/CNPJ:</strong> {{ b.cliente_cpf_cnpj }}</p>
+                                            <p class="mb-1 small"><strong>Código:</strong> {{ b.cliente_codigo }} / {{ b.cliente_loja }}</p>
                                         </div>
-                                        <div class="col-md-6 ps-md-4 text-start">
-                                            <h6 class="fw-bold text-uppercase small text-muted mb-3">Solicitação</h6>
+                                        <div class="col-md-4 border-end ps-md-4">
+                                            <h6 class="fw-bold text-uppercase small text-muted mb-3">Logística</h6>
+                                            <p class="mb-1 small"><strong>Plataforma:</strong> <span class="badge bg-dark">{{ b.plataforma }}</span></p>
+                                            <p class="mb-1 small"><strong>Método:</strong> {{ b.metodo_entrega }}</p>
+                                            <p class="mb-1 small"><strong>Previsão:</strong> {{ b.data_entrega_retirada|date:"d/m/Y"|default:"Não informada" }}</p>
+                                            <p class="mb-1 small"><strong>Tipo Bonif.:</strong> <span class="text-primary fw-bold">{{ b.get_tipo_display }}</span></p>
+                                        </div>
+                                        <div class="col-md-4 ps-md-4 text-start">
+                                            <h6 class="fw-bold text-uppercase small text-muted mb-3">Status e Aprovação</h6>
                                             <p class="mb-1 small"><strong>Vendedor:</strong> {{ b.vendedor.get_full_name|default:b.vendedor.username }}</p>
-                                            <p class="mb-1 small"><strong>Data Solicitação:</strong> {{ b.data_solicitacao|date:"d/m/Y H:i" }}</p>
                                             <p class="mb-1 small"><strong>Status:</strong> 
                                                 <span class="fw-bold {% if b.status == 'REPROVADO' %}text-danger{% elif b.status == 'APROVADO' or b.status == 'CONCLUIDO' %}text-success{% else %}text-warning{% endif %}">
                                                     {{ b.get_status_display }}
                                                 </span>
                                             </p>
-
-                                            {% if b.status != 'PENDENTE' %}
-                                                <div class="mt-2 pt-2 border-top">
-                                                    <p class="mb-1 small">
-                                                        <strong>{% if b.status == 'REPROVADO' %}Reprovado{% else %}Aprovado{% endif %} por:</strong> 
-                                                        {% if b.usuario_aprovador %}
-                                                            {{ b.usuario_aprovador.get_full_name|default:b.usuario_aprovador.username }}
-                                                        {% else %}
-                                                            <span class="text-muted italic">Sistema</span>
-                                                        {% endif %}
-                                                    </p>
-                                                    <p class="mb-1 small"><strong>Data:</strong> {{ b.data_aprovacao|date:"d/m/Y H:i"|default:"-" }}</p>
-                                                    
-                                                    {% if b.pedido_erp or b.pedido_protheus %}
-                                                        <p class="mb-1 small"><strong>Pedido ERP:</strong> <span class="badge bg-primary px-2">{{ b.pedido_erp|default:b.pedido_protheus }}</span></p>
-                                                    {% endif %}
-
-                                                    {% if b.status == 'REPROVADO' %}
-                                                        <p class="mb-1 small text-danger"><strong>Motivo:</strong> {{ b.motivo_reprovacao|default:b.observacao_reprovacao|default:"Não informado" }}</p>
-                                                    {% endif %}
-                                                </div>
+                                            {% if b.usuario_aprovador %}
+                                                <p class="mb-1 small"><strong>Aprovador:</strong> {{ b.usuario_aprovador.get_full_name }}</p>
+                                            {% endif %}
+                                            {% if b.pedido_protheus %}
+                                                <p class="mb-1 small"><strong>Pedido ERP:</strong> <span class="badge bg-primary">{{ b.pedido_protheus }}</span></p>
                                             {% endif %}
                                         </div>
                                     </div>
@@ -199,6 +223,11 @@
                                         <p class="mb-0 small text-secondary p-2 bg-light border rounded">
                                             <strong>Justificativa do Vendedor:</strong> {{ b.justificativa|default:"Sem observações." }}
                                         </p>
+                                        {% if b.observacao_reprovacao %}
+                                            <p class="mb-0 mt-2 small text-danger p-2 bg-light border border-danger rounded">
+                                                <strong>Motivo Reprovação:</strong> {{ b.observacao_reprovacao }}
+                                            </p>
+                                        {% endif %}
                                     </div>
 
                                     <h6 class="fw-bold mb-3" style="color: #bca464;"><i class="bi bi-box-seam me-2"></i>Produtos Solicitados</h6>
@@ -229,13 +258,15 @@
                                         </table>
                                     </div>
                                 </div>
-                                <div class="modal-footer bg-light border-0">
+                                <div class="modal-footer bg-light border-0 justify-content-between">
+                                    <a href="{% url 'gerar_pdf_bonificacao' b.id %}" target="_blank" class="btn btn-danger px-4 shadow-sm">
+                                        <i class="bi bi-file-earmark-pdf me-2"></i>GERAR PDF
+                                    </a>
                                     <button type="button" class="btn btn-secondary px-4 shadow-sm" data-bs-dismiss="modal">Fechar</button>
                                 </div>
                             </div>
                         </div>
                     </div>
-
                     {% if b.status == 'PENDENTE' %}
                     <div class="modal fade" id="modalReprovar{{ b.id }}" tabindex="-1">
                         <div class="modal-dialog modal-dialog-centered modal-sm">

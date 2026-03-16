@@ -6,12 +6,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-2m%w6zvng#t3qf2h6!68$&-va)esch1#y&wg3xf4n&^ljlnc+o'
 
-DEBUG = True  # Mude para True temporariamente
-ALLOWED_HOSTS = ['*'] # Aceite qualquer host para o teste
-
-#DEBUG = False
-
-#ALLOWED_HOSTS = ['app.lautbeer.com.br', '149.57.32.44', '127.0.0.1', 'localhost']
+DEBUG = True
+ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -115,14 +111,9 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = r'E:\applaut\staticfiles'
 
-# Onde os arquivos ficam durante o desenvolvimento
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
-
-# Onde o Django vai REUNIR todos os arquivos para a produção
-# É desta pasta que o sistema vai ler os arquivos no servidor
-# STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

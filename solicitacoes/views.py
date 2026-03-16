@@ -24,6 +24,7 @@ from django.db.models import Q
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.db import transaction, connections
+from xhtml2pdf import pisa
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,6 @@ def api_busca_clientes(request):
     termo = request.GET.get('q', '')
     
     vendedor_cod = request.user.perfil.codigo_vendedor
-    print(f">>> VENDEDOR NO DJANGO: '{vendedor_cod}'")
     
     if vendedor_cod:
         resultados = buscar_cliente_protheus_unificado(termo, vendedor_cod)
@@ -51,7 +51,6 @@ def buscar_produto_protheus_unificado(request):
         'protheus_wrp': ['SB1010']
     }
 
-    # Mudamos para LEFT JOIN para evitar que a falta de preço ou grupo esconda o produto
     query_template = """
         SELECT 
             SB1.B1_COD, 
@@ -85,7 +84,7 @@ def buscar_produto_protheus_unificado(request):
                     
                     for row in cursor.fetchall():
                         cod_limpo = row[0].strip()
-                        # Usamos o código como chave para não duplicar se o produto estiver em duas tabelas
+
                         if cod_limpo not in produtos_dict:
                             produtos_dict[cod_limpo] = {
                                 'codigo': cod_limpo,
@@ -94,60 +93,82 @@ def buscar_produto_protheus_unificado(request):
                                 'preco': float(row[3]) if row[3] is not None else 0.0
                             }
             except Exception as e:
-                print(f"Erro produtos {db} {tabela}: {e}")
                 continue
 
     return JsonResponse(list(produtos_dict.values()), safe=False)
 
+import os
+import base64
+import logging
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+
+# Configuração básica de log para ver erros no terminal do VS Code/PyCharm
+logger = logging.getLogger(__name__)
+
 @login_required
 def buscar_boleto(request):
     lista_boletos = []
-    # Pegamos o número e garantimos que não há espaços
     numero_nota = request.POST.get('numero_nota', '').strip()
     abrir_modal = False
 
     if request.method == 'POST' and numero_nota:
-        # IMPORTANTE: Caminho UNC sem a barra invertida sobrando no final
+        # Usando r'' para strings brutas (raw) e garantindo as barras invertidas do Windows
         caminho_base = r'\\SRV-FILESERVER\Faturamento\DOCUMENTOS FISCAIS\2026'
         
+        # 1. Validação de Acesso ao Servidor
+        if not os.path.exists(caminho_base):
+            logger.error(f"ERRO DE ACESSO: O caminho {caminho_base} não foi encontrado ou está inacessível.")
+            return render(request, 'solicitacoes/boletos.html', {
+                'mensagem': 'O servidor de arquivos (2026) está inacessível. Verifique a rede ou permissões.',
+                'tipo_mensagem': 'erro',
+                'numero_nota': numero_nota
+            })
+
         try:
-            # Forçamos a listagem para debugar se necessário
+            # 2. Busca Recursiva
             for raiz, _, arquivos in os.walk(caminho_base):
                 for nome_arquivo in arquivos:
-                    # Padronizamos para busca (Maiúsculo e sem extensão para o 'in')
                     nome_comparar = nome_arquivo.upper()
                     termo_comparar = numero_nota.upper()
 
+                    # Verifica se o número está no nome e se é um PDF (independente de ser .pdf ou .PDF)
                     if termo_comparar in nome_comparar and nome_comparar.endswith('.PDF'):
                         caminho_completo = os.path.join(raiz, nome_arquivo)
-                        
-                        # Debug no console do VS Code para confirmar que achou
-                        print(f"✅ Arquivo encontrado: {nome_arquivo}")
 
-                        caminho_encoded = base64.urlsafe_b64encode(caminho_completo.encode()).decode()
-                        
-                        lista_boletos.append({
-                            'nome': nome_arquivo,
-                            'caminho': caminho_encoded,
-                            'data': os.path.getmtime(caminho_completo)
-                        })
+                        try:
+                            # Encode do caminho para usar na URL de download/visualização
+                            caminho_encoded = base64.urlsafe_b64encode(caminho_completo.encode()).decode()
+                            
+                            lista_boletos.append({
+                                'nome': nome_arquivo,
+                                'caminho': caminho_encoded,
+                                'data': os.path.getmtime(caminho_completo)
+                            })
+                        except Exception as e:
+                            logger.warning(f"Não foi possível ler metadados do arquivo {nome_arquivo}: {e}")
+                            continue
             
-            # Ordenação por data (mais recentes primeiro)
+            # Ordenar por data de modificação (mais recentes primeiro)
             lista_boletos.sort(key=lambda x: x['data'], reverse=True)
             abrir_modal = True if lista_boletos else False
 
         except Exception as e:
-            print(f"❌ Erro ao acessar diretório: {e}")
-            return render(request, 'solicitacoes/boletos.html', {'mensagem': 'Erro de conexão com o servidor de arquivos.', 'tipo_mensagem': 'erro'})
+            logger.exception("Erro grave durante a busca de arquivos:")
+            return render(request, 'solicitacoes/boletos.html', {
+                'mensagem': f'Erro interno ao processar arquivos: {str(e)}', 
+                'tipo_mensagem': 'erro'
+            })
 
-    # Se após o loop a lista continuar vazia
+    # 3. Tratamento de "Não Encontrado"
     if request.method == 'POST' and not lista_boletos:
         return render(request, 'solicitacoes/boletos.html', {
-            'mensagem': f'Boleto da nota {numero_nota} não encontrado na pasta 2026.',
+            'mensagem': f'Boleto da nota "{numero_nota}" não encontrado na pasta 2026.',
             'tipo_mensagem': 'erro',
             'numero_nota': numero_nota
         })
 
+    # 4. Retorno Sucesso ou GET inicial
     return render(request, 'solicitacoes/boletos.html', {
         'lista_boletos': lista_boletos,
         'numero_nota': numero_nota,
@@ -306,8 +327,13 @@ def bonificacao_list(request):
     tipo = request.GET.get('tipo')
     vendedor_id = request.GET.get('vendedor')
     status = request.GET.get('status')
+    plataforma_filtro = request.GET.get('plataforma')
+    data_param = request.GET.get('data_solicitacao')
 
     bonificacoes = Bonificacao.objects.all().order_by('-data_solicitacao')
+
+    if plataforma_filtro:
+        bonificacoes = bonificacoes.filter(plataforma=plataforma_filtro)
     
     eh_vendedor = request.user.groups.filter(name='Vendedores').exists()
 
@@ -340,6 +366,9 @@ def bonificacao_list(request):
     if status:
         bonificacoes = bonificacoes.filter(status=status)
 
+    if data_param:
+        bonificacoes = bonificacoes.filter(data_solicitacao__date=data_param)
+
     context = {
         'bonificacoes': bonificacoes,
         'usuarios': usuarios,
@@ -356,8 +385,11 @@ def enviar_emails_bonificacao(bonificacao, request):
         destinatario = 'wellington@lautbeer.com.br'
         assunto = f"BONIFICAÇÃO PENDENTE DE APROVAÇÃO - {bonificacao.cliente_razao_social}"
         template_name = 'solicitacoes/bonificacao_email_aprovacao.html'
+    elif bonificacao.tipo == 'SAC' and bonificacao.status == 'PENDENTE':
+        destinatario = 'admcomercial@lautbeer.com.br'
+        assunto = f"BONIFICAÇÃO SAC PENDENTE - {bonificacao.cliente_razao_social}"
+        template_name = 'solicitacoes/bonificacao_email_aprovacao.html'
     
-    # 2. Fluxo padrão para solicitações APROVADAS ou outros tipos
     else:
         tem_chopp = bonificacao.itens.filter(produto_descricao__icontains='CHOPP').exists()
         template_name = 'solicitacoes/bonificacao_email.html'
@@ -369,7 +401,6 @@ def enviar_emails_bonificacao(bonificacao, request):
             destinatario = 'admcomercial@lautbeer.com.br'
             assunto = f"NOVO PEDIDO DE BONIFICAÇÃO- {bonificacao.cliente_razao_social}"
 
-    # 3. Preparação do conteúdo
     total_geral = sum(item.valor_total for item in bonificacao.itens.all())
 
     contexto = {
@@ -381,7 +412,6 @@ def enviar_emails_bonificacao(bonificacao, request):
     html_content = render_to_string(template_name, contexto)
     text_content = strip_tags(html_content)
 
-    # 4. Envio
     email = EmailMultiAlternatives(
         subject=assunto,
         body=text_content,
@@ -392,15 +422,13 @@ def enviar_emails_bonificacao(bonificacao, request):
     email.send()
 
 def validar_limite_por_cliente(vendedor, cliente_cnpj, valor_nova_solicitacao):
-    # 1. Busca a verba do vendedor
     try:
         verba = VerbaMensal.objects.get(vendedor=vendedor)
     except VerbaMensal.DoesNotExist:
-        return # Se não tem verba configurada, ignora ou trava conforme sua regra
+        return
 
     limite_valor = verba.limite_por_cliente
 
-    # 2. Soma quanto o vendedor já deu de bonificação para ESSE cliente no mês atual
     mes_atual = date.today().month
     ano_atual = date.today().year
     
@@ -409,10 +437,9 @@ def validar_limite_por_cliente(vendedor, cliente_cnpj, valor_nova_solicitacao):
         cliente_cpf_cnpj=cliente_cnpj,
         data_solicitacao__month=mes_atual,
         data_solicitacao__year=ano_atual,
-        status__in=['APROVADO', 'PENDENTE'] # Considera o que já saiu ou está na fila
+        status__in=['APROVADO', 'PENDENTE']
     ).aggregate(total=Sum('itens__valor_total'))['total'] or 0
 
-    # 3. Verifica se a soma ultrapassa o percentual
     if (total_ja_concedido + valor_nova_solicitacao) > limite_valor:
         percentual = verba.percentual_limite_por_cliente
         raise ValidationError(
@@ -423,7 +450,6 @@ def validar_limite_por_cliente(vendedor, cliente_cnpj, valor_nova_solicitacao):
 @login_required
 def criar_bonificacao(request):
     if request.method == 'POST':
-        # 1. Captura de dados básicos
         tipo = request.POST.get('tipo')
         hoje = timezone.now()
         hoje_date = hoje.date()
@@ -440,8 +466,7 @@ def criar_bonificacao(request):
         itens_dados = []
         total_solicitacao = 0
         total_qtd_solicitacao = 0
-        
-        # 2. Captura dinâmica de itens
+
         for key, value in request.POST.items():
             if key.startswith('item_nome_'):
                 index = key.split('_')[-1]
@@ -465,10 +490,15 @@ def criar_bonificacao(request):
                 except ValueError:
                     continue
 
-        status_final = 'PENDENTE' # Status padrão
+        status_final = 'PENDENTE'
+        
+        if tipo == 'SAC':
+            status_final = 'PENDENTE'
 
-        # --- REGRA: ACORDO COMERCIAL ---
-        if tipo == 'ACORDO_COMERCIAL':
+        elif tipo == 'NEGOCIACAO_ESPECIAL':
+            status_final = 'PENDENTE'
+
+        elif tipo == 'ACORDO_COMERCIAL':
             acordo = AcordoComercial.objects.filter(
                 cliente_codigo=cliente_cod,
                 cliente_loja=cliente_loja,
@@ -480,11 +510,8 @@ def criar_bonificacao(request):
                 status_final = 'PENDENTE'
                 messages.warning(request, "Nenhum acordo vigente encontrado para este cliente. A solicitação seguirá para aprovação manual.")
             else:
-                # Calcular saldo consumido no Protheus (conforme lógica de instâncias ajustada anteriormente)
-                # Aqui simplificamos chamando uma lógica de soma nas tabelas SD2 (Ciec 010/020 e WRP)
                 realizado_protheus = calcular_realizado_protheus(cliente_cod, cliente_loja, acordo.vigencia_inicio, acordo.vigencia_fim)
                 
-                # Somar o que já foi solicitado localmente no Django para este acordo (evitar furo de saldo antes de virar NF)
                 reservado_local = BonificacaoItem.objects.filter(
                     bonificacao__cliente_codigo=cliente_cod,
                     bonificacao__tipo='ACORDO_COMERCIAL',
@@ -512,40 +539,53 @@ def criar_bonificacao(request):
                     messages.error(request, f"Saldo insuficiente no acordo! Disponível: {unidade} {disponivel:,.2f}. Solicitado: {unidade} {solicitado:,.2f}")
                     return render(request, 'solicitacoes/bonificacao_form.html', {'dados': request.POST})
 
-        # --- REGRA: VERBA VENDEDOR ---
+        
         elif tipo == 'VERBA_VENDEDOR':
-            verba_configurada = VerbaMensal.objects.filter(vendedor=request.user, mes_referencia=hoje.month, ano_referencia=hoje.year).first()
+            # Garante que estamos pegando a verba EXATA do mês e ano corrente
+            verba_configurada = VerbaMensal.objects.filter(
+                vendedor=request.user, 
+                mes_referencia=hoje.month, 
+                ano_referencia=hoje.year
+            ).first()
+
             if not verba_configurada:
-                messages.error(request, f"Sem verba cadastrada para {hoje.month}/{hoje.year}.")
+                messages.error(request, f"Não existe verba cadastrada para o período {hoje.month}/{hoje.year}.")
                 return render(request, 'solicitacoes/bonificacao_form.html', {'dados': request.POST})
 
-            percentual_limite = getattr(verba_configurada, 'percentual_limite_por_cliente', 100)
-            limite_valor_cliente = (float(verba_configurada.valor) * float(percentual_limite)) / 100
+            # 1. Validação de Limite por Cliente (Consumo mensal por CNPJ)
+            limite_valor_cliente = float(verba_configurada.limite_por_cliente) # Use o campo calculado do model se existir
             
             ja_gasto_cliente = Bonificacao.objects.filter(
-                vendedor=request.user, cliente_cpf_cnpj=cliente_cnpj,
-                data_solicitacao__month=hoje.month, data_solicitacao__year=hoje.year,
+                vendedor=request.user, 
+                cliente_cpf_cnpj=cliente_cnpj,
+                data_solicitacao__month=hoje.month, 
+                data_solicitacao__year=hoje.year,
+                # Importante: Incluir PENDENTES para não furar o teto
                 status__in=['APROVADO', 'PENDENTE', 'CONCLUIDO']
             ).aggregate(total=Sum('itens__valor_total'))['total'] or 0
 
             if (float(ja_gasto_cliente) + total_solicitacao) > limite_valor_cliente:
-                messages.error(request, f"Limite por cliente excedido! Disponível: R$ {limite_valor_cliente - float(ja_gasto_cliente):,.2f}")
+                messages.error(request, f"Limite por cliente excedido! O máximo para este cliente é R$ {limite_valor_cliente:,.2f}")
                 return render(request, 'solicitacoes/bonificacao_form.html', {'dados': request.POST})
 
+            # 2. Validação do Saldo Global do Vendedor (Consumo total do mês)
+            # Aqui é onde o erro do mês passado geralmente acontece:
             gastos_totais_mes = Bonificacao.objects.filter(
-                vendedor=request.user, tipo='VERBA_VENDEDOR',
-                data_solicitacao__month=hoje.month, data_solicitacao__year=hoje.year,
-                status__in=['APROVADO', 'CONCLUIDO']
+                vendedor=request.user, 
+                tipo='VERBA_VENDEDOR',
+                data_solicitacao__month=hoje.month, # Filtro estrito de mês
+                data_solicitacao__year=hoje.year,   # Filtro estrito de ano
+                status__in=['APROVADO', 'PENDENTE', 'CONCLUIDO'] # Considere pendentes!
             ).aggregate(total=Sum('itens__valor_total'))['total'] or 0
 
             saldo_disponivel = float(verba_configurada.valor) - float(gastos_totais_mes)
+            
             if total_solicitacao > saldo_disponivel:
-                messages.error(request, f"Saldo Insuficiente! Disponível Global: R$ {saldo_disponivel:,.2f}")
+                messages.error(request, f"Saldo Insuficiente para o mês {hoje.month}/{hoje.year}! Disponível: R$ {saldo_disponivel:,.2f}")
                 return render(request, 'solicitacoes/bonificacao_form.html', {'dados': request.POST})
             
             status_final = 'APROVADO'
 
-        # 4. Gravação em Banco de Dados
         try:
             with transaction.atomic():
                 nova_bonif = Bonificacao.objects.create(
@@ -558,7 +598,11 @@ def criar_bonificacao(request):
                     cliente_cpf_cnpj=cliente_cnpj,
                     cliente_grupo=request.POST.get('cliente_grupo', ''),
                     justificativa=request.POST.get('justificativa', ''),
-                    status=status_final
+                    status=status_final,
+                    plataforma=request.POST.get('plataforma'),
+                    metodo_entrega=request.POST.get('metodo_entrega'),
+                    data_entrega_retirada=request.POST.get('data_entrega_retirada') or None,
+                    foto_sac=request.FILES.get('foto_sac')
                 )
 
                 for item in itens_dados:
@@ -571,11 +615,15 @@ def criar_bonificacao(request):
                         valor_total=item['total']
                     )
 
-            # 5. Envio de e-mail (ajustado para tratar o novo destinatário se PENDENTE de Acordo)
             try:
                 enviar_emails_bonificacao(nova_bonif, request)
-                if status_final == 'PENDENTE' and tipo == 'ACORDO_COMERCIAL':
-                    messages.info(request, "E-mail de solicitação enviado para a equipe de aprovação de acordos.")
+                if status_final == 'PENDENTE':
+                    if tipo == 'SAC':
+                        messages.info(request, "Solicitação de SAC enviada para aprovação.")
+                    elif tipo == 'ACORDO_COMERCIAL':
+                        messages.info(request, "E-mail de solicitação enviado para a equipe de aprovação de acordos.")
+                    elif tipo == 'NEGOCIACAO_ESPECIAL':
+                        messages.info(request, "E-mail de solicitação enviado para aprovação.")
             except Exception as email_err:
                 messages.warning(request, "Gravado, mas houve erro no envio do e-mail.")
 
@@ -588,7 +636,6 @@ def criar_bonificacao(request):
     return render(request, 'solicitacoes/bonificacao_form.html')
 
 def calcular_realizado_protheus(cliente, loja, inicio, fim):
-    """ Função auxiliar para somar realizados nas duas instâncias """
     bases = {'protheus_ciec': ['SD2010', 'SD2020'], 'protheus_wrp': ['SD2010']}
     total_valor = 0.0
     total_qtd = 0.0
@@ -597,7 +644,7 @@ def calcular_realizado_protheus(cliente, loja, inicio, fim):
     for db, tabelas in bases.items():
         for tab in tabelas:
             emp = tab[-3:]
-            query = f"SELECT SUM(D2_TOTAL), SUM(D2_QUANT) FROM {tab} AS SD2 INNER JOIN SF4{emp} AS SF4 ON SF4.F4_CODIGO = SD2.D2_TES WHERE SD2.D_E_L_E_T_ <> '*' AND D2_CLIENTE = %s AND D2_LOJA = %s AND D2_EMISSAO BETWEEN %s AND %s AND SF4.F4_BONIF = 'S'"
+            query = f"SELECT SUM(D2_TOTAL), SUM(D2_QUANT) FROM {tab} AS SD2 INNER JOIN SF4{emp} AS SF4 ON SF4.F4_FILIAL = SD2.D2_FILIAL AND SF4.F4_CODIGO = SD2.D2_TES AND SF4.D_E_L_E_T_ <> '*' INNER JOIN SC5{emp} AS SC5 ON SC5.C5_FILIAL = SD2.D2_FILIAL AND SC5.C5_NUM = SD2.D2_PEDIDO AND SC5.D_E_L_E_T_ <> '*' WHERE SD2.D_E_L_E_T_ <> '*' AND D2_CLIENTE = %s AND D2_LOJA = %s AND  D2_EMISSAO BETWEEN %s AND %s AND SF4.F4_BONIF = 'S' AND SC5.C5_ZTPBONI = '1'"
             with connections[db].cursor() as cursor:
                 cursor.execute(query, [cliente, loja, d1, d2])
                 res = cursor.fetchone()
@@ -627,8 +674,8 @@ def gerenciar_solicitacao(request, pk, acao):
         if motivo:
             solicitacao.status = 'REPROVADO'
             solicitacao.observacao_reprovacao = motivo
-            solicitacao.usuario_aprovador = request.user # Grava quem reprovou
-            solicitacao.data_aprovacao = timezone.now()  # Grava quando reprovou
+            solicitacao.usuario_aprovador = request.user
+            solicitacao.data_aprovacao = timezone.now()
             solicitacao.save()
             messages.success(request, f"Solicitação {pk} reprovada.")
         else:
@@ -638,7 +685,7 @@ def gerenciar_solicitacao(request, pk, acao):
         numero_pedido = request.POST.get('pedido_erp')
         if numero_pedido:
             solicitacao.pedido_protheus = numero_pedido
-            solicitacao.status = 'CONCLUIDO'  # Status final
+            solicitacao.status = 'CONCLUIDO'
             solicitacao.save()
             messages.success(request, f"Pedido {numero_pedido} confirmado com sucesso!")
         else:
@@ -649,12 +696,9 @@ def gerenciar_solicitacao(request, pk, acao):
 def confirmar_plantao(request, pk):
     if request.method == 'POST':
         plantao = get_object_or_404(Plantao, pk=pk)
-        
-        # Altera o status para Confirmado
-        # Certifique-se que 'CONFIRMADO' é o valor definido no choices do seu Model
+    
         plantao.status = 'CONFIRMADO' 
         
-        # Aqui você poderá adicionar disparos de e-mail, logs ou integração com Protheus
         plantao.save()
         
         messages.success(request, f"Plantão de {plantao.nome_cliente} confirmado com sucesso!")
@@ -670,3 +714,24 @@ def excluir_bonificacao(request, pk):
     else:
         messages.error(request, "Não é permitido excluir esta solicitação.")
     return redirect('bonificacao_list')
+
+@login_required
+def gerar_pdf_bonificacao(request, pk):
+    bonificacao = get_object_or_404(Bonificacao, pk=pk)
+    
+    context = {
+        'b': bonificacao,
+        'data': timezone.now(),
+    }
+    
+    html = render_to_string('solicitacoes/bonificacao_pdf.html', context)
+    
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="bonificacao_{pk}.pdf"'
+    
+    pisa_status = pisa.CreatePDF(html, dest=response)
+    
+    if pisa_status.err:
+        return HttpResponse('Erro ao gerar PDF', status=500)
+    
+    return response

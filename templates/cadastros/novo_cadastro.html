@@ -399,7 +399,6 @@
 
 <script src="https://unpkg.com/imask"></script>
 <script>
-    // Inicialização de Máscaras
     const masks = {
     cgc: IMask(document.getElementById('id_cgc'), { 
         mask: '{% if cadastro.tipo_cliente == "PF" %}000.000.000-00{% else %}00.000.000/0000-00{% endif %}' 
@@ -413,7 +412,6 @@
     tel: IMask(document.getElementById('id_telefone'), { mask: '(00) 00000-0000' })
     };
 
-    // Controle de Loader no Submit
     document.getElementById('formCadastro').onsubmit = function() {
         const btn = document.getElementById('btnFinalizar');
         const text = document.getElementById('btnTextFinalizar');
