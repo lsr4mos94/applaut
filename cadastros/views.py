@@ -1,20 +1,25 @@
 import os
-from datetime import datetime
-from django.shortcuts import render, redirect, get_object_or_404
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.http import JsonResponse
 from django.core.mail import EmailMessage
+from django.core.paginator import Paginator
+from django.http import JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import render_to_string
-from usuarios.models import Perfil
-from .models import VerbaMensal, AcordoComercial, AcordoItem, Cadastro, AnexoCadastro
-from django.conf import settings
 from django.utils import timezone
-from django.db.models import Q
 from django.db import connections
-from django.db.models import Sum
-from solicitacoes.models import Bonificacao, BonificacaoItem 
+from django.db.models import Q, Sum
+from usuarios.models import Perfil
+from solicitacoes.models import Bonificacao, BonificacaoItem
+from .models import (
+    VerbaMensal, 
+    AcordoComercial, 
+    AcordoItem, 
+    Cadastro, 
+    AnexoCadastro
+)
 
 @login_required
 def verbas_mensais(request):
@@ -26,18 +31,34 @@ def verbas_mensais(request):
     else:
         verbas = VerbaMensal.objects.all().order_by('-data_criacao')
     
+    busca = request.GET.get('busca')
     mes = request.GET.get('mes')
-    vendedor_id = request.GET.get('vendedor')
+    ano = request.GET.get('ano')
+
+    if busca:
+        if busca.isdigit():
+            verbas = verbas.filter(
+                Q(id=busca) | 
+                Q(vendedor__perfil__codigo_vendedor__icontains=busca)
+            )
+        else:
+            verbas = verbas.filter(
+                Q(vendedor__first_name__icontains=busca) | 
+                Q(vendedor__last_name__icontains=busca)
+            )
 
     if mes:
         verbas = verbas.filter(mes_referencia=mes)
-    
-    if vendedor_id:
-        verbas = verbas.filter(vendedor_id=vendedor_id)
+    if ano:
+        verbas = verbas.filter(ano_referencia=ano)
+
+    paginator = Paginator(verbas, 10)
+    page_number = request.GET.get('page')
+    verbas_paginadas = paginator.get_page(page_number)
 
     context = {
-        'verbas': verbas,
-        'vendedores': vendedores, # Agora garantido que existe
+        'verbas': verbas_paginadas,
+        'vendedores': vendedores,
         'meses': VerbaMensal.MESES_CHOICES
     }
     return render(request, 'cadastros/verbas.html', context)
@@ -109,21 +130,26 @@ def acordos_comerciais(request):
     data_fim = request.GET.get('data_fim')
     tipo_acordo = request.GET.get('tipo_acordo')
 
-    acordos = AcordoComercial.objects.all()
+    acordos_list = AcordoComercial.objects.all()
 
     if busca:
-        acordos = acordos.filter(
+        acordos_list = acordos_list.filter(
+            Q(id=busca) |
             Q(cliente_nome__icontains=busca) |
             Q(cliente_codigo__icontains=busca)
         )
 
     if data_fim:
-        acordos = acordos.filter(vigencia_fim__lte=data_fim)
+        acordos_list = acordos_list.filter(vigencia_fim__lte=data_fim)
 
     if tipo_acordo:
-        acordos = acordos.filter(tipo_acordo=tipo_acordo)
+        acordos_list = acordos_list.filter(tipo_acordo=tipo_acordo)
 
-    acordos = acordos.order_by('-data_acordo')
+    acordos_list = acordos_list.order_by('-data_acordo')
+
+    paginator = Paginator(acordos_list, 10) 
+    page_number = request.GET.get('page')
+    acordos = paginator.get_page(page_number)
     
     return render(request, 'cadastros/acordos.html', {'acordos': acordos})
 
@@ -180,18 +206,24 @@ def lista_cadastros(request):
     status_filtro = request.GET.get('status')
 
     if request.user.is_superuser:
-        cadastros = Cadastro.objects.all()
+        cadastros_list = Cadastro.objects.all().order_by('-data_cadastro')
     else:
-        cadastros = Cadastro.objects.filter(vendedor=request.user)
+        cadastros_list = Cadastro.objects.filter(vendedor=request.user).order_by('-data_cadastro')
 
     if busca:
-        cadastros = cadastros.filter(razao_social__icontains=busca) | cadastros.filter(cgc__icontains=busca)
+        cadastros_list = cadastros_list.filter(razao_social__icontains=busca) | cadastros_list.filter(cgc__icontains=busca)
     if data_filtro:
-        cadastros = cadastros.filter(data_cadastro__date=data_filtro)
+        cadastros_list = cadastros_list.filter(data_cadastro__date=data_filtro)
     if vendedor_id:
-        cadastros = cadastros.filter(vendedor_id=vendedor_id)
+        cadastros_list = cadastros_list.filter(vendedor_id=vendedor_id)
     if status_filtro:
-        cadastros = cadastros.filter(situacao=status_filtro)
+        cadastros_list = cadastros_list.filter(situacao=status_filtro)
+
+    items_por_pagina = 10
+    paginator = Paginator(cadastros_list, items_por_pagina)
+    
+    page_number = request.GET.get('page')
+    cadastros = paginator.get_page(page_number)
 
     usuarios = User.objects.filter(is_active=True).order_by('first_name')
 

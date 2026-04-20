@@ -1,15 +1,16 @@
 {% extends 'base.html' %}
 
 {% block content %}
+
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 style="color: #bca464; font-weight: 600;">Verbas Mensais</h3>
-    <button class="btn text-white shadow-sm" style="background-color: #bca464;" data-bs-toggle="modal" data-bs-target="#modalVerba">
+    <h3 class="text-gold-title mb-0">Verbas Mensais</h3>
+    <button class="btn btn-gold-action px-4 py-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalVerba">
         <i class="bi bi-plus-circle"></i><strong> Nova Verba</strong>
     </button>
 </div>
 
 <div class="card border-0 shadow-sm mb-4">
-    <div class="card-body bg-light rounded">
+    <div class="card-body card-filter">
         <form method="GET" class="row g-3 align-items-end">
             <div class="col-md-5">
                 <label class="small fw-bold text-muted">Vendedor</label>
@@ -43,49 +44,53 @@
     </div>
 </div>
 
-<div class="table-responsive shadow-sm rounded">
-    <table class="table table-hover align-middle mb-0 bg-white">
-        <thead>
-            <tr>
-                <th style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 px-3">Cód.</th>
-                <th style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3">Vendedor</th>
-                <th style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 text-center">Referência</th>
-                <th style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 text-center">Valor Total</th>
-                <th style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 text-center">Limite/Cli (%)</th>
-                <th style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 text-center">Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for verba in verbas %}
-            <tr class="border-bottom">
-                <td class="fw-bold text-muted px-3">#{{ verba.vendedor.perfil.codigo_vendedor }}</td>
-                <td class="fw-bold" style="color: #5e4d26;">{{ verba.vendedor.get_full_name }}</td>
-                <td class="text-center">{{ verba.get_mes_referencia_display }} / {{ verba.ano_referencia }}</td>
-                <td class="fw-bold text-success text-center">R$ {{ verba.valor|floatformat:2 }}</td>
-                <td class="text-center">
-                    <span class="badge bg-light text-dark border">{{ verba.percentual_limite_por_cliente }}%</span>
-                </td>
-                <td class="text-center">
-                    <button class="btn btn-sm btn-outline-dark border-0" onclick="abrirAcompanhamentoVerba('{{ verba.id }}', '{{ verba.vendedor.get_full_name }}')" title="Ver Utilização">
-                        <i class="bi bi-bar-chart-line-fill fs-5"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-secondary border-0 me-1" data-bs-toggle="modal" data-bs-target="#modalEditar{{ verba.id }}">
-                        <i class="bi bi-pencil-square"></i>
-                    </button>
-                    {% if verba.tem_movimentacao %}
-                        <button class="btn btn-sm btn-outline-secondary border-0 opacity-25" title="Bloqueado" disabled>
-                            <i class="bi bi-trash3"></i>
-                        </button>
-                    {% else %}
-                        <button class="btn btn-sm btn-outline-danger border-0" data-bs-toggle="modal" data-bs-target="#modalExcluir{{ verba.id }}">
-                            <i class="bi bi-trash3"></i>
-                        </button>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="card border-0 shadow-sm overflow-hidden">
+    <div class="table-responsive">
+        <table id="tabelaVerbas" class="table table-applaut w-100 mb-0">
+            <thead>
+                <tr>
+                    <th class="ps-3">VENDEDOR</th>
+                    <th class="text-center">REFERÊNCIA</th>
+                    <th class="text-center">VALOR TOTAL</th>
+                    <th class="text-center">LIMITE/CLI (%)</th>
+                    <th class="text-center">AÇÕES</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for verba in verbas %}
+                <tr>
+                    <td class="ps-3">
+                        <strong style="color: #5e4d26;">#{{ verba.vendedor.perfil.codigo_vendedor }} {{ verba.vendedor.get_full_name }}</strong>
+                    </td>
+                    <td class="text-center">{{ verba.get_mes_referencia_display }} / {{ verba.ano_referencia }}</td>
+                    <td class="fw-bold text-success text-center">R$ {{ verba.valor|floatformat:2 }}</td>
+                    <td class="text-center">
+                        <span class="badge bg-light text-dark border">{{ verba.percentual_limite_por_cliente }}%</span>
+                    </td>
+                    <td class="text-center">
+                        <div class="d-flex justify-content-center gap-1">
+                            <button type="button" class="btn-square-action btn-track" title="Acompanhamento" onclick="abrirAcompanhamentoVerba('{{ verba.id }}', '{{ verba.vendedor.get_full_name }}')">
+                                <i class="bi bi-bar-chart-line-fill"></i>
+                            </button>
+                            <button type="button" class="btn-square-action btn-edit" title="Editar" data-bs-toggle="modal" data-bs-target="#modalEditar{{ verba.id }}">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            {% if not verba.tem_movimentacao %}
+                            <button type="button" class="btn-square-action btn-delete" title="Excluir" data-bs-toggle="modal" data-bs-target="#modalExcluir{{ verba.id }}">
+                                <i class="bi bi-trash3-fill"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-4 text-muted">Nenhuma verba cadastrada para os filtros selecionados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 {% for verba in verbas %}
@@ -127,6 +132,30 @@
                     <button type="submit" class="btn btn-sm px-4 text-white shadow-sm fw-bold" style="background-color: #bca464;">Salvar</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% for verba in verbas %}
+<div class="modal fade" id="modalExcluir{{ verba.id }}" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0 bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle"></i> Excluir Verba</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center p-4">
+                <p class="mb-0">Deseja realmente excluir a verba de <strong>{{ verba.vendedor.get_full_name }}</strong>?</p>
+                <small class="text-muted">Referência: {{ verba.get_mes_referencia_display }}/{{ verba.ano_referencia }}</small>
+            </div>
+            <div class="modal-footer border-0 bg-light d-flex justify-content-center">
+                <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none" data-bs-dismiss="modal">Não</button>
+                <form action="{% url 'excluir_verba' verba.id %}" method="POST" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-danger px-4 shadow-sm fw-bold">Sim, Excluir</button>
+                </form>
+            </div>
         </div>
     </div>
 </div>
@@ -225,7 +254,52 @@
     </div>
 </div>
 
+    {% if verbas.has_other_pages %}
+    <nav class="mt-4 mb-4">
+        <ul class="pagination justify-content-center">
+            {% if verbas.has_previous %}
+                <li class="page-item">
+                    <a class="page-link text-dark" href="?page={{ verbas.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">&laquo; Anterior</a>
+                </li>
+            {% endif %}
+
+            {% for i in verbas.paginator.page_range %}
+                {% if verbas.number == i %}
+                    <li class="page-item active"><span class="page-link" style="background-color: #bca464; border-color: #bca464;">{{ i }}</span></li>
+                {% elif i > verbas.number|add:'-3' and i < verbas.number|add:'3' %}
+                    <li class="page-item"><a class="page-link text-dark" href="?page={{ i }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ i }}</a></li>
+                {% endif %}
+            {% endfor %}
+
+            {% if verbas.has_next %}
+                <li class="page-item">
+                    <a class="page-link text-dark" href="?page={{ verbas.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Próxima &raquo;</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+
 <script>
+$(document).ready(function() {
+    $('#tabelaVerbas').DataTable({
+        "dom": 't',
+        "paging": false,
+        "ordering": true,
+        "order": [],
+        "info": false,
+        "searching": false,
+        "autoWidth": false,
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.13.4/i18n/pt-BR.json"
+        }
+    });
+});
+
     function abrirAcompanhamentoVerba(verbaId, nomeVendedor) {
         const corpo = document.getElementById('v_corpo_tabela');
         const barra = document.getElementById('v_barra_progresso');

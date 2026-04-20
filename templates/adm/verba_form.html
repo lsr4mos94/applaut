@@ -1,0 +1,272 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<style>
+    .section-title { color: #bca464; font-weight: 600; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 1px; }
+    .form-label-custom { font-size: 0.75rem; font-weight: 700; color: #6c757d; text-transform: uppercase; margin-bottom: 5px; }
+    .box-selecao { background-color: #fcfbf7; border: 1px solid #f1ece0; }
+    .bg-busca { background-color: #fcfbf7; border: 1px solid #bca464 !important; }
+    
+    .form-control:focus, .form-select:focus { border-color: #bca464; box-shadow: 0 0 0 0.2rem rgba(188, 164, 100, 0.15); }
+    .form-check-input:checked { background-color: #bca464 !important; border-color: #bca464 !important; }
+</style>
+
+<div class="mb-4">
+    <h3 style="color: #bca464; font-weight: 600;">{{ titulo|default:"Nova Solicitação de Verba" }}</h3>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+        <form method="POST" id="formVerba" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <div class="mb-3 p-3 rounded box-selecao">
+                <label class="form-label-custom d-block mb-3">1. Origem do Fornecedor</label>
+                <div class="d-flex gap-5 flex-wrap">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="tipo_fornecedor" id="t_existente" value="EXISTENTE" 
+                            {% if not solicitacao or solicitacao.tipo_fornecedor == 'EXISTENTE' %}checked{% endif %} onchange="toggleBusca()">
+                        <label class="form-check-label" for="t_existente">Cadastrado no Protheus</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="tipo_fornecedor" id="t_novo" value="NOVO" 
+                            {% if solicitacao.tipo_fornecedor == 'NOVO' %}checked{% endif %} onchange="toggleBusca()">
+                        <label class="form-check-label" for="t_novo">Novo / Sem Cadastro</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-5">
+                <div class="col-md-12" id="wrapper_busca" class="{% if solicitacao.tipo_fornecedor == 'NOVO' %}d-none{% endif %}">
+                    <label class="form-label-custom">Localizar Fornecedor (Razão Social ou CNPJ)</label>
+                    <div class="input-group">
+                        <input type="text" id="input_protheus" class="form-control bg-busca" placeholder="Digite para localizar no Protheus...">
+                        <button class="btn text-white px-4 fw-bold" type="button" onclick="buscarProtheus()" id="btnBusca" style="background-color: #bca464;">
+                            <i class="bi bi-search me-1"></i> BUSCAR NO PROTHEUS
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <h6 class="section-title"><i class="bi bi-building me-2"></i>Informações do Fornecedor</h6>
+            
+            <div class="row g-3 mb-5">
+                <div class="col-md-2 div-protheus {% if solicitacao.tipo_fornecedor == 'NOVO' %}d-none{% endif %}">
+                    <label class="form-label-custom">Código</label>
+                    <input type="text" name="fornecedor_codigo" id="f_cod" class="form-control form-control-sm bg-light" value="{{ solicitacao.fornecedor_codigo|default:'' }}" readonly>
+                </div>
+                <div class="col-md-2 div-protheus {% if solicitacao.tipo_fornecedor == 'NOVO' %}d-none{% endif %}">
+                    <label class="form-label-custom">Loja</label>
+                    <input type="text" name="fornecedor_loja" id="f_loj" class="form-control form-control-sm bg-light" value="{{ solicitacao.fornecedor_loja|default:'' }}" readonly>
+                </div>
+                <div class="{% if solicitacao.tipo_fornecedor == 'NOVO' %}col-md-8{% else %}col-md-5{% endif %}" id="col-razao">
+                    <label class="form-label-custom">Razão Social / Nome</label>
+                    <input type="text" name="fornecedor_nome_razao" id="f_nom" class="form-control form-control-sm {% if solicitacao.tipo_fornecedor == 'EXISTENTE' %}bg-light{% endif %}" value="{{ solicitacao.fornecedor_nome_razao|default:'' }}" required {% if not solicitacao or solicitacao.tipo_fornecedor == 'EXISTENTE' %}readonly{% endif %}>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label-custom">CPF / CNPJ</label>
+                    <input type="text" name="fornecedor_cpf_cnpj" id="f_cgc" class="form-control form-control-sm {% if solicitacao.tipo_fornecedor == 'EXISTENTE' %}bg-light{% endif %}" value="{{ solicitacao.fornecedor_cpf_cnpj|default:'' }}" required {% if not solicitacao or solicitacao.tipo_fornecedor == 'EXISTENTE' %}readonly{% endif %}>
+                </div>
+            </div>
+
+            <h6 class="section-title"><i class="bi bi-currency-dollar me-2"></i>Detalhes Financeiros e Pagamento</h6>
+            
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="form-label-custom">Produto / Serviço</label>
+                    <input type="text" name="produto_servico" class="form-control form-control-sm" value="{{ solicitacao.produto_servico|default:'' }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label-custom">Categoria / Verba</label>
+                    <select name="categoria" class="form-select form-select-sm" required>
+                        <option value="" disabled {% if not solicitacao %}selected{% endif %}>Selecione...</option>
+                        {% for val, label in categorias %}
+                            <option value="{{ val }}" {% if solicitacao.categoria == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label-custom">Forma de Pagamento</label>
+                    <select name="forma_pagamento" class="form-select form-select-sm" required>
+                        <option value="" disabled {% if not solicitacao %}selected{% endif %}>Selecione...</option>
+                        {% for val, label in forma_pagamento %}
+                            <option value="{{ val }}" {% if solicitacao.forma_pagamento == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label-custom">Valor</label>
+                    <input type="text" id="id_valor" name="valor" class="form-control form-control-sm" value="{{ solicitacao.valor|default:'' }}" placeholder="R$ 0,00" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label-custom">Data Vencimento</label>
+                    <input type="date" name="data_vencimento" class="form-control form-control-sm" value="{{ solicitacao.data_vencimento|date:'Y-m-d' }}" required>
+                </div>
+            </div>
+
+            <div class="mb-4 p-3 rounded box-selecao">
+                <label class="form-label-custom d-block mb-3">Possui Nota Fiscal ou Recibo?</label>
+                <div class="d-flex gap-5">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="tem_documento" id="nota_sim" value="True" {% if solicitacao.tem_documento %}checked{% endif %}>
+                        <label class="form-check-label" for="nota_sim">Sim</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="tem_documento" id="nota_nao" value="False" {% if not solicitacao.tem_documento %}checked{% endif %}>
+                        <label class="form-check-label" for="nota_nao">Não</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-5">
+                <label class="form-label-custom">Observações Detalhadas</label>
+                <textarea name="observacoes" class="form-control" rows="3" placeholder="Descreva com detalhes a sua solicitação e forma de pagamento.">{{ solicitacao.observacoes|default:'' }}</textarea>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 border-top pt-4">
+                <a href="{% url 'listar_solicitacoes_verba' %}" class="btn btn-light border px-4">CANCELAR</a>
+                <button type="submit" class="btn text-white px-5" style="background-color: #bca464;">
+                    <strong>SALVAR SOLICITAÇÃO</strong>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalBusca" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header text-white" style="background-color: #bca464;">
+                <h6 class="modal-title fw-bold">Selecione o Fornecedor</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0" style="max-height: 450px; overflow-y: auto;">
+                <div id="lista_resultados" class="list-group list-group-flush"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/imask"></script>
+<script>
+    let mBusca;
+    document.addEventListener('DOMContentLoaded', () => {
+        mBusca = new bootstrap.Modal(document.getElementById('modalBusca'));
+        IMask(document.getElementById('id_valor'), {
+            mask: 'R$ num',
+            blocks: { num: { mask: Number, thousandsSeparator: '.', padFractionalZeros: true, radix: ',', mapToRadix: ['.'] } }
+        });
+    });
+
+    function toggleBusca() {
+        const isNovo = document.getElementById('t_novo').checked;
+        const divsProtheus = document.querySelectorAll('.div-protheus');
+        const colRazao = document.getElementById('col-razao');
+        const wrapper = document.getElementById('wrapper_busca');
+        const fNom = document.getElementById('f_nom');
+        const fCgc = document.getElementById('f_cgc');
+
+        if (isNovo) {
+            wrapper.classList.add('d-none');
+            divsProtheus.forEach(d => d.classList.add('d-none'));
+            colRazao.classList.replace('col-md-5', 'col-md-8');
+            fNom.readOnly = false; fNom.classList.remove('bg-light');
+            fCgc.readOnly = false; fCgc.classList.remove('bg-light');
+            document.getElementById('f_cod').value = '';
+            document.getElementById('f_loj').value = '';
+        } else {
+            wrapper.classList.remove('d-none');
+            divsProtheus.forEach(d => d.classList.remove('d-none'));
+            colRazao.classList.replace('col-md-8', 'col-md-5');
+            fNom.readOnly = true; fNom.classList.add('bg-light');
+            fCgc.readOnly = true; fCgc.classList.add('bg-light');
+        }
+    }
+
+    function buscarProtheus() {
+        const termo = document.getElementById('input_protheus').value.trim();
+        if (termo.length < 3) return alert("Digite pelo menos 3 caracteres.");
+        const btn = document.getElementById('btnBusca');
+        btn.disabled = true;
+
+        fetch("{% url 'busca_fornecedor_protheus' %}?q=" + encodeURIComponent(termo))
+            .then(res => res.json())
+            .then(data => {
+                const lista = document.getElementById('lista_resultados');
+                lista.innerHTML = data.length ? '' : '<div class="p-4 text-center">Nenhum fornecedor encontrado.</div>';
+                data.forEach(f => {
+                    const item = document.createElement('button');
+                    item.type = 'button';
+                    item.className = 'list-group-item list-group-item-action p-3';
+                    item.innerHTML = `<strong>${f.nome}</strong><br><small class="text-muted">CNPJ: ${f.cnpj} | Cód: ${f.codigo}</small>`;
+                    item.onclick = () => {
+                        document.getElementById('f_cod').value = f.codigo;
+                        document.getElementById('f_loj').value = f.loja;
+                        document.getElementById('f_nom').value = f.nome;
+                        document.getElementById('f_cgc').value = f.cnpj;
+                        mBusca.hide();
+                    };
+                    lista.appendChild(item);
+                });
+                mBusca.show();
+            })
+            .finally(() => btn.disabled = false);
+    }
+
+    function obterFeriados2026() {
+        return [
+            "2026-01-01",
+            "2026-02-16",
+            "2026-02-17",
+            "2026-04-03",
+            "2026-04-21",
+            "2026-05-01",
+            "2026-06-04",
+            "2026-09-07",
+            "2026-10-12",
+            "2026-11-02",
+            "2026-11-15",
+            "2026-11-20",
+            "2026-12-25"
+        ];
+    }
+
+    function calcularDataMinima(diasUteis) {
+        let data = new Date();
+        let cont = 0;
+        const feriados = obterFeriados2026();
+        
+        while (cont < diasUteis) {
+            data.setDate(data.getDate() + 1);
+            
+            let dataString = data.toISOString().split('T')[0];
+            let diaSemana = data.getDay();
+
+            let eFinalDeSemana = (diaSemana === 0 || diaSemana === 6);
+            let eFeriado = feriados.includes(dataString);
+
+            if (!eFinalDeSemana && !eFeriado) {
+                cont++;
+            }
+        }
+        return data.toISOString().split('T')[0];
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const inputData = document.querySelector('input[name="data_vencimento"]');
+        if (!inputData) return;
+
+        const dataMinima = calcularDataMinima(2);
+        
+        inputData.setAttribute('min', dataMinima);
+
+        document.getElementById('formVerba').addEventListener('submit', function(e) {
+            if (inputData.value && inputData.value < dataMinima) {
+                e.preventDefault();
+                alert("Atenção: Devido a finais de semana ou feriados, a data mínima para pagamento é " + dataMinima.split('-').reverse().join('/'));
+                inputData.focus();
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -34,8 +34,6 @@ class VerbaMensal(models.Model):
 
     @property
     def limite_por_cliente(self):
-        # CORREÇÃO: Alterado de self.valor_mensal para self.valor
-        # Isso elimina o AttributeError apresentado na tela de erro
         return (self.valor * self.percentual_limite_por_cliente) / 100
     
     @property
@@ -48,7 +46,6 @@ class VerbaMensal(models.Model):
             data_solicitacao__month=self.mes_referencia,
             data_solicitacao__year=self.ano_referencia,
             tipo='VERBA_VENDEDOR',
-            # Sugestão: incluir PENDENTE para evitar que o vendedor exceda o limite real
             status__in=['APROVADO', 'PENDENTE', 'PROCESSADO', 'FINALIZADO'] 
         )
 
@@ -62,7 +59,6 @@ class VerbaMensal(models.Model):
     class Meta:
         verbose_name = "Verba Mensal"
         verbose_name_plural = "Verbas Mensais"
-        # Garante que não haja duplicidade de verba para o mesmo período e vendedor
         unique_together = ('vendedor', 'mes_referencia', 'ano_referencia')
 
 

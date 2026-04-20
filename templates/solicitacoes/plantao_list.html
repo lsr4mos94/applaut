@@ -1,176 +1,153 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<style>
-    .badge-pendente { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
-    .badge-confirmado { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-    .btn-acao { padding: 0.25rem 0.5rem; font-size: 0.875rem; border-radius: 6px; transition: 0.2s; border: 1px solid #dee2e6; background: white; }
-    .btn-acao:hover { transform: translateY(-2px); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-
-    .tabela-customizada thead th {
-        background-color: #bca464 !important;
-        color: white !important;
-        text-transform: uppercase;
-        font-size: 0.85rem;
-        font-weight: bold;
-        padding: 15px 10px !important;
-        border: none !important;
-    }
-
-    .dataTables_filter, .dataTables_info, .dataTables_paginate, .dataTables_length { 
-        display: none !important; 
-    }
-</style>
-
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
-
-<div class="container mt-4">
+<div class="container mt-4 text-start">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h3 style="color: #bca464; font-weight: 600;">Solicitação de Plantão</h3>
-        </div>
-        <a href="{% url 'novo_plantao' %}" class="btn text-white shadow-sm fw-bold" style="background-color: #bca464;">
-            <i class="bi bi-plus-circle"></i><strong> Solicitar Plantão</strong>
+        <h3 class="text-gold-title mb-0">Solicitação de Plantão</h3>
+        <a href="{% url 'novo_plantao' %}" class="btn btn-gold-action px-4 py-2 shadow-sm">
+            <i class="bi bi-plus-circle"></i> Nova Solicitação
         </a>
     </div>
 
     <div class="card border-0 shadow-sm mb-4">
-        <div class="card-body bg-light rounded p-4">
+        <div class="card-body card-filter">
             <form method="GET" class="row g-3">
+                
                 <div class="col-md-3">
-                    <label class="small fw-bold text-muted">Nome ou CPF/CNPJ</label>
-                    <input type="text" name="busca" class="form-control form-control-sm" value="{{ request.GET.busca|default:'' }}">
+                    <label>Cliente / Documento</label>
+                    <input type="text" name="busca" class="form-control form-control-sm" value="{{ request.GET.busca|default:'' }}" placeholder="Nome, CPF ou CNPJ...">
                 </div>
+
                 <div class="col-md-2">
-                    <label class="small fw-bold text-muted">Vendedor</label>
+                    <label>Vendedor</label>
                     <select name="vendedor" class="form-select form-select-sm">
                         <option value="">Todos</option>
                         {% for v in vendedores %}
-                        <option value="{{ v.id }}" {% if request.GET.vendedor == v.id|stringformat:"s" %}selected{% endif %}>{{ v.get_full_name }}</option>
+                        <option value="{{ v.id }}" {% if request.GET.vendedor == v.id|stringformat:"s" %}selected{% endif %}>
+                            {{ v.get_full_name|default:v.username }}
+                        </option>
                         {% endfor %}
                     </select>
                 </div>
+
                 <div class="col-md-3">
-                    <label class="small fw-bold text-muted">Ocorrência</label>
+                    <label>Ocorrência</label>
                     <select name="ocorrencia" class="form-select form-select-sm">
                         <option value="">Todas</option>
-                        <option value="CHOPEIRA">CHOPEIRA</option>
-                        <option value="MANOMETRO">MANÔMETRO</option>
-                        <option value="CILINDRO">CILINDRO</option>
-                        <option value="EXTRATORA">EXTRATORA</option>
-                        <option value="TROCA DE BARRIL">TROCA DE BARRIL</option>
-                        <option value="ENTREGA DE BARRIL">ENTREGA DE BARRIL</option>
-                        <option value="OUTRO">OUTRO</option>
+                        <option value="CHOPEIRA" {% if request.GET.ocorrencia == 'CHOPEIRA' %}selected{% endif %}>CHOPEIRA</option>
+                        <option value="MANOMETRO" {% if request.GET.ocorrencia == 'MANOMETRO' %}selected{% endif %}>MANÔMETRO</option>
+                        <option value="CILINDRO" {% if request.GET.ocorrencia == 'CILINDRO' %}selected{% endif %}>CILINDRO</option>
+                        <option value="EXTRATORA" {% if request.GET.ocorrencia == 'EXTRATORA' %}selected{% endif %}>EXTRATORA</option>
+                        <option value="TROCA DE BARRIL" {% if request.GET.ocorrencia == 'TROCA DE BARRIL' %}selected{% endif %}>TROCA DE BARRIL</option>
+                        <option value="ENTREGA DE BARRIL" {% if request.GET.ocorrencia == 'ENTREGA DE BARRIL' %}selected{% endif %}>ENTREGA DE BARRIL</option>
+                        <option value="OUTRO" {% if request.GET.ocorrencia == 'OUTRO' %}selected{% endif %}>OUTRO</option>
                     </select>
                 </div>
+
                 <div class="col-md-2">
-                    <label class="small fw-bold text-muted">Data</label>
+                    <label>Data</label>
                     <input type="date" name="data" class="form-control form-control-sm" value="{{ request.GET.data }}">
                 </div>
+
                 <div class="col-md-2 d-flex align-items-end gap-2">
-                    <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">FILTRAR</button>
+                    <button type="submit" class="btn btn-dark btn-sm btn-filter w-100">
+                        <i class="bi bi-filter me-1"></i> FILTRAR
+                    </button>
                     <a href="{% url request.resolver_match.url_name %}" class="btn btn-link btn-sm text-muted text-decoration-none border-0 p-0 mb-1" style="font-size: 0.85rem;">Limpar</a>
                 </div>
+                
             </form>
         </div>
     </div>
 
-    <div class="table-responsive shadow-sm rounded-3">
-        <table id="tabelaPlantoes" class="table table-hover bg-white mb-0 tabela-customizada">
+    <div class="table-responsive shadow-sm rounded-3 border">
+        <table id="tabelaPlantoes" class="table table-applaut w-100">
             <thead>
                 <tr>
-                    <th class="px-4">Cliente</th>
-                    <th>Data</th>
-                    <th>Ocorrência</th>
-                    <th>Vendedor</th>
-                    <th>Taxa</th>
-                    <th>Status</th>
-                    <th class="text-center">Ações</th>
+                    <th>CLIENTE</th>
+                    <th>DATA</th>
+                    <th>OCORRÊNCIA</th>
+                    <th>VENDEDOR</th>
+                    <th>TAXA</th>
+                    <th>STATUS</th>
+                    <th class="text-center">AÇÕES</th>
                 </tr>
             </thead>
             <tbody>
                 {% for p in plantoes %}
                 <tr class="align-middle">
-                    <td class="px-4">
-                        <span class="d-block fw-bold text-dark">{{ p.nome_cliente }}</span>
+                    <td>
+                        <span class="d-block fw-bold text-dark">#{{ p.id }} {{ p.nome_cliente }}</span>
                         <small class="text-muted">{{ p.codigo_cliente }} / {{ p.loja_cliente }}</small>
                     </td>
                     <td data-sort="{{ p.data_solicitacao|date:'Ymd' }}">
                         {{ p.data_solicitacao|date:"d/m/Y" }}
                     </td>
                     <td class="small fw-bold">{{ p.ocorrencia }}</td>
-                    <td class="small">{{ p.vendedor.get_full_name }}</td>
-                    <td>{% if p.taxa %}<span class="text-success fw-bold">R$ {{ p.valor_taxa }}</span>{% else %}Isento{% endif %}</td>
-                    <td><span class="badge {% if p.status == 'PENDENTE' %}badge-pendente{% else %}badge-confirmado{% endif %}">{{ p.get_status_display }}</span></td>
+                    <td class="small">{{ p.vendedor.get_full_name|default:p.vendedor.username }}</td>
+                    <td>
+                        {% if p.taxa %}
+                            <span class="text-success fw-bold">R$ {{ p.valor_taxa }}</span>
+                        {% else %}
+                            <span class="text-muted small">Isento</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge {% if p.status == 'PENDENTE' %}badge-pendente{% else %}badge-confirmado{% endif %}">
+                            {{ p.get_status_display }}
+                        </span>
+                    </td>
                     <td class="text-center">
-                        <div class="d-flex justify-content-center gap-2">
-                            <button class="btn btn-acao text-primary" onclick="visualizarPlantao('{{ p.id }}')" title="Visualizar">
-                                <i class="bi bi-eye"></i>
+                        <div class="d-flex justify-content-center gap-1">
+                            <button class="btn-square-action btn-view" onclick="visualizarPlantao('{{ p.id }}')">
+                                <i class="bi bi-eye-fill"></i>
                             </button>
-                            
                             {% if p.status == 'PENDENTE' %}
-                            <button class="btn btn-acao text-success" data-bs-toggle="modal" data-bs-target="#modalConfirmar{{ p.id }}" title="Confirmar Plantão">
-                                <i class="bi bi-check-circle-fill"></i>
-                            </button>
-
-                            <a href="{% url 'editar_plantao' p.id %}" class="btn btn-acao text-warning" title="Editar">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            
-                            <button class="btn btn-acao text-danger" data-bs-toggle="modal" data-bs-target="#modalExcluir{{ p.id }}" title="Excluir">
-                                <i class="bi bi-trash"></i>
-                            </button>
+                                <button class="btn-square-action btn-approve" data-bs-toggle="modal" data-bs-target="#modalConfirmar{{ p.id }}">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                                <button class="btn-square-action btn-delete" data-bs-toggle="modal" data-bs-target="#modalExcluir{{ p.id }}">
+                                    <i class="bi bi-trash3-fill"></i>
+                                </button>
                             {% endif %}
                         </div>
                     </td>
                 </tr>
-
-                <div class="modal fade" id="modalConfirmar{{ p.id }}" tabindex="-1" aria-hidden="true">
-                    <div class="modal-dialog modal-sm modal-dialog-centered">
-                        <div class="modal-content border-0 shadow">
-                            <div class="modal-body text-center p-4">
-                                <i class="bi bi-check2-circle text-success" style="font-size: 2.5rem;"></i>
-                                <p class="mt-3 fw-bold text-dark">Confirmar este plantão?</p>
-                                <p class="small text-muted" style="font-size: 0.75rem;">O status será alterado para Confirmado.</p>
-                                <form method="POST" action="{% url 'confirmar_plantao' p.id %}">
-                                    {% csrf_token %}
-                                    <div class="d-flex gap-2">
-                                        <button type="button" class="btn btn-light btn-sm w-100 border" data-bs-dismiss="modal">Sair</button>
-                                        <button type="submit" class="btn btn-success btn-sm w-100 fw-bold">Confirmar</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal fade" id="modalExcluir{{ p.id }}" tabindex="-1" aria-hidden="true">
-                    <div class="modal-dialog modal-sm modal-dialog-centered">
-                        <div class="modal-content border-0 shadow">
-                            <div class="modal-body text-center p-4">
-                                <i class="bi bi-exclamation-triangle text-danger" style="font-size: 2.5rem;"></i>
-                                <p class="mt-3 fw-bold text-dark">Deseja excluir essa solicitação?</p>
-                                <p class="small text-muted" style="font-size: 0.75rem;">Esta ação não poderá ser desfeita.</p>
-                                <form method="POST" action="{% url 'excluir_plantao' p.id %}">
-                                    {% csrf_token %}
-                                    <div class="d-flex gap-2">
-                                        <button type="button" class="btn btn-light btn-sm w-100 border" data-bs-dismiss="modal">Cancelar</button>
-                                        <button type="submit" class="btn btn-danger btn-sm w-100 fw-bold">Excluir</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+
+    {% if plantoes.has_other_pages %}
+    <nav class="mt-4 mb-4">
+        <ul class="pagination justify-content-center">
+            {% if plantoes.has_previous %}
+                <li class="page-item">
+                    <a class="page-link text-dark" href="?page={{ plantoes.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">&laquo; Anterior</a>
+                </li>
+            {% endif %}
+
+            {% for i in plantoes.paginator.page_range %}
+                {% if plantoes.number == i %}
+                    <li class="page-item active"><span class="page-link" style="background-color: #bca464; border-color: #bca464;">{{ i }}</span></li>
+                {% elif i > plantoes.number|add:'-3' and i < plantoes.number|add:'3' %}
+                    <li class="page-item"><a class="page-link text-dark" href="?page={{ i }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ i }}</a></li>
+                {% endif %}
+            {% endfor %}
+
+            {% if plantoes.has_next %}
+                <li class="page-item">
+                    <a class="page-link text-dark" href="?page={{ plantoes.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Próxima &raquo;</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
 </div>
 
 <div class="modal fade" id="modalVer" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 rounded-4">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
             <div class="modal-header text-white" style="background-color: #bca464;">
                 <h5 class="modal-title fw-bold">Detalhes do Plantão</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -187,12 +164,16 @@
 <script>
 $(document).ready(function() {
     $('#tabelaPlantoes').DataTable({
+        "dom": 't',
         "paging": false,
+        "ordering": true,
+        "order": [],
         "info": false,
         "searching": false,
-        "order": [[1, "desc"]],
-        "columnDefs": [ { "orderable": false, "targets": 6 } ],
-        "language": { "url": "//cdn.datatables.net/plug-ins/1.13.4/i18n/pt-BR.json" }
+        "autoWidth": false,
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.13.4/i18n/pt-BR.json"
+        }
     });
 });
 
@@ -209,11 +190,12 @@ function visualizarPlantao(id) {
                 <div class="col-md-4"><label class="fw-bold small text-muted text-uppercase">Data</label><p>${data.data_solicitacao}</p></div>
                 <div class="col-md-4"><label class="fw-bold small text-muted text-uppercase">Horário</label><p>${data.horario}</p></div>
                 <div class="col-md-4"><label class="fw-bold small text-muted text-uppercase">Taxa</label><p>${data.taxa}</p></div>
-                <div class="col-12"><label class="fw-bold small text-muted text-uppercase">Observações</label><div class="p-3 bg-light rounded">${data.obs || 'Nenhuma observação'}</div></div>
+                <div class="col-12"><label class="fw-bold small text-muted text-uppercase">Observações</label><div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${data.obs || 'Nenhuma observação'}</div></div>
             </div>`;
         new bootstrap.Modal(document.getElementById('modalVer')).show();
     })
     .catch(err => alert("Erro ao carregar detalhes"));
 }
+
 </script>
 {% endblock %}

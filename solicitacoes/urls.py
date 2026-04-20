@@ -20,4 +20,6 @@ urlpatterns = [
 
     path('api/clientes/', views.api_busca_clientes, name='api_busca_clientes'),
     path('api/busca-produtos/', views.buscar_produto_protheus_unificado, name='api_busca_produtos'),
+
+    path('bonificacoes/exportar/excel/', views.exportar_bonificacoes_excel, name='exportar_bonificacoes_excel'),
 ]

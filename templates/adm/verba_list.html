@@ -1,0 +1,350 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="text-gold-title mb-0">Solicitações de Verba</h3>
+    <a href="{% url 'nova_solicitacao_verba' %}" class="btn btn-gold-action px-4 py-2 shadow-sm">
+        <i class="bi bi-plus-circle"></i> Nova Solicitação
+    </a>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body card-filter">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="small fw-bold text-muted text-uppercase">Fornecedor</label>
+                <input type="text" name="busca" class="form-control form-control-sm" value="{{ request.GET.busca|default:'' }}" placeholder="Nome ou CPF/CNPJ...">
+            </div>
+            <div class="col-md-2">
+                <label class="small fw-bold text-muted text-uppercase">Solicitante</label>
+                <select name="solicitante" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    {% for u in usuarios %}
+                    <option value="{{ u.id }}" {% if request.GET.solicitante == u.id|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="small fw-bold text-muted text-uppercase">Data</label>
+                <input type="date" name="data" class="form-control form-control-sm" value="{{ request.GET.data }}">
+            </div>
+            <div class="col-md-2">
+                <label class="small fw-bold text-muted text-uppercase">Status</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    <option value="PENDENTE" {% if request.GET.status == 'PENDENTE' %}selected{% endif %}>PENDENTE</option>
+                    <option value="APROVADO" {% if request.GET.status == 'APROVADO' %}selected{% endif %}>APROVADO</option>
+                    <option value="REPROVADO" {% if request.GET.status == 'REPROVADO' %}selected{% endif %}>REPROVADO</option>
+                    <option value="CONCLUIDO" {% if request.GET.status == 'CONCLUIDO' %}selected{% endif %}>CONCLUÍDO</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">FILTRAR</button>
+                <a href="{% url 'listar_solicitacoes_verba' %}" class="btn btn-link btn-sm text-muted text-decoration-none">Limpar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm overflow-hidden">
+    <div class="table-responsive">
+        <table id="tabelaVerbas" class="table table-applaut w-100 mb-0">
+            <thead>
+                <tr class="bg-light">
+                    <th>FORNECEDOR</th>
+                    <th>SOLICITANTE</th>
+                    <th class="text-center">VENCIMENTO</th>
+                    <th class="text-center">VALOR</th>
+                    <th class="text-center">STATUS</th>
+                    <th class="text-center">AÇÕES</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in solicitacoes %}
+                <tr class="align-middle">
+                    <td>
+                        <span class="fw-bold d-block">#{{ s.id }} {{ s.fornecedor_nome_razao }}</span>
+                        <small class="text-muted mask-cpf-cnpj">{{ s.fornecedor_cpf_cnpj }}</small>
+                    </td>
+                    <td><span class="small">{{ s.usuario_solicitante.get_full_name|default:s.usuario_solicitante.username }}</span></td>
+                    <td class="text-center small">{{ s.data_vencimento|date:"d/m/Y"|default:"---" }}</td>
+                    <td class="text-center fw-bold text-success">R$ {{ s.valor }}</td>
+                    <td class="text-center">
+                        <span class="badge {% if s.status == 'PENDENTE' %}badge-pendente{% elif s.status == 'APROVADO' %}badge-confirmado{% elif s.status == 'REPROVADO' %}badge-reprovado{% else %}badge-concluido{% endif %}">
+                            {{ s.get_status_display }}
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        <div class="d-flex justify-content-center gap-1">
+                            <button type="button" class="btn-square-action btn-view" onclick="visualizarVerba('{{ s.id }}')" title="Visualizar">
+                                <i class="bi bi-eye-fill"></i>
+                            </button>
+
+                            {% if s.status == 'PENDENTE' %}
+                                {% if request.user.is_superuser or request.user.groups.all.0.name.upper == 'GESTOR' %}
+                                <button type="button" class="btn-square-action btn-approve" data-bs-toggle="modal" data-bs-target="#modalAprovar{{ s.id }}" title="Aprovar">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                                <button type="button" class="btn-square-action btn-reject" data-bs-toggle="modal" data-bs-target="#modalReprovar{{ s.id }}" title="Reprovar">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                                {% endif %}
+                            {% endif %}
+
+                            {% if s.status == 'APROVADO' %}
+                                {% if request.user.is_superuser or request.user.groups.all.0.name.upper == 'FINANCEIRO' %}
+                                <button type="button" class="btn-square-action btn-confirm" data-bs-toggle="modal" data-bs-target="#modalConfirmarPg{{ s.id }}" title="Concluir">
+                                    <i class="bi bi-check-all fs-4"></i>
+                                </button>
+                                {% endif %}
+                            {% endif %}
+
+                            {% if s.usuario_solicitante == request.user or request.user.is_superuser %}
+                                {% if s.status == 'PENDENTE' or s.status == 'REPROVADO' %}
+                                <a href="{% url 'editar_solicitacao_verba' s.id %}" class="btn-square-action btn-edit" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button type="button" class="btn-square-action btn-delete" data-bs-toggle="modal" data-bs-target="#modalExcluir{{ s.id }}" title="Excluir">
+                                    <i class="bi bi-trash3-fill"></i>
+                                </button>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% for s in solicitacoes %}
+    <div class="modal fade" id="modalVer" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg text-start">
+            <div class="modal-header text-white" style="background-color: #bca464;">
+                <h5 class="modal-title small fw-bold text-uppercase mt-1">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    <span id="modalTitulo">Detalhes da Solicitação</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 text-dark" id="conteudoVisualizar">
+                </div>
+            <div class="modal-footer bg-light border-0 justify-content-end">
+                <button type="button" class="btn btn-secondary px-4 shadow-sm" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+    
+    {% if s.status == 'PENDENTE' %}
+        <div class="modal fade" id="modalReprovar{{ s.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header text-white border-0 bg-danger">
+                        <h6 class="modal-title fw-bold small"><i class="bi bi-x-circle me-2"></i>Reprovar Verba</h6>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form action="{% url 'decidir_solicitacao_verba' s.id %}" method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="acao" value="reprovar">
+                        <div class="modal-body p-3 text-center">
+                            <p class="small mb-2">Reprovar verba para <strong>{{ s.fornecedor_nome_razao }}</strong>?</p>
+                            <h4 class="text-danger fw-bold mb-3">R$ {{ s.valor|floatformat:2 }}</h4>
+                            
+                            <div class="text-start">
+                                <label class="small fw-bold text-muted text-uppercase mb-1">Motivo da Reprovação</label>
+                                <textarea name="motivo" class="form-control form-control-sm" rows="2" placeholder="Ex: Recusado por..."></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-0 p-2">
+                            <button type="submit" class="btn btn-danger btn-sm w-100 fw-bold">REPROVAR AGORA</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="modalAprovar{{ s.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header text-white border-0 bg-success">
+                        <h6 class="modal-title fw-bold small"><i class="bi bi-check-circle me-2"></i>Aprovar Verba</h6>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form action="{% url 'decidir_solicitacao_verba' s.id %}" method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="acao" value="aprovar">
+                        <div class="modal-body p-3 text-center">
+                            <p class="small mb-2">Aprovar verba para <strong>{{ s.fornecedor_nome_razao }}</strong>?</p>
+                            <h4 class="text-success fw-bold mb-3">R$ {{ s.valor|floatformat:2 }}</h4>
+                            
+                            <div class="text-start">
+                                <label class="small fw-bold text-muted text-uppercase mb-1">Observações da Aprovação (Opcional)</label>
+                                <textarea name="motivo" class="form-control form-control-sm" rows="2" placeholder="Ex: Liberado conforme combinado..."></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-0 p-2">
+                            <button type="submit" class="btn btn-success btn-sm w-100 fw-bold">APROVAR SOLICITAÇÃO</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if s.status == 'APROVADO' %}
+        <div class="modal fade" id="modalConfirmarPg{{ s.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header text-white border-0" style="background-color: #bca464;">
+                        <h6 class="modal-title fw-bold small"><i class="bi bi-check-all me-2"></i>Concluir Solicitação</h6>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form action="{% url 'concluir_solicitacao_verba' s.id %}" method="POST">
+                        {% csrf_token %}
+                        <div class="modal-footer border-0 p-2">
+                            <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">CONCLUIR SOLICITAÇÃO</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if s.status != 'CONCLUIDO' %}
+        <div class="modal fade" id="modalExcluir{{ s.id }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-sm modal-dialog-centered">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header border-0 bg-danger text-white">
+                        <h5 class="modal-title small fw-bold"><i class="bi bi-exclamation-triangle"></i> EXCLUIR SOLICITAÇÃO</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body text-center p-4">
+                        <p class="mb-0 small">Deseja realmente excluir a solicitação de <strong>{{ s.fornecedor_nome_razao }}</strong>?</p>
+                        <small class="text-muted">Valor: R$ {{ s.valor|floatformat:2 }}</small>
+                    </div>
+                    <div class="modal-footer border-0 bg-light d-flex justify-content-center p-2">
+                        <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none" data-bs-dismiss="modal">Não</button>
+                        <form action="{% url 'excluir_solicitacao_verba' s.id %}" method="POST" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-danger px-4 shadow-sm fw-bold">Sim, Excluir</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endfor %}
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    $('#tabelaVerbas').DataTable({
+        "dom": 't',
+        "paging": false,
+        "ordering": true,
+        "order": [],
+        "info": false,
+        "searching": false,
+        "autoWidth": false,
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.13.4/i18n/pt-BR.json"
+        }
+    });
+});
+
+function visualizarVerba(id) {
+    const container = document.getElementById('conteudoVisualizar');
+    container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-warning"></div></div>';
+    
+    const modalBase = new bootstrap.Modal(document.getElementById('modalVer'));
+    modalBase.show();
+
+    document.getElementById('modalTitulo').innerText = `Solicitação #${id}`;
+
+    fetch(`/adm/verba/detalhes/${id}/`)
+    .then(r => r.json())
+    .then(data => {
+        const status = data.status.toUpperCase();
+        let corStatus = "#f1c40f"; 
+        if (status.includes("APROVADO") || status.includes("CONCLUÍDO")) corStatus = "#28a745";
+        if (status.includes("REPROVADO")) corStatus = "#dc3545";
+        
+        let html = `
+            <div class="row g-2 small">
+                <div class="col-md-7">
+                    <label class="fw-bold text-muted text-uppercase x-small d-block">Fornecedor</label>
+                    <span class="fw-bold text-dark d-block text-truncate">${data.fornecedor_nome_razao}</span>
+                    <small class="text-muted">${data.fornecedor_cpf_cnpj}</small>
+                </div>
+                <div class="col-md-5 text-md-end">
+                    <label class="fw-bold text-muted text-uppercase x-small d-block">Status e Valor</label>
+                    <span class="fw-bold" style="color: ${corStatus}">${data.status}</span>
+                    <span class="d-block fw-bold text-success h6 mb-0">R$ ${data.valor}</span>
+                </div>
+
+                <div class="col-12"><hr class="my-1 opacity-25"></div>
+
+                <div class="col-md-4">
+                    <label class="fw-bold text-muted text-uppercase x-small d-block">Solicitante</label>
+                    <span class="text-dark">${data.solicitante}</span>
+                </div>
+                <div class="col-md-4">
+                    <label class="fw-bold text-muted text-uppercase x-small d-block">Data Solicitação</label>
+                    <span class="text-dark">${data.data_solicitacao}</span>
+                </div>
+                <div class="col-md-4">
+                    <label class="fw-bold text-muted text-uppercase x-small d-block">Vencimento</label>
+                    <span class="text-dark">${data.data_vencimento || '---'}</span>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="fw-bold text-muted text-uppercase x-small d-block">Produto/Serviço</label>
+                    <span class="text-dark text-truncate d-block">${data.produto_servico || '---'}</span>
+                </div>
+                <div class="col-md-4">
+                    <label class="fw-bold text-muted text-uppercase x-small d-block">Categoria</label>
+                    <span class="text-dark">${data.categoria || '---'}</span>
+                </div>
+                <div class="col-md-4">
+                    <label class="fw-bold text-muted text-uppercase x-small d-block">Forma Pagto</label>
+                    <span class="text-dark">${data.forma_pagamento || '---'}</span>
+                </div>
+
+                <div class="col-12">
+                    <label class="fw-bold text-muted text-uppercase x-small d-block">Justificativa</label>
+                    <div class="p-2 bg-light border rounded mt-1" style="white-space: pre-wrap; max-height: 60px; overflow-y: auto;">${data.descricao || 'Sem descrição.'}</div>
+                </div>
+            </div>`;
+        
+        if (data.status.toUpperCase() !== 'PENDENTE') {
+            html += `
+                <div class="mt-2 p-2 rounded" style="border-left: 4px solid #bca464; background-color: #fcfaf5; border-top: 1px solid #f1ece0; border-right: 1px solid #f1ece0; border-bottom: 1px solid #f1ece0;">
+                    <h6 class="fw-bold text-uppercase mb-1" style="color: #8a733a; font-size: 0.7rem;">
+                        <i class="bi bi-shield-check me-1"></i>Decisão da Gestão
+                    </h6>
+                    <div class="row g-2 mb-1" style="font-size: 0.75rem;">
+                        <div class="col-6">
+                            <span class="text-muted text-uppercase fw-bold">Data:</span> ${data.data_aprovacao || '---'}
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted text-uppercase fw-bold">Por:</span> ${data.usuario_aprovador || '---'}
+                        </div>
+                    </div>
+                    <div class="small text-dark border-top pt-1 mt-1">
+                        <strong>Obs:</strong> ${data.obs_aprovacao || '<span class="text-muted">Nenhuma observação.</span>'}
+                    </div>
+                </div>`;
+        }
+        
+        container.innerHTML = html;
+    });
+}
+</script>
+
+{% endblock %}

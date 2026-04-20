@@ -1,32 +1,78 @@
 import os
 import base64
 import logging
+from datetime import date, datetime, timedelta
+import pandas as pd
+import requests
+from xhtml2pdf import pisa
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, Http404, JsonResponse
+from django.template.loader import render_to_string
+from django.core.mail import EmailMultiAlternatives
+from django.core.paginator import Paginator
+from django.core.exceptions import ValidationError
+from django.db import transaction, connections
+from django.db.models import Sum, Q
+from django.utils import timezone
+from django.utils.html import strip_tags
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth.models import User
-from .models import Plantao
-from django.db.models import Sum
-from django.utils import timezone
-from .models import Bonificacao, BonificacaoItem
-from cadastros.models import VerbaMensal, AcordoComercial
-from usuarios.models import Perfil
-from django.template.loader import render_to_string
-from django.core.mail import EmailMultiAlternatives
-from django.utils.html import strip_tags
-from django.db import transaction
-from django.core.exceptions import ValidationError
-from django.db.models import Sum
-from datetime import date
+from .models import Plantao, Bonificacao, BonificacaoItem
 from .services import buscar_cliente_protheus_unificado
-from django.db.models import Q
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.db import transaction, connections
-from xhtml2pdf import pisa
+from cadastros.models import VerbaMensal, AcordoComercial
 
 logger = logging.getLogger(__name__)
+
+def disparar_plantao_whatsapp(solicitacao):
+    url = "https://api.zenvia.com/v2/channels/whatsapp/messages"
+    headers = {
+        "X-API-TOKEN": "hcep0LyOYBZF2A_07_RgMi157uxA8PKVZwkk",
+        "Content-Type": "application/json"
+    }
+    
+    endereco_completo = f"{solicitacao.endereco}, {solicitacao.numero}, {solicitacao.bairro} - {solicitacao.cidade}"
+
+    payload = {
+        "from": "553172467334",
+        "to": "5531971560752",
+        "contents": [
+            {
+                "type": "template",
+                "templateId": "9d2d64a6-889f-4058-9f5d-ac994a021542",
+                "fields": {
+                    "1": str(solicitacao.id),
+                    "2": solicitacao.get_tipo_display(),
+                    "3": solicitacao.nome_cliente,
+                    "4": endereco_completo,
+                    "5": solicitacao.get_ocorrencia_display(),
+                    "6": solicitacao.horario.strftime('%H:%M') if solicitacao.horario else "",
+                    "7": solicitacao.observacoes if solicitacao.observacoes else "Sem observações",
+                }
+            }
+        ]
+    }
+    
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        response_data = response.json()
+        
+        print(f"DEBUG ZENVIA: {response_data}") 
+
+        if response.status_code in [200, 201]:
+            zenvia_id = response_data.get('id')
+            if zenvia_id:
+                solicitacao.zenvia_message_id = zenvia_id
+                solicitacao.save()
+
+            if response_data.get('status') == 'REJECTED':
+                return {"sucesso": False, "erro": "Mensagem rejeitada pela operadora/Zenvia"}
+            return {"sucesso": True, "data": response_data}
+        else:
+            erro_detalhado = response_data.get('details', [{}])[0].get('message', 'Erro de validação no Schema')
+            return {"sucesso": False, "erro": f"{response_data.get('message')}: {erro_detalhado}"}
+    except Exception as e:
+        return {"sucesso": False, "erro": str(e)}
 
 @login_required
 def api_busca_clientes(request):
@@ -97,15 +143,6 @@ def buscar_produto_protheus_unificado(request):
 
     return JsonResponse(list(produtos_dict.values()), safe=False)
 
-import os
-import base64
-import logging
-from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
-
-# Configuração básica de log para ver erros no terminal do VS Code/PyCharm
-logger = logging.getLogger(__name__)
-
 @login_required
 def buscar_boleto(request):
     lista_boletos = []
@@ -113,62 +150,58 @@ def buscar_boleto(request):
     abrir_modal = False
 
     if request.method == 'POST' and numero_nota:
-        # Usando r'' para strings brutas (raw) e garantindo as barras invertidas do Windows
         caminho_base = r'\\SRV-FILESERVER\Faturamento\DOCUMENTOS FISCAIS\2026'
         
-        # 1. Validação de Acesso ao Servidor
         if not os.path.exists(caminho_base):
-            logger.error(f"ERRO DE ACESSO: O caminho {caminho_base} não foi encontrado ou está inacessível.")
+            logger.error(f"ERRO DE ACESSO: O caminho {caminho_base} não foi encontrado.")
             return render(request, 'solicitacoes/boletos.html', {
-                'mensagem': 'O servidor de arquivos (2026) está inacessível. Verifique a rede ou permissões.',
+                'mensagem': 'O servidor de arquivos (2026) está inacessível.',
                 'tipo_mensagem': 'erro',
                 'numero_nota': numero_nota
             })
 
+        data_limite = (datetime.now() - timedelta(days=90)).timestamp()
+
         try:
-            # 2. Busca Recursiva
             for raiz, _, arquivos in os.walk(caminho_base):
                 for nome_arquivo in arquivos:
                     nome_comparar = nome_arquivo.upper()
                     termo_comparar = numero_nota.upper()
 
-                    # Verifica se o número está no nome e se é um PDF (independente de ser .pdf ou .PDF)
                     if termo_comparar in nome_comparar and nome_comparar.endswith('.PDF'):
                         caminho_completo = os.path.join(raiz, nome_arquivo)
 
                         try:
-                            # Encode do caminho para usar na URL de download/visualização
-                            caminho_encoded = base64.urlsafe_b64encode(caminho_completo.encode()).decode()
+                            data_modificacao = os.path.getmtime(caminho_completo)
                             
-                            lista_boletos.append({
-                                'nome': nome_arquivo,
-                                'caminho': caminho_encoded,
-                                'data': os.path.getmtime(caminho_completo)
-                            })
+                            if data_modificacao >= data_limite:
+                                caminho_encoded = base64.urlsafe_b64encode(caminho_completo.encode()).decode()
+                                
+                                lista_boletos.append({
+                                    'nome': nome_arquivo,
+                                    'caminho': caminho_encoded,
+                                    'data': data_modificacao
+                                })
                         except Exception as e:
-                            logger.warning(f"Não foi possível ler metadados do arquivo {nome_arquivo}: {e}")
                             continue
             
-            # Ordenar por data de modificação (mais recentes primeiro)
             lista_boletos.sort(key=lambda x: x['data'], reverse=True)
             abrir_modal = True if lista_boletos else False
 
         except Exception as e:
             logger.exception("Erro grave durante a busca de arquivos:")
             return render(request, 'solicitacoes/boletos.html', {
-                'mensagem': f'Erro interno ao processar arquivos: {str(e)}', 
+                'mensagem': f'Erro interno: {str(e)}', 
                 'tipo_mensagem': 'erro'
             })
 
-    # 3. Tratamento de "Não Encontrado"
     if request.method == 'POST' and not lista_boletos:
         return render(request, 'solicitacoes/boletos.html', {
-            'mensagem': f'Boleto da nota "{numero_nota}" não encontrado na pasta 2026.',
+            'mensagem': f'Boleto da nota "{numero_nota}" não encontrado nos últimos 90 dias.',
             'tipo_mensagem': 'erro',
             'numero_nota': numero_nota
         })
 
-    # 4. Retorno Sucesso ou GET inicial
     return render(request, 'solicitacoes/boletos.html', {
         'lista_boletos': lista_boletos,
         'numero_nota': numero_nota,
@@ -199,30 +232,45 @@ def plantao_list(request):
         
         plantao.status = 'CONFIRMADO'
         if obs:
-            plantao.observacoes += f"\n[CONFIRMAÇÃO]: {obs}"
+            atual_obs = plantao.observacoes or ""
+            plantao.observacoes = f"{atual_obs}\n[CONFIRMAÇÃO]: {obs}".strip()
         
         plantao.save()
         messages.success(request, f"Plantão de {plantao.nome_cliente} confirmado!")
-        return redirect('plantao_list')
+        
+        return redirect(f"{request.path}?{request.GET.urlencode()}")
 
     busca = request.GET.get('busca')
     vendedor_id = request.GET.get('vendedor')
     ocorrencia = request.GET.get('ocorrencia')
     data_f = request.GET.get('data')
+    page_number = request.GET.get('page')
 
-    plantoes = Plantao.objects.all().order_by('-data_solicitacao')
+    plantoes_list = Plantao.objects.all().order_by('-data_solicitacao', '-id')
 
     if busca:
-        plantoes = plantoes.filter(Q(nome_cliente__icontains=busca) | Q(codigo_cliente__icontains=busca))
+        plantoes_list = plantoes_list.filter(
+            Q(nome_cliente__icontains=busca) | 
+            Q(codigo_cliente__icontains=busca)
+        )
     if vendedor_id:
-        plantoes = plantoes.filter(vendedor_id=vendedor_id)
+        plantoes_list = plantoes_list.filter(vendedor_id=vendedor_id)
     if ocorrencia:
-        plantoes = plantoes.filter(ocorrencia=ocorrencia)
+        plantoes_list = plantoes_list.filter(ocorrencia=ocorrencia)
     if data_f:
-        plantoes = plantoes.filter(data_solicitacao__date=data_f)
+        plantoes_list = plantoes_list.filter(data_solicitacao__date=data_f)
 
-    vVendedores = User.objects.all()
-    return render(request, 'solicitacoes/plantao_list.html', {'plantoes': plantoes, 'vendedores': vVendedores})
+    paginator = Paginator(plantoes_list, 10) 
+    plantoes_obj = paginator.get_page(page_number)
+
+    vVendedores = User.objects.filter(groups__name='Vendedores').distinct()
+
+    context = {
+        'plantoes': plantoes_obj,
+        'vendedores': vVendedores,
+    }
+
+    return render(request, 'solicitacoes/plantao_list.html', context)
 
 def excluir_plantao(request, pk):
     plantao = get_object_or_404(Plantao, pk=pk)
@@ -251,13 +299,16 @@ def get_plantao_detalhes(request, pk):
     }
     return JsonResponse(data)
 
+@login_required
 def novo_plantao(request):
     if request.method == 'POST':
+        horario_str = request.POST.get('horario')
+        try:
+            horario_obj = datetime.strptime(horario_str, '%H:%M').time() if horario_str else None
+        except (ValueError, TypeError):
+            horario_obj = None
 
-        vendedor_id = request.POST.get('vendedor')
-        vendedor_instancia = request.user
-        
-        Plantao.objects.create(
+        novo_plantao_obj = Plantao.objects.create(
             codigo_cliente=request.POST.get('codigo_cliente'),
             loja_cliente=request.POST.get('loja_cliente'),
             nome_cliente=request.POST.get('nome_cliente'),
@@ -268,24 +319,31 @@ def novo_plantao(request):
             endereco=request.POST.get('endereco'),
             numero=request.POST.get('numero'),
             complemento=request.POST.get('complemento'),
-            vendedor=vendedor_instancia,
+            vendedor=request.user,
             tipo=request.POST.get('tipo'),
             ocorrencia=request.POST.get('ocorrencia'),
             ocorrencia_outro=request.POST.get('ocorrencia_outro'),
             observacoes=request.POST.get('observacoes'),
             taxa=(request.POST.get('taxa') == 'SIM'),
-            valor_taxa=request.POST.get('valor_taxa').replace('R$', '').replace('.', '').replace(',', '.').strip(),
-            horario=request.POST.get('horario')
+            valor_taxa=request.POST.get('valor_taxa', '0').replace('R$', '').replace('.', '').replace(',', '.').strip() or 0,
+            horario=horario_obj
         )
-        
+
+        resultado_envio = disparar_plantao_whatsapp(novo_plantao_obj)
+
+        if resultado_envio.get("sucesso"):
+            messages.success(request, 'Solicitação gravada e mensagem enviada!')
+        else:
+            messages.warning(request, f"Gravado com sucesso, mas o WhatsApp não foi enviado.")
+
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({'status': 'sucesso'})
-            
+
         return redirect('plantao_list')
 
     vendedores = User.objects.all()
     return render(request, 'solicitacoes/novo_plantao.html', {'vendedores': vendedores})
-
+    
 def editar_plantao(request, pk):
 
     plantao = get_object_or_404(Plantao, pk=pk)
@@ -330,7 +388,7 @@ def bonificacao_list(request):
     plataforma_filtro = request.GET.get('plataforma')
     data_param = request.GET.get('data_solicitacao')
 
-    bonificacoes = Bonificacao.objects.all().order_by('-data_solicitacao')
+    bonificacoes = Bonificacao.objects.all().prefetch_related('itens').order_by('-data_solicitacao')
 
     if plataforma_filtro:
         bonificacoes = bonificacoes.filter(plataforma=plataforma_filtro)
@@ -349,10 +407,17 @@ def bonificacao_list(request):
         bonificacoes = bonificacoes.filter(vendedor=request.user)
 
     if busca:
-        bonificacoes = bonificacoes.filter(
-            Q(cliente_razao_social__icontains=busca) | 
-            Q(cliente_cpf_cnpj__icontains=busca)
-        )
+        if busca.isdigit():
+            bonificacoes = bonificacoes.filter(
+                Q(id=busca) | 
+                Q(cliente_razao_social__icontains=busca) | 
+                Q(cliente_cpf_cnpj__icontains=busca)
+            )
+        else:
+            bonificacoes = bonificacoes.filter(
+                Q(cliente_razao_social__icontains=busca) | 
+                Q(cliente_cpf_cnpj__icontains=busca)
+            )
 
     if tipo:
         bonificacoes = bonificacoes.filter(tipo=tipo)
@@ -369,8 +434,12 @@ def bonificacao_list(request):
     if data_param:
         bonificacoes = bonificacoes.filter(data_solicitacao__date=data_param)
 
+    paginator = Paginator(bonificacoes, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
     context = {
-        'bonificacoes': bonificacoes,
+        'bonificacoes': page_obj,
         'usuarios': usuarios,
     }
     
@@ -515,7 +584,7 @@ def criar_bonificacao(request):
                 reservado_local = BonificacaoItem.objects.filter(
                     bonificacao__cliente_codigo=cliente_cod,
                     bonificacao__tipo='ACORDO_COMERCIAL',
-                    bonificacao__status__in=['APROVADO', 'CONCLUIDO'],
+                    bonificacao__status__in=['APROVADO'],
                     bonificacao__data_solicitacao__range=(acordo.vigencia_inicio, acordo.vigencia_fim)
                 ).aggregate(total=Sum('valor_total') if acordo.tipo_acordo == 'valor' else Sum('quantidade'))['total'] or 0
 
@@ -532,6 +601,11 @@ def criar_bonificacao(request):
                     solicitado = total_qtd_solicitacao
                     unidade = "UN"
 
+                print(f"DEBUG ACORDO: Objetivo: {objetivo}")
+                print(f"DEBUG PROTHEUS: Realizado: {realizado_protheus}")
+                print(f"DEBUG LOCAL: Reservado: {reservado_local}")
+                print(f"DEBUG SOLICITADO AGORA: {solicitado}")
+
                 if solicitado <= disponivel:
                     status_final = 'APROVADO'
                     messages.success(request, f"Bonificação aprovada automaticamente! Saldo restante: {unidade} {disponivel - solicitado:,.2f}")
@@ -541,7 +615,6 @@ def criar_bonificacao(request):
 
         
         elif tipo == 'VERBA_VENDEDOR':
-            # Garante que estamos pegando a verba EXATA do mês e ano corrente
             verba_configurada = VerbaMensal.objects.filter(
                 vendedor=request.user, 
                 mes_referencia=hoje.month, 
@@ -552,15 +625,13 @@ def criar_bonificacao(request):
                 messages.error(request, f"Não existe verba cadastrada para o período {hoje.month}/{hoje.year}.")
                 return render(request, 'solicitacoes/bonificacao_form.html', {'dados': request.POST})
 
-            # 1. Validação de Limite por Cliente (Consumo mensal por CNPJ)
-            limite_valor_cliente = float(verba_configurada.limite_por_cliente) # Use o campo calculado do model se existir
+            limite_valor_cliente = float(verba_configurada.limite_por_cliente)
             
             ja_gasto_cliente = Bonificacao.objects.filter(
                 vendedor=request.user, 
                 cliente_cpf_cnpj=cliente_cnpj,
                 data_solicitacao__month=hoje.month, 
                 data_solicitacao__year=hoje.year,
-                # Importante: Incluir PENDENTES para não furar o teto
                 status__in=['APROVADO', 'PENDENTE', 'CONCLUIDO']
             ).aggregate(total=Sum('itens__valor_total'))['total'] or 0
 
@@ -568,14 +639,12 @@ def criar_bonificacao(request):
                 messages.error(request, f"Limite por cliente excedido! O máximo para este cliente é R$ {limite_valor_cliente:,.2f}")
                 return render(request, 'solicitacoes/bonificacao_form.html', {'dados': request.POST})
 
-            # 2. Validação do Saldo Global do Vendedor (Consumo total do mês)
-            # Aqui é onde o erro do mês passado geralmente acontece:
             gastos_totais_mes = Bonificacao.objects.filter(
                 vendedor=request.user, 
                 tipo='VERBA_VENDEDOR',
-                data_solicitacao__month=hoje.month, # Filtro estrito de mês
-                data_solicitacao__year=hoje.year,   # Filtro estrito de ano
-                status__in=['APROVADO', 'PENDENTE', 'CONCLUIDO'] # Considere pendentes!
+                data_solicitacao__month=hoje.month,
+                data_solicitacao__year=hoje.year,
+                status__in=['APROVADO', 'PENDENTE', 'CONCLUIDO']
             ).aggregate(total=Sum('itens__valor_total'))['total'] or 0
 
             saldo_disponivel = float(verba_configurada.valor) - float(gastos_totais_mes)
@@ -703,7 +772,7 @@ def confirmar_plantao(request, pk):
         
         messages.success(request, f"Plantão de {plantao.nome_cliente} confirmado com sucesso!")
         
-    return redirect('plantao_list') # Substitua pelo nome da sua URL de listagem
+    return redirect('plantao_list')
 
 @login_required
 def excluir_bonificacao(request, pk):
@@ -734,4 +803,41 @@ def gerar_pdf_bonificacao(request, pk):
     if pisa_status.err:
         return HttpResponse('Erro ao gerar PDF', status=500)
     
+    return response
+
+def exportar_bonificacoes_excel(request):
+    data_inicio = request.GET.get('data_inicio')
+    data_fim = request.GET.get('data_fim')
+
+    queryset = Bonificacao.objects.all()
+    
+    if data_inicio:
+        queryset = queryset.filter(data_solicitacao__date__gte=data_inicio)
+    if data_fim:
+        queryset = queryset.filter(data_solicitacao__date__lte=data_fim)
+
+    dados = []
+    for b in queryset:
+        dados.append({
+            'ID': b.id,
+            'Data Solicitação': b.data_solicitacao.replace(tzinfo=None),
+            'Vendedor': b.vendedor.get_full_name() if b.vendedor else 'N/A',
+            'Cliente (Razão Social)': b.cliente_razao_social,
+            'CPF/CNPJ': b.cliente_cpf_cnpj,
+            'Tipo': b.get_tipo_display(),
+            'Plataforma': b.plataforma,
+            'Status': b.get_status_display(),
+            'Valor Total': b.get_total(),
+            'Pedido ERP': b.pedido_protheus or '',
+            'Justificativa': b.justificativa or ''
+        })
+
+    df = pd.DataFrame(dados)
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename=bonificacoes_{data_inicio}_a_{data_fim}.xlsx'
+
+    with pd.ExcelWriter(response, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Bonificações')
+
     return response

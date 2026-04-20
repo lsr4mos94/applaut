@@ -1,41 +1,49 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h3 style="color: #bca464; font-weight: 600; font-family: 'Montserrat', sans-serif;">Solicitação de Boletos</h3>
+<div class="container mt-5">
+    <div class="row mb-4">
+        <div class="col-12 text-center text-md-start">
+            <h3 class="text-gold-title">
+                Solicitação de Boletos
+            </h3>
         </div>
     </div>
 
     <div class="row justify-content-center">
-        <div class="col-md-5">
-            <div class="card border-0 shadow-sm rounded-3">
-                <div class="card-body p-5">
+        <div class="col-md-5 col-lg-4">
+            <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+                <div style="height: 4px; background-color: #bca464;"></div>
+                
+                <div class="card-body p-4 p-md-5">
                     <form method="POST" id="formBusca">
                         {% csrf_token %}
-                        <div class="mb-4">
-                            <label class="small fw-bold text-muted mb-2 d-block" style="letter-spacing: 0.5px;">
+                        <div class="mb-4 text-start">
+                            <label class="small fw-bold text-uppercase text-muted mb-2 d-block" style="letter-spacing: 1px; font-size: 0.7rem;">
                                 Número da Nota Fiscal
                             </label>
-                            <input type="text" name="numero_nota" class="form-control border-2" maxlength="9" 
-                                minlength="9" pattern="\d*" title="O número da nota deve ter exatamente 9 dígitos" 
-                                oninput="this.value = this.value.replace(/[^0-9]/g, '');" required autofocus>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-2 border-end-0 text-muted"><i class="bi bi-hash"></i></span>
+                                <input type="text" name="numero_nota" class="form-control border-2 border-start-0 ps-0 shadow-none" 
+                                    maxlength="9" minlength="1" pattern="\d*" placeholder="000000000"
+                                    style="border-color: #dee2e6; height: 50px;"
+                                    oninput="this.value = this.value.replace(/[^0-9]/g, '');" required autofocus>
+                            </div>
                         </div>
                         
-                        <button type="submit" id="btnBuscar" class="btn text-white w-100 py-3 shadow-sm" 
-                                style="background-color: #bca464; border: none; font-weight: 700;">
-                            <span id="btnText"><i class="bi bi-search me-2"></i> Buscar Boletos</span>
+                        <button type="submit" id="btnBuscar" class="btn text-white w-100 py-3 shadow rounded-3 transition-all" 
+                                style="background-color: #bca464; border: none; font-weight: 700; font-size: 0.9rem;">
+                            <span id="btnText"><i class="bi bi-search me-2"></i> BUSCAR BOLETOS</span>
                             <span id="btnLoader" class="d-none">
                                 <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                                Buscando no Servidor...
+                                CONSULTANDO...
                             </span>
                         </button>
                     </form>
 
                     {% if mensagem %}
-                    <div class="alert alert-danger mt-4 border-0 rounded-3 small text-center shadow-sm">
-                        <i class="bi bi-exclamation-circle me-1"></i> {{ mensagem }}
+                    <div class="alert alert-danger mt-4 border-0 rounded-3 small text-center shadow-sm animate__animated animate__shakeX">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ mensagem }}
                     </div>
                     {% endif %}
                 </div>
@@ -47,23 +55,32 @@
 {% if abrir_modal %}
 <div class="modal fade" id="modalBoletos" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 rounded-4">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
             <div class="modal-header text-white p-4" style="background-color: #bca464;">
-                <h5 class="modal-title fw-bold"><i class="bi bi-file-pdf me-2"></i>Arquivos Encontrados</h5>
+                <h5 class="modal-title fw-bold"><i class="bi bi-file-earmark-pdf-fill me-2"></i>Documentos Localizados</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4">
-                <div class="list-group shadow-sm">
+            <div class="modal-body p-4 bg-light">
+                <p class="small text-muted mb-3">Clique no arquivo abaixo para baixar:</p>
+                <div class="list-group list-group-flush rounded-3 shadow-sm border">
                     {% for boleto in lista_boletos %}
                     <a href="{% url 'baixar_boleto' boleto.caminho %}" target="_blank"
-                       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center p-3">
-                        <span class="text-truncate fw-bold" style="max-width: 85%; color: #5e4d26;">
-                            {{ boleto.nome }}
+                       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center p-3 border-bottom">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-file-pdf text-danger fs-4 me-3"></i>
+                            <span class="text-truncate fw-semibold" style="max-width: 220px; color: #333; font-size: 0.9rem;">
+                                {{ boleto.nome }}
+                            </span>
+                        </div>
+                        <span class="badge rounded-pill bg-light text-primary border border-primary px-3 py-2">
+                            <i class="bi bi-cloud-arrow-down-fill me-1"></i> Baixar
                         </span>
-                        <i class="bi bi-download text-primary"></i>
                     </a>
                     {% endfor %}
                 </div>
+            </div>
+            <div class="modal-footer border-0 bg-light p-3">
+                <button type="button" class="btn btn-link text-muted text-decoration-none small mx-auto" data-bs-dismiss="modal">Fechar consulta</button>
             </div>
         </div>
     </div>
@@ -76,6 +93,17 @@
     });
 </script>
 {% endif %}
+
+<style>
+    .transition-all:hover {
+        background-color: #a38d52 !important;
+        transform: translateY(-2px);
+    }
+    .form-control:focus {
+        border-color: #bca464 !important;
+        box-shadow: 0 0 0 0.25rem rgba(188, 164, 100, 0.15) !important;
+    }
+</style>
 
 <script>
     document.getElementById('formBusca').onsubmit = function() {

@@ -1,15 +1,16 @@
 {% extends 'base.html' %}
 
 {% block content %}
+
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 style="color: #bca464; font-weight: 600;">Acordos Comerciais</h3>
-    <button class="btn text-white shadow-sm" style="background-color: #bca464;" data-bs-toggle="modal" data-bs-target="#modalAcordo">
+    <h3 class="text-gold-title mb-0">Acordos Comerciais</h3>
+    <button class="btn btn-gold-action px-4 py-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalAcordo">
         <i class="bi bi-plus-circle"></i><strong> Novo Acordo</strong>
     </button>
 </div>
 
 <div class="card border-0 shadow-sm mb-4">
-    <div class="card-body bg-light rounded p-4">
+    <div class="card-body card-filter">
         <form method="GET" class="row g-3 align-items-end">
             <div class="col-md-5">
                 <label class="small fw-bold text-muted">Cliente (Nome, CPF ou CNPJ)</label>
@@ -35,150 +36,178 @@
     </div>
 </div>
 
-<div class="table-responsive shadow-sm rounded">
-    <table class="table table-hover align-middle mb-0 bg-white">
-        <thead>
-            <tr>
-                <th style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 px-3">Cliente</th>
-                <th style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3">Data Acordo</th>
-                <th style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3">Vigência</th>
-                <th style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3">Tipo</th>
-                <th style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 text-center">Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for acordo in acordos %}
-            <tr class="border-bottom">
-                <td class="px-3">
-                    <strong style="color: #5e4d26;">{{ acordo.cliente_nome }}</strong><br>
-                    <small class="text-muted">{{ acordo.cliente_codigo }}/{{ acordo.cliente_loja }}</small>
-                </td>
-                <td>{{ acordo.data_acordo|date:"d/m/Y" }}</td>
-                <td>
-                    <small class="fw-bold">{{ acordo.vigencia_inicio|date:"d/m/y" }}</small> 
-                    <span class="text-muted small">até</span> 
-                    <small class="fw-bold">{{ acordo.vigencia_fim|date:"d/m/y" }}</small>
-                </td>
-                <td>
-                    <span class="badge bg-light text-dark border px-2" style="border-color: #bca464 !important;">
-                        {{ acordo.get_tipo_acordo_display }}
-                    </span>
-                </td>
-                <td class="text-center">
-                    <div class="d-flex justify-content-center gap-1">
-                        <button class="btn btn-sm btn-outline-dark border-0" onclick="abrirHistorico('{{ acordo.id }}')" title="Ver Progresso e NFs">
-                            <i class="bi bi-bar-chart-line-fill fs-5" style="color: #1a1a1a;"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-secondary border-0" data-bs-toggle="modal" data-bs-target="#modalVisualizar{{ acordo.id }}" title="Ver Detalhes">
-                            <i class="bi bi-eye-fill fs-5" style="color: #bca464;"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger border-0" data-bs-toggle="modal" data-bs-target="#modalExcluir{{ acordo.id }}" title="Excluir">
-                            <i class="bi bi-trash3-fill fs-5"></i>
-                        </button>
-                    </div>
+<div class="card border-0 shadow-sm overflow-hidden">
+    <div class="table-responsive">
+        <table id="tabelaAcordos" class="table table-applaut w-100 mb-0">
+            <thead>
+                <tr>
+                    <th class="py-3 px-3">CLIENTE</th>
+                    <th class="py-3">DATA ACORDO</th>
+                    <th class="py-3">VIGÊNCIA</th>
+                    <th class="py-3">TIPO</th>
+                    <th class="py-3 text-center">AÇÕES</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for acordo in acordos %}
+                <tr class="border-bottom">
+                    <td class="px-3">
+                        <strong style="color: #5e4d26;">#{{ acordo.id }} {{ acordo.cliente_nome }}</strong><br>
+                        <small class="text-muted">{{ acordo.cliente_codigo }}/{{ acordo.cliente_loja }}</small>
+                    </td>
+                    <td>{{ acordo.data_acordo|date:"d/m/Y" }}</td>
+                    <td>
+                        <small class="fw-bold">{{ acordo.vigencia_inicio|date:"d/m/y" }}</small>
+                        <span class="text-muted small">até</span>
+                        <small class="fw-bold">{{ acordo.vigencia_fim|date:"d/m/y" }}</small>
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-dark border px-2" style="border-color: #bca464 !important;">
+                            {{ acordo.get_tipo_acordo_display }}
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        <div class="d-flex justify-content-center gap-1">
+                            <button type="button" class="btn-square-action btn-track" onclick="abrirHistorico('{{ acordo.id }}')" title="Ver Progresso">
+                                <i class="bi bi-bar-chart-line-fill"></i>
+                            </button>
+                            <button type="button" class="btn-square-action btn-view" data-bs-toggle="modal" data-bs-target="#modalVisualizar{{ acordo.id }}" title="Ver Detalhes">
+                                <i class="bi bi-eye-fill"></i>
+                            </button>
+                            <button type="button" class="btn-square-action btn-delete" data-bs-toggle="modal" data-bs-target="#modalExcluir{{ acordo.id }}" title="Excluir">
+                                <i class="bi bi-trash3-fill"></i>
+                            </button>
+                        </div>
 
-                    <div class="modal fade" id="modalVisualizar{{ acordo.id }}" tabindex="-1" aria-hidden="true">
-                        <div class="modal-dialog modal-lg modal-dialog-centered">
-                            <div class="modal-content border-0 shadow-lg text-start">
-                                <div class="modal-header text-white border-0" style="background-color: #bca464;">
-                                    <h5 class="modal-title fw-bold"><i class="bi bi-info-circle-fill me-2"></i>Detalhes do Acordo #{{ acordo.id }}</h5>
-                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center py-5 text-muted">Nenhum acordo comercial encontrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div>
+        {% for acordo in acordos %}
+            <div class="modal fade" id="modalVisualizar{{ acordo.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-centered">
+                    <div class="modal-content border-0 shadow-lg text-start">
+                        <div class="modal-header text-white border-0" style="background-color: #bca464;">
+                            <h5 class="modal-title fw-bold"><i class="bi bi-info-circle-fill me-2"></i>Detalhes do Acordo #{{ acordo.id }}</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-4 text-dark">
+                            <div class="row mb-4 bg-light p-3 rounded mx-0 border">
+                                <div class="col-md-7 border-end text-start">
+                                    <label class="text-muted small d-block text-uppercase fw-bold">Dados do Cliente</label>
+                                    <span class="fw-bold h6" style="color: #bca464;">{{ acordo.cliente_nome }}</span><br>
+                                    <small class="text-muted">Código: {{ acordo.cliente_codigo }} | Loja: {{ acordo.cliente_loja }}</small>
                                 </div>
-                                <div class="modal-body p-4 text-dark">
-                                    <div class="row mb-4 bg-light p-3 rounded mx-0 border">
-                                        <div class="col-md-7 border-end text-start">
-                                            <label class="text-muted small d-block text-uppercase fw-bold">Dados do Cliente</label>
-                                            <span class="fw-bold h6" style="color: #bca464;">{{ acordo.cliente_nome }}</span><br>
-                                            <small class="text-muted">Código: {{ acordo.cliente_codigo }} | Loja: {{ acordo.cliente_loja }}</small>
-                                        </div>
-                                        <div class="col-md-5 ps-md-4 text-md-end text-start mt-2 mt-md-0">
-                                            <label class="text-muted small d-block text-uppercase fw-bold">Tipo de Acordo</label>
-                                            <span class="badge" style="background-color: #1a1a1a; color: #bca464;">
-                                                {{ acordo.get_tipo_acordo_display|upper }}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <div class="row mb-4 p-3 rounded mx-0" style="background-color: #fcfaf5; border-left: 4px solid #bca464;">
-                                        <div class="col-md-4">
-                                            <label class="text-muted small d-block fw-bold">Vigência</label>
-                                            <span class="fw-bold text-dark">{{ acordo.vigencia_inicio|date:"d/m/Y" }} a {{ acordo.vigencia_fim|date:"d/m/Y" }}</span>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="text-muted small d-block fw-bold">Data de Emissão</label>
-                                            <span>{{ acordo.data_acordo|date:"d/m/Y" }}</span>
-                                        </div>
-                                        <div class="col-md-4 text-md-end">
-                                            {% if acordo.tipo_acordo == 'valor' %}
-                                                <label class="text-muted small d-block fw-bold">Investimento Total</label>
-                                                <span class="fw-bold text-success h5">R$ {{ acordo.valor_acordo|floatformat:2 }}</span>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-
-                                    {% if acordo.tipo_acordo == 'produto' %}
-                                    <h6 class="fw-bold mb-3" style="color: #bca464;"><i class="bi bi-box-seam me-2"></i>Produtos Acordados</h6>
-                                    <div class="table-responsive">
-                                        <table class="table table-sm table-bordered align-middle">
-                                            <thead class="bg-light small">
-                                                <tr>
-                                                    <th class="ps-3">Cód. Produto</th>
-                                                    <th>Descrição</th>
-                                                    <th class="text-center" style="width: 150px;">Qtd. Acordada</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody class="small">
-                                                {% for item in acordo.itens.all %}
-                                                <tr>
-                                                    <td class="ps-3 text-muted">{{ item.produto_codigo }}</td>
-                                                    <td class="fw-medium">{{ item.produto_descricao }}</td>
-                                                    <td class="text-center fw-bold text-dark">
-                                                        {{ item.qtd_faturada|default:"0" }}
-                                                    </td>
-                                                </tr>
-                                                {% empty %}
-                                                <tr><td colspan="3" class="text-center text-muted py-3">Nenhum produto listado.</td></tr>
-                                                {% endfor %}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                <div class="col-md-5 ps-md-4 text-md-end text-start mt-2 mt-md-0">
+                                    <label class="text-muted small d-block text-uppercase fw-bold">Tipo de Acordo</label>
+                                    <span class="badge" style="background-color: #1a1a1a; color: #bca464;">
+                                        {{ acordo.get_tipo_acordo_display|upper }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="row mb-4 p-3 rounded mx-0" style="background-color: #fcfaf5; border-left: 4px solid #bca464;">
+                                <div class="col-md-4">
+                                    <label class="text-muted small d-block fw-bold">Vigência</label>
+                                    <span class="fw-bold text-dark">{{ acordo.vigencia_inicio|date:"d/m/Y" }} a {{ acordo.vigencia_fim|date:"d/m/Y" }}</span>
+                                </div>
+                                    <div class="col-md-4">
+                                    <label class="text-muted small d-block fw-bold">Data de Emissão</label>
+                                    <span>{{ acordo.data_acordo|date:"d/m/Y" }}</span>
+                                </div>
+                                <div class="col-md-4 text-md-end">
+                                    {% if acordo.tipo_acordo == 'valor' %}
+                                        <label class="text-muted small d-block fw-bold">Investimento Total</label>
+                                        <span class="fw-bold text-success h5">R$ {{ acordo.valor_acordo|floatformat:2 }}</span>
                                     {% endif %}
                                 </div>
-                                <div class="modal-footer bg-light border-0">
-                                    <button type="button" class="btn btn-secondary px-4 shadow-sm" data-bs-dismiss="modal">Fechar</button>
-                                </div>
                             </div>
+                            {% if acordo.tipo_acordo == 'produto' %}
+                            <h6 class="fw-bold mb-3" style="color: #bca464;"><i class="bi bi-box-seam me-2"></i>Produtos Acordados</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered align-middle">
+                                    <thead class="bg-light small">
+                                        <tr>
+                                            <th class="ps-3">Cód. Produto</th>
+                                            <th>Descrição</th>
+                                            <th class="text-center" style="width: 150px;">Qtd. Acordada</th>
+                                        </tr>
+                                    </thead>
+                                        <tbody class="small">
+                                        {% for item in acordo.itens.all %}
+                                        <tr>
+                                            <td class="ps-3 text-muted">{{ item.produto_codigo }}</td>
+                                            <td class="fw-medium">{{ item.produto_descricao }}</td>
+                                            <td class="text-center fw-bold text-dark">{{ item.qtd_faturada|default:"0" }}</td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr><td colspan="3" class="text-center text-muted py-3">Nenhum produto listado.</td></tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="modal-footer bg-light border-0">
+                            <button type="button" class="btn btn-secondary px-4 shadow-sm" data-bs-dismiss="modal">Fechar</button>
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    <div class="modal fade" id="modalExcluir{{ acordo.id }}" tabindex="-1" aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered modal-sm">
-                            <div class="modal-content border-0 shadow">
-                                <div class="modal-header border-0 bg-danger text-white">
-                                    <h6 class="modal-title fw-bold">Confirmar Exclusão</h6>
-                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                </div>
-                                <div class="modal-body text-center py-4">
-                                    Deseja realmente excluir o acordo de <strong>{{ acordo.cliente_nome }}</strong>?
-                                </div>
-                                <div class="modal-footer border-0 bg-light d-flex justify-content-center">
-                                    <form action="{% url 'excluir_acordo' acordo.id %}" method="POST">
-                                        {% csrf_token %}
-                                        <button type="button" class="btn btn-sm btn-secondary px-3" data-bs-dismiss="modal">Não</button>
-                                        <button type="submit" class="btn btn-sm btn-danger px-3">Sim, Excluir</button>
-                                    </form>
-                                </div>
-                            </div>
+            <div class="modal fade" id="modalExcluir{{ acordo.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-sm">
+                    <div class="modal-content border-0 shadow">
+                        <div class="modal-header border-0 bg-danger text-white">
+                            <h6 class="modal-title fw-bold">Excluir Acordo</h6>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body text-center py-4">
+                            Deseja realmente excluir o acordo de <strong>{{ acordo.cliente_nome }}</strong>?
+                        </div>
+                        <div class="modal-footer border-0 bg-light d-flex justify-content-center">
+                            <form action="{% url 'excluir_acordo' acordo.id %}" method="POST">
+                                {% csrf_token %}
+                                <button type="button" class="btn btn-sm btn-secondary px-3" data-bs-dismiss="modal">Não</button>
+                                <button type="submit" class="btn btn-sm btn-danger px-3">Sim, Excluir</button>
+                            </form>
                         </div>
                     </div>
-                </td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="5" class="text-center py-5 text-muted">Nenhum acordo comercial encontrado.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
 </div>
+
+{% if acordos.has_other_pages %}
+    <nav class="mt-4 mb-4">
+        <ul class="pagination justify-content-center">
+            {% if acordos.has_previous %}
+                <li class="page-item">
+                    <a class="page-link text-dark" href="?page={{ acordos.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">&laquo; Anterior</a>
+                </li>
+            {% endif %}
+
+            {% for i in acordos.paginator.page_range %}
+                {% if acordos.number == i %}
+                    <li class="page-item active"><span class="page-link" style="background-color: #bca464; border-color: #bca464;">{{ i }}</span></li>
+                {% elif i > acordos.number|add:'-3' and i < acordos.number|add:'3' %}
+                    <li class="page-item"><a class="page-link text-dark" href="?page={{ i }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ i }}</a></li>
+                {% endif %}
+            {% endfor %}
+
+            {% if acordos.has_next %}
+                <li class="page-item">
+                    <a class="page-link text-dark" href="?page={{ acordos.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Próxima &raquo;</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+{% endif %}
 
 <div class="modal fade" id="modalAcordo" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -190,7 +219,6 @@
             <form id="formNovoAcordo" method="POST" action="{% url 'salvar_acordo' %}">
                 {% csrf_token %}
                 <div class="modal-body p-4 text-start">
-                    
                     <div class="row g-3 mb-3 p-3 rounded border" style="background-color: #fcfaf5; border-color: #bca464 !important;">
                         <div class="col-md-12">
                             <label class="form-label small fw-bold" style="color: #bca464;">Pesquisar Cliente</label>
@@ -200,7 +228,6 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="row g-3 mb-4 border-bottom pb-4">
                         <input type="hidden" name="cliente_codigo" id="id_cliente_codigo">
                         <input type="hidden" name="cliente_loja" id="id_cliente_loja">
@@ -209,7 +236,6 @@
                             <div id="display_cliente_selecionado" class="p-2 fw-bold text-muted small">Nenhum cliente selecionado</div>
                         </div>
                     </div>
-
                     <div class="row g-3 mb-4">
                         <div class="col-md-6">
                             <label class="small fw-bold">Início Vigência</label>
@@ -220,7 +246,6 @@
                             <input type="date" name="vigencia_fim" class="form-control" required style="border-color: #bca464;">
                         </div>
                     </div>
-                    
                     <div class="row g-3 mb-4">
                         <div class="col-md-12">
                             <label class="small fw-bold">Tipo de Acordo</label>
@@ -231,14 +256,12 @@
                             </select>
                         </div>
                     </div>
-
                     <div class="row g-3 mb-4 d-none" id="div_valor">
                         <div class="col-md-6">
                             <label class="small fw-bold" style="color: #bca464;">Valor Total do Acordo (R$)</label>
                             <input type="number" step="0.01" name="valor_acordo" class="form-control" style="border-color: #bca464;">
                         </div>
                     </div>
-
                     <div id="section_produtos" class="d-none">
                         <div class="p-3 mb-3 rounded border" style="background-color: #fcfaf5; border-color: #bca464 !important;">
                             <label class="small fw-bold" style="color: #bca464;">Adicionar Produtos ao Acordo</label>
@@ -250,7 +273,6 @@
                         <div id="lista_produtos"></div>
                     </div>
                 </div>
-
                 <div class="modal-footer border-0 bg-light">
                     <button type="button" class="btn btn-link text-muted text-decoration-none" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn px-5 text-white fw-bold shadow-sm" style="background-color: #bca464;">SALVAR ACORDO</button>
@@ -264,7 +286,9 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header text-white" style="background-color: #bca464;">
-                <h5 class="modal-title fw-bold"><i class="bi bi-clock-history me-2"></i>Acompanhamento do Acordo</h5>
+                <h5 class="modal-title fw-bold" id="tituloHistorico">
+                    <i class="bi bi-clock-history me-2"></i>Acompanhamento do Acordo
+                </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
@@ -293,8 +317,7 @@
                                 <th class="text-end">VALOR</th>
                             </tr>
                         </thead>
-                        <tbody id="corpo_historico_nfs" class="small">
-                            </tbody>
+                        <tbody id="corpo_historico_nfs" class="small"></tbody>
                     </table>
                 </div>
             </div>
@@ -320,137 +343,158 @@
     </div>
 </div>
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const modalResCli = new bootstrap.Modal(document.getElementById('modalResultadosBusca'));
-    const modalResProd = new bootstrap.Modal(document.getElementById('modalResProdutos'));
-    const selectTipo = document.getElementById('select_tipo');
-
-    document.getElementById('btn_buscar_cliente').onclick = function() {
-        const t = document.getElementById('input_busca_cliente').value;
-        if(t.length < 3) return alert('Mínimo 3 caracteres');
-        fetch("{% url 'api_busca_clientes' %}?q=" + encodeURIComponent(t))
-            .then(res => res.json())
-            .then(data => {
-                const l = document.getElementById('lista_resultados_cliente');
-                l.innerHTML = '';
-                data.forEach(c => {
-                    const b = document.createElement('button');
-                    b.type = 'button'; b.className = 'list-group-item list-group-item-action p-3';
-                    b.innerHTML = `<strong style="color: #bca464;">${c.nome}</strong><br><small>CNPJ: ${c.cnpj} | Cód: ${c.codigo}</small>`;
-                    b.onclick = () => {
-                        document.getElementById('id_cliente_nome').value = c.fantasia;
-                        document.getElementById('id_cliente_codigo').value = c.codigo;
-                        document.getElementById('id_cliente_loja').value = c.loja;
-                        document.getElementById('display_cliente_selecionado').innerHTML = `<i class="bi bi-check-circle-fill text-success"></i> ${c.nome} (${c.codigo}-${c.loja})`;
-                        modalResCli.hide();
-                    };
-                    l.appendChild(b);
-                });
-                modalResCli.show();
-            });
-    };
-
-    document.getElementById('btn_buscar_produto').onclick = function() {
-        const t = document.getElementById('input_busca_produto').value;
-        if(t.length < 3) return alert('Mínimo 3 caracteres');
-        fetch("{% url 'api_busca_produtos' %}?q=" + encodeURIComponent(t))
-            .then(res => res.json())
-            .then(data => {
-                const l = document.getElementById('lista_res_prod');
-                l.innerHTML = '';
-                data.forEach(p => {
-                    const b = document.createElement('button');
-                    b.type = 'button'; b.className = 'list-group-item list-group-item-action p-3';
-                    b.innerHTML = `<strong style="color: #bca464;">${p.descricao}</strong><br><small>${p.codigo} - ${p.grupo_familia}</small>`;
-                    b.onclick = () => { addProdutoRow(p); modalResProd.hide(); };
-                    l.appendChild(b);
-                });
-                modalResProd.show();
-            });
-    };
-
-    selectTipo.onchange = function() {
-        const val = this.value;
-        document.getElementById('div_valor').classList.toggle('d-none', val !== 'valor');
-        document.getElementById('section_produtos').classList.toggle('d-none', val !== 'produto');
-        document.getElementById('lista_produtos').innerHTML = '';
-    };
-
-    window.addProdutoRow = function(p) {
-        const container = document.getElementById('lista_produtos');
-        const div = document.createElement('div');
-        div.className = 'row g-2 mb-2 align-items-center border-bottom pb-2 bg-white p-2 rounded shadow-sm mx-0';
-        
-        div.innerHTML = `
-            <div class="col-md-7">
-                <input type="hidden" name="prod_codigo[]" value="${p.codigo}">
-                <input type="hidden" name="prod_desc[]" value="${p.descricao}">
-                <span class="small fw-bold" style="color: #bca464;">${p.descricao}</span><br>
-                <small class="text-muted">${p.codigo}</small>
-            </div>
-            <div class="col-md-4">
-                <input type="number" name="prod_qtd[]" class="form-control form-control-sm" placeholder="Qtd. Total" required>
-            </div>
-            <div class="col-md-1 text-end">
-                <button type="button" class="btn btn-sm text-danger border-0" onclick="this.closest('.row').remove()"><i class="bi bi-trash-fill"></i></button>
-            </div>`;
-        container.appendChild(div);
-        document.getElementById('input_busca_produto').value = '';
-    };
-
-    window.abrirHistorico = function(acordoId) {
-        const modalHist = new bootstrap.Modal(document.getElementById('modalHistorico'));
-        const barra = document.getElementById('barra_progresso');
-        const labelPct = document.getElementById('label_porcentagem');
-        const corpo = document.getElementById('corpo_historico_nfs');
-
-        corpo.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border spinner-border-sm text-warning"></div> Consultando Protheus...</td></tr>';
-        modalHist.show();
-
-        fetch(`/cadastros/api/historico/${acordoId}/`)
-            .then(res => res.json())
-            .then(data => {
-                const pct = data.porcentagem;
-                
-                barra.className = "progress-bar progress-bar-striped progress-bar-animated"; 
-                if (pct <= 50) {
-                    barra.classList.add("bg-danger");
-                    labelPct.style.color = "#dc3545";
-                } else if (pct < 100) {
-                    barra.classList.add("bg-warning");
-                    labelPct.style.color = "#ffc107";
-                } else {
-                    barra.classList.add("bg-success");
-                    labelPct.style.color = "#198754";
-                }
-
-                barra.style.width = Math.min(pct, 100) + '%';
-                labelPct.innerText = pct + '%';
-                document.getElementById('hist_realizado').innerText = data.label_progresso;
-
-                corpo.innerHTML = '';
-                if (data.nfs.length === 0) {
-                    corpo.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Nenhuma NF de bonificação encontrada no período.</td></tr>';
-                } else {
-                    data.nfs.forEach(nf => {
-                        const dt = nf.data;
-                        const dataFmt = dt.substring(6,8)+'/'+dt.substring(4,6)+'/'+dt.substring(0,4);
-                        corpo.innerHTML += `
-                            <tr>
-                                <td>${dataFmt}</td>
-                                <td class="fw-bold">${nf.nf}</td>
-                                <td>${nf.produto}</td>
-                                <td class="text-center">${nf.qtd}</td>
-                                <td class="text-end text-success">R$ ${nf.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-                            </tr>`;
-                    });
-                }
-            })
-            .catch(err => {
-                corpo.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Erro ao carregar dados: ${err}</td></tr>`;
-            });
-    };
+$(document).ready(function() {
+    $('#tabelaAcordos').DataTable({
+        "dom": 't',
+        "paging": false,
+        "ordering": true,
+        "order": [],
+        "info": false,
+        "searching": false,
+        "autoWidth": false,
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.13.4/i18n/pt-BR.json"
+        }
+    });
 });
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const modalResCli = new bootstrap.Modal(document.getElementById('modalResultadosBusca'));
+        const modalResProd = new bootstrap.Modal(document.getElementById('modalResProdutos'));
+        const selectTipo = document.getElementById('select_tipo');
+
+        document.getElementById('btn_buscar_cliente').onclick = function() {
+            const t = document.getElementById('input_busca_cliente').value;
+            if(t.length < 3) return alert('Mínimo 3 caracteres');
+            fetch("{% url 'api_busca_clientes' %}?q=" + encodeURIComponent(t))
+                .then(res => res.json())
+                .then(data => {
+                    const l = document.getElementById('lista_resultados_cliente');
+                    l.innerHTML = '';
+                    data.forEach(c => {
+                        const b = document.createElement('button');
+                        b.type = 'button'; b.className = 'list-group-item list-group-item-action p-3';
+                        b.innerHTML = `<strong style="color: #bca464;">${c.nome}</strong><br><small>CNPJ: ${c.cnpj} | Cód: ${c.codigo}</small>`;
+                        b.onclick = () => {
+                            document.getElementById('id_cliente_nome').value = c.fantasia;
+                            document.getElementById('id_cliente_codigo').value = c.codigo;
+                            document.getElementById('id_cliente_loja').value = c.loja;
+                            document.getElementById('display_cliente_selecionado').innerHTML = `<i class="bi bi-check-circle-fill text-success"></i> ${c.nome} (${c.codigo}-${c.loja})`;
+                            modalResCli.hide();
+                        };
+                        l.appendChild(b);
+                    });
+                    modalResCli.show();
+                });
+        };
+
+        document.getElementById('btn_buscar_produto').onclick = function() {
+            const t = document.getElementById('input_busca_produto').value;
+            if(t.length < 3) return alert('Mínimo 3 caracteres');
+            fetch("{% url 'api_busca_produtos' %}?q=" + encodeURIComponent(t))
+                .then(res => res.json())
+                .then(data => {
+                    const l = document.getElementById('lista_res_prod');
+                    l.innerHTML = '';
+                    data.forEach(p => {
+                        const b = document.createElement('button');
+                        b.type = 'button'; b.className = 'list-group-item list-group-item-action p-3';
+                        b.innerHTML = `<strong style="color: #bca464;">${p.descricao}</strong><br><small>${p.codigo} - ${p.grupo_familia}</small>`;
+                        b.onclick = () => { addProdutoRow(p); modalResProd.hide(); };
+                        l.appendChild(b);
+                    });
+                    modalResProd.show();
+                });
+        };
+
+        selectTipo.onchange = function() {
+            const val = this.value;
+            document.getElementById('div_valor').classList.toggle('d-none', val !== 'valor');
+            document.getElementById('section_produtos').classList.toggle('d-none', val !== 'produto');
+            document.getElementById('lista_produtos').innerHTML = '';
+        };
+
+        window.addProdutoRow = function(p) {
+            const container = document.getElementById('lista_produtos');
+            const div = document.createElement('div');
+            div.className = 'row g-2 mb-2 align-items-center border-bottom pb-2 bg-white p-2 rounded shadow-sm mx-0';
+            div.innerHTML = `
+                <div class="col-md-7">
+                    <input type="hidden" name="prod_codigo[]" value="${p.codigo}">
+                    <input type="hidden" name="prod_desc[]" value="${p.descricao}">
+                    <span class="small fw-bold" style="color: #bca464;">${p.descricao}</span><br>
+                    <small class="text-muted">${p.codigo}</small>
+                </div>
+                <div class="col-md-4">
+                    <input type="number" name="prod_qtd[]" class="form-control form-control-sm" placeholder="Qtd. Total" required>
+                </div>
+                <div class="col-md-1 text-end">
+                    <button type="button" class="btn btn-sm text-danger border-0" onclick="this.closest('.row').remove()"><i class="bi bi-trash-fill"></i></button>
+                </div>`;
+            container.appendChild(div);
+            document.getElementById('input_busca_produto').value = '';
+        };
+
+        window.abrirHistorico = function(acordoId) {
+            const modalHist = new bootstrap.Modal(document.getElementById('modalHistorico'));
+            const barra = document.getElementById('barra_progresso');
+            const labelPct = document.getElementById('label_porcentagem');
+            const corpo = document.getElementById('corpo_historico_nfs');
+            const titulo = document.getElementById('tituloHistorico');
+
+            if (titulo) {
+                titulo.innerHTML = `<i class="bi bi-clock-history me-2"></i>Acompanhamento do Acordo #${acordoId}`;
+            }
+
+            corpo.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border spinner-border-sm text-warning"></div> Consultando Protheus...</td></tr>';
+            modalHist.show();
+
+            fetch(`/cadastros/api/historico/${acordoId}/`)
+                .then(res => res.json())
+                .then(data => {
+                    const pct = data.porcentagem;     
+                    barra.className = "progress-bar progress-bar-striped progress-bar-animated";
+                    if (pct <= 50) {
+                        barra.classList.add("bg-danger");
+                        labelPct.style.color = "#dc3545";
+                    } else if (pct < 100) {
+                        barra.classList.add("bg-warning");
+                        labelPct.style.color = "#ffc107";
+                    } else {
+                        barra.classList.add("bg-success");
+                        labelPct.style.color = "#198754";
+                    }
+                    barra.style.width = Math.min(pct, 100) + '%';
+                    labelPct.innerText = pct + '%';
+                    document.getElementById('hist_realizado').innerText = data.label_progresso;
+                    corpo.innerHTML = '';
+                    if (data.nfs.length === 0) {
+                        corpo.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Nenhuma NF de bonificação encontrada no período.</td></tr>';
+                    } else {
+                        data.nfs.forEach(nf => {
+                            const dt = nf.data;
+                            const dataFmt = dt.substring(6,8)+'/'+dt.substring(4,6)+'/'+dt.substring(0,4);
+                            corpo.innerHTML += `
+                                <tr>
+                                    <td>${dataFmt}</td>
+                                    <td class="fw-bold">${nf.nf}</td>
+                                    <td>${nf.produto}</td>
+                                    <td class="text-center">${nf.qtd}</td>
+                                    <td class="text-end text-success">R$ ${nf.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+                                </tr>`;
+                        });
+                    }
+                })
+                .catch(err => {
+                    corpo.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Erro ao carregar dados: ${err}</td></tr>`;
+                });
+        };
+    });
 </script>
+
 {% endblock %}

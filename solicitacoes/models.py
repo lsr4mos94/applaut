@@ -10,6 +10,7 @@ OCORRENCIAS = [
 STATUS_CHOICES = [
     ('PENDENTE', 'Pendente'),
     ('CONFIRMADO', 'Confirmado'),
+    ('RECUSADO', 'Recusado'),
 ]
 
 class Plantao(models.Model):
@@ -33,7 +34,7 @@ class Plantao(models.Model):
     horario = models.TimeField()
     data_solicitacao = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDENTE')
-
+    zenvia_message_id = models.CharField(max_length=100, blank=True, null=True, db_index=True)
 
 class Bonificacao(models.Model):
     TIPOS_CHOICES = [
@@ -58,6 +59,7 @@ class Bonificacao(models.Model):
         ('PENDENTE', 'Pendente'),
         ('APROVADO', 'Aprovado'),
         ('REPROVADO', 'Reprovado'),
+        ('CONCLUIDO', 'Concluído'),
     ]
 
     tipo = models.CharField(max_length=20, choices=TIPOS_CHOICES)

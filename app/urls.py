@@ -18,6 +18,7 @@ urlpatterns = [
     path('accounts/', include('django.contrib.auth.urls')),
     path('cadastros/', include('cadastros.urls')),
     path('solicitacoes/', include('solicitacoes.urls')),
+    path('adm/', include('adm.urls')),
 
     path('password_reset/', auth_views.PasswordResetView.as_view(
         template_name='registration/password_reset_form.html',
@@ -38,6 +39,8 @@ urlpatterns = [
     ), name='password_reset_complete'),
 
     re_path(r'^static/(?P<path>.*)$', serve, {'document_root': settings.STATIC_ROOT}),
-    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT})
+    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+
+    path('webhooks/', include('integracoes.urls')),
 
 ]

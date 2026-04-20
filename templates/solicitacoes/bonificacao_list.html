@@ -1,36 +1,31 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h3 style="color: #bca464; font-weight: 600;">Solicitação de Bonificação</h3>
-    </div>
-    <a href="{% url 'criar_bonificacao' %}" class="btn text-white shadow-sm" style="background-color: #bca464;">
-        <i class="bi bi-plus-circle"></i><strong> Solicitar Bonificação</strong>
-    </a>
-</div>
 
-<style>
-    .btn-icon {
-        width: 32px;
-        height: 32px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-    }
-</style>
+<div class="container mt-4 text-start">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="text-gold-title mb-0">Solicitação de Bonificação</h3>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-success shadow-sm fw-bold d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#modalExportarExcel">
+                <i class="bi bi-file-earmark-excel me-2"></i> Exportar
+            </button>
+            <a href="{% url 'criar_bonificacao' %}" class="btn btn-gold-action px-4 py-2 shadow-sm">
+                <i class="bi bi-plus-circle"></i> Nova Solicitação
+            </a>
+        </div>
+    </div>
 
 <div class="card border-0 shadow-sm mb-4">
-    <div class="card-body bg-light rounded">
-        <form method="GET" class="row g-2 align-items-end">
-            <div class="col-md">
-                <label class="small fw-bold text-muted">Busca</label>
+    <div class="card-body card-filter">
+        <form method="GET" class="row g-2">
+            
+            <div class="col">
+                <label>Busca</label>
                 <input type="text" name="busca" class="form-control form-control-sm" placeholder="Nome ou CPF/CNPJ" value="{{ request.GET.busca }}">
             </div>
 
-            <div class="col-md">
-                <label class="small fw-bold text-muted">Plataforma</label>
+            <div class="col">
+                <label>Plataforma</label>
                 <select name="plataforma" class="form-select form-select-sm">
                     <option value="">Todas</option>
                     <option value="CIEC" {% if request.GET.plataforma == 'CIEC' %}selected{% endif %}>CIEC</option>
@@ -39,8 +34,8 @@
                 </select>
             </div>
 
-            <div class="col-md">
-                <label class="small fw-bold text-muted">Tipo</label>
+            <div class="col">
+                <label>Tipo</label>
                 <select name="tipo" class="form-select form-select-sm">
                     <option value="">Todos</option>
                     <option value="VERBA_VENDEDOR" {% if request.GET.tipo == 'VERBA_VENDEDOR' %}selected{% endif %}>Verba Vendedor</option>
@@ -50,8 +45,8 @@
                 </select>
             </div>
 
-            <div class="col-md">
-                <label class="small fw-bold text-muted">Vendedor</label>
+            <div class="col">
+                <label>Vendedor</label>
                 <select name="vendedor" class="form-select form-select-sm">
                     <option value="">Todos</option>
                     {% for user in usuarios %}
@@ -62,56 +57,49 @@
                 </select>
             </div>
 
-            <div class="col-md">
-                <label class="small fw-bold text-muted">Status</label>
+            <div class="col">
+                <label>Status</label>
                 <select name="status" class="form-select form-select-sm">
                     <option value="">Todos</option>
                     <option value="PENDENTE" {% if request.GET.status == 'PENDENTE' %}selected{% endif %}>Pendente</option>
                     <option value="APROVADO" {% if request.GET.status == 'APROVADO' %}selected{% endif %}>Aprovado</option>
                     <option value="REPROVADO" {% if request.GET.status == 'REPROVADO' %}selected{% endif %}>Reprovado</option>
-                    <option value="CONCLUIDO" {% if request.GET.status == 'CONCLUIDO' %}selected{% endif %}>Confirmado</option>
+                    <option value="CONCLUIDO" {% if request.GET.status == 'CONCLUIDO' %}selected{% endif %}>Concluído</option>
                 </select>
             </div>
 
-            <div class="col-md">
-                <label class="small fw-bold text-muted">Emissão</label>
+            <div class="col">
+                <label>Emissão</label>
                 <input type="date" name="data_solicitacao" class="form-control form-control-sm" value="{{ request.GET.data_solicitacao }}">
             </div>
 
-            <div class="col-auto d-flex gap-1 pb-1">
-                <button type="submit" class="btn btn-dark btn-sm d-inline-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="Filtrar">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
-                        <path d="M1.5 1.5A.5.5 0 0 1 2 1h12a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.128.334L10 8.692V13.5a.5.5 0 0 1-.342.474l-3 1A.5.5 0 0 1 6 14.5V8.692L1.628 3.834A.5.5 0 0 1 1.5 3.5v-2z"/>
-                    </svg>
+            <div class="col-auto d-flex align-items-end gap-1">
+                <button type="submit" class="btn btn-dark btn-sm btn-filter px-3" title="Filtrar">
+                    <i class="bi bi-filter"></i>
                 </button>
-                <a href="{% url request.resolver_match.url_name %}" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="Limpar Filtros">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
-                        <path d="M8.086 2.207a2 2 0 0 1 2.828 0l3.879 3.879a2 2 0 0 1 0 2.828l-5.5 5.5A2 2 0 0 1 7.879 15H5.12a2 2 0 0 1-1.414-.586l-2.5-2.5a2 2 0 0 1 0-2.828l6.879-6.879zm.66 11.34L3.453 8.254 1.914 9.793a1 1 0 0 0 0 1.414l2.5 2.5a1 1 0 0 0 .707.293H7.88a1 1 0 0 0 .707-.293l.16-.16z"/>
-                    </svg>
-                </a>
+                <a href="{% url request.resolver_match.url_name %}" class="btn btn-link btn-sm text-muted text-decoration-none border-0 p-0 mb-1" style="font-size: 0.85rem;">Limpar</a>
             </div>
         </form>
     </div>
 </div>
 
-<div class="table-responsive shadow-sm rounded text-dark">
-    <table class="table table-hover align-middle mb-0 bg-white" id="tabelaBonificacoes">
+<div class="table-responsive shadow-sm rounded-3 overflow-hidden border">
+    <table id="tabelaBonificacoes" class="table table-applaut">
         <thead>
-            <tr style="cursor: pointer;">
-                <th onclick="sortTable(0)" style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 px-3">Cliente</th>
-                <th onclick="sortTable(1)" style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 text-center">Tipo</th>
-                <th onclick="sortTable(2)" style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 text-center">Vendedor</th>
-                <th onclick="sortTable(3)" style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 text-center">Data</th>
-                <th onclick="sortTable(4)" style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 text-center">Valor</th>
-                <th onclick="sortTable(5)" style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 text-center">Status</th>
-                <th style="background-color: #bca464 !important; color: white !important; border: none;" class="py-3 text-center">Ações</th>
+            <tr>
+                <th>CLIENTE</th>
+                <th class="text-center">TIPO</th>
+                <th class="text-center">VENDEDOR</th>
+                <th class="text-center">DATA</th>
+                <th class="text-center">STATUS</th>
+                <th class="text-center">AÇÕES</th>
             </tr>
         </thead>
         <tbody>
             {% for b in bonificacoes %}
             <tr class="border-bottom">
                 <td class="px-3">
-                    <strong style="color: #5e4d26;">{{ b.cliente_nome_fantasia }}</strong><br>
+                    <strong style="color: #5e4d26;">#{{b.id }} {{ b.cliente_nome_fantasia }}</strong><br>
                     <div class="d-flex align-items-center gap-2 mt-1">
                         <small class="text-muted">
                             {% if b.cliente_cpf_cnpj|length == 14 %}
@@ -133,251 +121,295 @@
                 </td>
                 <td class="text-center small">{{ b.vendedor.get_full_name|default:b.vendedor.username }}</td>
                 <td class="text-center small">{{ b.data_solicitacao|date:"d/m/Y H:i" }}</td>
-                <td class="text-center small">{{ b.get_total|floatformat:2 }}</td>
-                <td class="text-center">
-                    {% if b.status == 'PENDENTE' %}
-                        <span class="badge rounded-pill bg-warning text-dark px-3">Pendente</span>
-                    {% elif b.status == 'APROVADO' %}
-                        <span class="badge rounded-pill bg-success px-3">Aprovado</span>
-                    {% elif b.status == 'REPROVADO' %}
-                        <span class="badge rounded-pill bg-danger px-3">Reprovado</span>
-                    {% elif b.status == 'CONCLUIDO' %}
-                        <span class="badge rounded-pill bg-primary px-3 shadow-sm">Confirmado</span>
-                    {% endif %}
+                <td>
+                    <span class="badge {% if b.status == 'PENDENTE' %}badge-pendente{% elif b.status == 'APROVADO' %}badge-confirmado{% elif b.status == 'REPROVADO' %}badge-reprovado{% else %}badge-concluido{% endif %}">
+                        {{ b.get_status_display }}
+                    </span>
                 </td>
                 <td class="text-center">
                     <div class="d-flex justify-content-center gap-1">
-                        <button class="btn btn-sm btn-outline-secondary border-0" data-bs-toggle="modal" data-bs-target="#modalVer{{ b.id }}" title="Ver Detalhes">
-                            <i class="bi bi-eye-fill fs-5"></i>
+                        <button class="btn-square-action btn-view" data-bs-toggle="modal" data-bs-target="#modalVer{{ b.id }}" title="Ver Detalhes">
+                            <i class="bi bi-eye-fill"></i>
                         </button>
-
-                        <a href="{% url 'gerar_pdf_bonificacao' b.id %}" target="_blank" class="btn btn-sm btn-outline-danger border-0" title="Gerar PDF">
-                            <i class="bi bi-file-earmark-pdf-fill fs-5"></i>
-                        </a>
 
                         {% if not request.user.groups.all.0.name == 'Vendedores' %}
                             {% if b.status == 'PENDENTE' %}
-                                <a href="{% url 'gerenciar_solicitacao' b.id 'aprovar' %}" class="btn btn-sm btn-outline-success border-0" title="Aprovar">
-                                    <i class="bi bi-check-circle-fill fs-5"></i>
+                                <a href="{% url 'gerenciar_solicitacao' b.id 'aprovar' %}" class="btn-square-action btn-approve" title="Aprovar">
+                                    <i class="bi bi-check-lg"></i>
                                 </a>
-                                <button class="btn btn-sm btn-outline-danger border-0" data-bs-toggle="modal" data-bs-target="#modalReprovar{{ b.id }}" title="Reprovar">
-                                    <i class="bi bi-x-circle-fill fs-5"></i>
+                                
+                                <button class="btn-square-action btn-reject" data-bs-toggle="modal" data-bs-target="#modalReprovar{{ b.id }}" title="Reprovar">
+                                    <i class="bi bi-x-lg"></i>
                                 </button>
                             {% endif %}
 
                             {% if b.status != 'CONCLUIDO' %}
-                                <button class="btn btn-sm btn-outline-dark border-0" data-bs-toggle="modal" data-bs-target="#modalExcluir{{ b.id }}" title="Excluir">
-                                    <i class="bi bi-trash3-fill fs-5"></i>
+                                <button class="btn-square-action btn-delete" data-bs-toggle="modal" data-bs-target="#modalExcluir{{ b.id }}" title="Excluir">
+                                    <i class="bi bi-trash3-fill"></i>
                                 </button>
                             {% endif %}
                         {% endif %}
 
                         {% if b.status == 'APROVADO' %}
-                            <button class="btn btn-sm btn-outline-primary border-0" data-bs-toggle="modal" data-bs-target="#modalConfirmar{{ b.id }}" title="Finalizar Pedido">
-                                <i class="bi bi-file-earmark-check-fill fs-5"></i>
+                            <button type="button" class="btn-square-action btn-confirm" data-bs-toggle="modal" data-bs-target="#modalConfirmar{{ b.id }}" title="Finalizar Pedido">
+                                <i class="bi bi-check-all fs-4"></i>
                             </button>
                         {% endif %}
                     </div>
-
-                    <div class="modal fade" id="modalVer{{ b.id }}" tabindex="-1">
-                        <div class="modal-dialog modal-lg modal-dialog-centered">
-                            <div class="modal-content border-0 shadow-lg text-start">
-                                <div class="modal-header text-white" style="background-color: #bca464;">
-                                    <h5 class="modal-title small fw-bold text-uppercase mt-1"><i class="bi bi-info-circle-fill me-2"></i>Detalhes da Bonificação #{{ b.id }}</h5>
-                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                </div>
-                                <div class="modal-body p-4 text-dark">
-                                    <div class="row mb-4 bg-light p-3 rounded mx-0 border">
-                                        <div class="col-md-4 border-end">
-                                            <h6 class="fw-bold text-uppercase small text-muted mb-3">Dados do Cliente</h6>
-                                            <p class="mb-1 small"><strong>Razão Social:</strong> {{ b.cliente_razao_social }}</p>
-                                            <p class="mb-1 small"><strong>Nome Fantasia:</strong> {{ b.cliente_nome_fantasia }}</p>
-                                            <p class="mb-1 small"><strong>CPF/CNPJ:</strong> {{ b.cliente_cpf_cnpj }}</p>
-                                            <p class="mb-1 small"><strong>Código:</strong> {{ b.cliente_codigo }} / {{ b.cliente_loja }}</p>
-                                        </div>
-                                        <div class="col-md-4 border-end ps-md-4">
-                                            <h6 class="fw-bold text-uppercase small text-muted mb-3">Logística</h6>
-                                            <p class="mb-1 small"><strong>Plataforma:</strong> <span class="badge bg-dark">{{ b.plataforma }}</span></p>
-                                            <p class="mb-1 small"><strong>Método:</strong> {{ b.metodo_entrega }}</p>
-                                            <p class="mb-1 small"><strong>Previsão:</strong> {{ b.data_entrega_retirada|date:"d/m/Y"|default:"Não informada" }}</p>
-                                            <p class="mb-1 small"><strong>Tipo Bonif.:</strong> <span class="text-primary fw-bold">{{ b.get_tipo_display }}</span></p>
-                                        </div>
-                                        <div class="col-md-4 ps-md-4 text-start">
-                                            <h6 class="fw-bold text-uppercase small text-muted mb-3">Status e Aprovação</h6>
-                                            <p class="mb-1 small"><strong>Vendedor:</strong> {{ b.vendedor.get_full_name|default:b.vendedor.username }}</p>
-                                            <p class="mb-1 small"><strong>Status:</strong> 
-                                                <span class="fw-bold {% if b.status == 'REPROVADO' %}text-danger{% elif b.status == 'APROVADO' or b.status == 'CONCLUIDO' %}text-success{% else %}text-warning{% endif %}">
-                                                    {{ b.get_status_display }}
-                                                </span>
-                                            </p>
-                                            {% if b.usuario_aprovador %}
-                                                <p class="mb-1 small"><strong>Aprovador:</strong> {{ b.usuario_aprovador.get_full_name }}</p>
-                                            {% endif %}
-                                            {% if b.pedido_protheus %}
-                                                <p class="mb-1 small"><strong>Pedido ERP:</strong> <span class="badge bg-primary">{{ b.pedido_protheus }}</span></p>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-
-                                    <div class="col-12 mb-4">
-                                        <p class="mb-0 small text-secondary p-2 bg-light border rounded">
-                                            <strong>Justificativa do Vendedor:</strong> {{ b.justificativa|default:"Sem observações." }}
-                                        </p>
-                                        {% if b.observacao_reprovacao %}
-                                            <p class="mb-0 mt-2 small text-danger p-2 bg-light border border-danger rounded">
-                                                <strong>Motivo Reprovação:</strong> {{ b.observacao_reprovacao }}
-                                            </p>
-                                        {% endif %}
-                                    </div>
-
-                                    <h6 class="fw-bold mb-3" style="color: #bca464;"><i class="bi bi-box-seam me-2"></i>Produtos Solicitados</h6>
-                                    <div class="table-responsive">
-                                        <table class="table table-sm table-bordered align-middle">
-                                            <thead class="bg-light small">
-                                                <tr>
-                                                    <th class="ps-3">Descrição do Produto</th>
-                                                    <th class="text-center" style="width: 100px;">Qtd</th>
-                                                    <th class="text-end pe-3" style="width: 150px;">Subtotal</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody class="small">
-                                                {% for item in b.itens.all %}
-                                                <tr>
-                                                    <td class="fw-medium ps-3">{{ item.produto_descricao }}</td>
-                                                    <td class="text-center fw-bold">{{ item.quantidade }}</td>
-                                                    <td class="text-end pe-3">R$ {{ item.valor_total|floatformat:2 }}</td>
-                                                </tr>
-                                                {% endfor %}
-                                            </tbody>
-                                            <tfoot class="table-light fw-bold">
-                                                <tr>
-                                                    <td colspan="2" class="text-end text-uppercase small py-2">Total Geral:</td>
-                                                    <td class="text-end pe-3 py-2" style="color: #5e4d26; font-size: 0.95rem;">R$ {{ b.get_total|floatformat:2 }}</td>
-                                                </tr>
-                                            </tfoot>
-                                        </table>
-                                    </div>
-                                </div>
-                                <div class="modal-footer bg-light border-0 justify-content-between">
-                                    <a href="{% url 'gerar_pdf_bonificacao' b.id %}" target="_blank" class="btn btn-danger px-4 shadow-sm">
-                                        <i class="bi bi-file-earmark-pdf me-2"></i>GERAR PDF
-                                    </a>
-                                    <button type="button" class="btn btn-secondary px-4 shadow-sm" data-bs-dismiss="modal">Fechar</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% if b.status == 'PENDENTE' %}
-                    <div class="modal fade" id="modalReprovar{{ b.id }}" tabindex="-1">
-                        <div class="modal-dialog modal-dialog-centered modal-sm">
-                            <div class="modal-content border-0 shadow-lg">
-                                <div class="modal-header text-white border-0 bg-danger">
-                                    <h6 class="modal-title fw-bold small"><i class="bi bi-x-circle me-2"></i>Reprovar</h6>
-                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                </div>
-                                <form action="{% url 'gerenciar_solicitacao' b.id 'reprovar' %}" method="POST">
-                                    {% csrf_token %}
-                                    <div class="modal-body p-3">
-                                        <textarea name="motivo" class="form-control form-control-sm" rows="3" required placeholder="Motivo obrigatório..."></textarea>
-                                    </div>
-                                    <div class="modal-footer border-0 p-2">
-                                        <button type="submit" class="btn btn-danger btn-sm w-100 fw-bold">REPROVAR AGORA</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    {% if b.status == 'APROVADO' %}
-                    <div class="modal fade" id="modalConfirmar{{ b.id }}" tabindex="-1">
-                        <div class="modal-dialog modal-dialog-centered modal-sm">
-                            <div class="modal-content border-0 shadow-lg">
-                                <div class="modal-header text-white border-0" style="background-color: #bca464;">
-                                    <h6 class="modal-title fw-bold small"><i class="bi bi-check-all me-2"></i>Confirmar ERP</h6>
-                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                </div>
-                                <form action="{% url 'gerenciar_solicitacao' b.id 'concluir' %}" method="POST">
-                                    {% csrf_token %}
-                                    <div class="modal-body p-4 text-center">
-                                        <label class="small fw-bold text-muted text-uppercase mb-2">Número do Pedido Protheus</label>
-                                        <input type="text" name="pedido_erp" class="form-control form-control-sm text-center fw-bold fs-5 shadow-sm" required autofocus>
-                                    </div>
-                                    <div class="modal-footer border-0 p-2">
-                                        <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">CONCLUIR E SALVAR</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    {% if b.status != 'CONCLUIDO' %}
-                    <div class="modal fade" id="modalExcluir{{ b.id }}" tabindex="-1">
-                        <div class="modal-dialog modal-dialog-centered modal-sm">
-                            <div class="modal-content border-0 shadow-lg text-start">
-                                <div class="modal-header text-white border-0 bg-dark">
-                                    <h6 class="modal-title fw-bold small"><i class="bi bi-exclamation-triangle me-2"></i>Confirmar Exclusão</h6>
-                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                </div>
-                                <div class="modal-body p-4 text-center text-dark">
-                                    <p class="small mb-0">Deseja realmente excluir a solicitação de <strong>{{ b.cliente_razao_social }}</strong>?</p>
-                                    <p class="text-muted mt-2" style="font-size: 0.75rem;">Esta ação não poderá ser desfeita.</p>
-                                </div>
-                                <div class="modal-footer border-0 p-2">
-                                    <button type="button" class="btn btn-light btn-sm fw-bold" data-bs-dismiss="modal">CANCELAR</button>
-                                    <a href="{% url 'excluir_bonificacao' b.id %}" class="btn btn-danger btn-sm fw-bold px-3">EXCLUIR AGORA</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-
                 </td>
             </tr>
+
             {% empty %}
             <tr><td colspan="6" class="text-center py-5 text-muted">Nenhuma bonificação encontrada.</td></tr>
+
             {% endfor %}
         </tbody>
     </table>
 </div>
 
+{% for b in bonificacoes %}
+    <div class="modal fade" id="modalVer{{ b.id }}" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg text-start">
+                <div class="modal-header text-white" style="background-color: #bca464;">
+                    <h5 class="modal-title small fw-bold text-uppercase mt-1"><i class="bi bi-info-circle-fill me-2"></i>Detalhes da Bonificação #{{ b.id }}</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 text-dark">
+                    <div class="row mb-4 bg-light p-3 rounded mx-0 border">
+                        <div class="col-md-4 border-end">
+                            <h6 class="fw-bold text-uppercase small text-muted mb-3">Dados do Cliente</h6>
+                            <p class="mb-1 small"><strong>Razão Social:</strong> {{ b.cliente_razao_social }}</p>
+                            <p class="mb-1 small"><strong>Nome Fantasia:</strong> {{ b.cliente_nome_fantasia }}</p>
+                            <p class="mb-1 small"><strong>CPF/CNPJ:</strong> {{ b.cliente_cpf_cnpj }}</p>
+                            <p class="mb-1 small"><strong>Código:</strong> {{ b.cliente_codigo }} / {{ b.cliente_loja }}</p>
+                        </div>
+                        <div class="col-md-4 border-end ps-md-4">
+                            <h6 class="fw-bold text-uppercase small text-muted mb-3">Logística</h6>
+                            <p class="mb-1 small"><strong>Plataforma:</strong> <span class="badge bg-dark">{{ b.plataforma }}</span></p>
+                            <p class="mb-1 small"><strong>Método:</strong> {{ b.get_metodo_entrega_display }}</p>
+                            <p class="mb-1 small"><strong>Previsão:</strong> {{ b.data_entrega_retirada|date:"d/m/Y"|default:"Não informada" }}</p>
+                            <p class="mb-1 small"><strong>Tipo Bonif.:</strong> <span class="text-primary fw-bold">{{ b.get_tipo_display }}</span></p>
+                        </div>
+                        <div class="col-md-4 ps-md-4 text-start">
+                            <h6 class="fw-bold text-uppercase small text-muted mb-3">Status e Aprovação</h6>
+                            <p class="mb-1 small"><strong>Vendedor:</strong> {{ b.vendedor.get_full_name|default:b.vendedor.username }}</p>
+                            <p class="mb-1 small"><strong>Status:</strong> 
+                                <span class="fw-bold {% if b.status == 'REPROVADO' %}text-danger{% elif b.status == 'APROVADO' or b.status == 'CONCLUIDO' %}text-success{% else %}text-warning{% endif %}">
+                                    {{ b.get_status_display }}
+                                </span>
+                            </p>
+                            {% if b.usuario_aprovador %}
+                                <p class="mb-1 small"><strong>Aprovador:</strong> {{ b.usuario_aprovador.get_full_name }}</p>
+                            {% endif %}
+                            {% if b.pedido_protheus %}
+                                <p class="mb-1 small"><strong>Pedido ERP:</strong> <span class="badge bg-primary">{{ b.pedido_protheus }}</span></p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-12 mb-4">
+                        <p class="mb-0 small text-secondary p-2 bg-light border rounded">
+                            <strong>Justificativa do Vendedor:</strong> {{ b.justificativa|default:"Sem observações." }}
+                        </p>
+                        {% if b.observacao_reprovacao %}
+                            <p class="mb-0 mt-2 small text-danger p-2 bg-light border border-danger rounded">
+                                <strong>Motivo Reprovação:</strong> {{ b.observacao_reprovacao }}
+                            </p>
+                        {% endif %}
+                    </div>
+                    <h6 class="fw-bold mb-3" style="color: #bca464;"><i class="bi bi-box-seam me-2"></i>Produtos Solicitados</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered align-middle">
+                            <thead class="bg-light small">
+                                <tr>
+                                    <th class="ps-3">Descrição do Produto</th>
+                                    <th class="text-center" style="width: 100px;">Qtd</th>
+                                    <th class="text-end pe-3" style="width: 150px;">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody class="small">
+                                {% for item in b.itens.all %}
+                                <tr>
+                                    <td class="fw-medium ps-3">{{ item.produto_descricao }}</td>
+                                    <td class="text-center fw-bold">{{ item.quantidade }}</td>
+                                    <td class="text-end pe-3">R$ {{ item.valor_total|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-light fw-bold">
+                                <tr>
+                                    <td colspan="2" class="text-end text-uppercase small py-2">Total Geral:</td>
+                                    <td class="text-end pe-3 py-2" style="color: #5e4d26; font-size: 0.95rem;">R$ {{ b.get_total|floatformat:2 }}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0 justify-content-between">
+                    <a href="{% url 'gerar_pdf_bonificacao' b.id %}" target="_blank" class="btn btn-danger px-4 shadow-sm">
+                        <i class="bi bi-file-earmark-pdf me-2"></i>GERAR PDF
+                    </a>
+                    <button type="button" class="btn btn-secondary px-4 shadow-sm" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if b.status == 'PENDENTE' %}
+        <div class="modal fade" id="modalReprovar{{ b.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header text-white border-0 bg-danger">
+                        <h6 class="modal-title fw-bold small"><i class="bi bi-x-circle me-2"></i>Reprovar</h6>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form action="{% url 'gerenciar_solicitacao' b.id 'reprovar' %}" method="POST">
+                        {% csrf_token %}
+                        <div class="modal-body p-3">
+                            <textarea name="motivo" class="form-control form-control-sm" rows="3" required placeholder="Motivo obrigatório..."></textarea>
+                        </div>
+                        <div class="modal-footer border-0 p-2">
+                            <button type="submit" class="btn btn-danger btn-sm w-100 fw-bold">REPROVAR AGORA</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if b.status == 'APROVADO' %}
+        <div class="modal fade" id="modalConfirmar{{ b.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header text-white border-0" style="background-color: #bca464;">
+                        <h6 class="modal-title fw-bold small"><i class="bi bi-check-all me-2"></i>Confirmar ERP</h6>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form action="{% url 'gerenciar_solicitacao' b.id 'concluir' %}" method="POST">
+                            {% csrf_token %}
+                        <div class="modal-body p-4 text-center">
+                            <label class="small fw-bold text-muted text-uppercase mb-2">Número do Pedido Protheus</label>
+                            <input type="text" name="pedido_erp" class="form-control form-control-sm text-center fw-bold fs-5 shadow-sm" required autofocus>
+                        </div>
+                        <div class="modal-footer border-0 p-2">
+                            <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">CONCLUIR E SALVAR</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if b.status != 'CONCLUIDO' %}
+        <div class="modal fade" id="modalExcluir{{ b.id }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-sm modal-dialog-centered">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header border-0 bg-danger text-white">
+                        <h5 class="modal-title small fw-bold"><i class="bi bi-exclamation-triangle"></i> EXCLUIR SOLICITAÇÃO</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body text-center p-4">
+                        <p class="mb-0 small">Deseja realmente excluir a solicitação de <strong>{{ b.cliente_nome_fantasia }}</strong>?</p>
+                        <small class="text-muted">Valor: R$ {{ b.get_total|floatformat:2 }}</small>
+                    </div>
+                    <div class="modal-footer border-0 bg-light d-flex justify-content-center p-2">
+                        <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none" data-bs-dismiss="modal">Não</button>
+                        <form action="{% url 'excluir_bonificacao' b.id %}" method="POST" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-danger px-4 shadow-sm fw-bold">Sim, Excluir</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endfor %}
+
+<div class="modal fade" id="modalExportarExcel" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header text-white border-0" style="background-color: #198754;">
+                <h6 class="modal-title fw-bold"><i class="bi bi-file-earmark-excel me-2"></i>Exportar para Excel</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formExportarExcel" action="{% url 'exportar_bonificacoes_excel' %}" method="GET" target="_blank">
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label small fw-bold text-muted text-uppercase">Data Início</label>
+                            <input type="date" name="data_inicio" class="form-control shadow-sm" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-bold text-muted text-uppercase">Data Fim</label>
+                            <input type="date" name="data_fim" class="form-control shadow-sm" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light p-2">
+                    <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success btn-sm px-4 fw-bold" onclick="fecharModalExportar()">GERAR RELATÓRIO</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% if bonificacoes.has_other_pages %}
+    <nav class="mt-4 mb-4">
+        <ul class="pagination justify-content-center">
+            {% if bonificacoes.has_previous %}
+                <li class="page-item">
+                    <a class="page-link text-dark" href="?page={{ bonificacoes.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">&laquo; Anterior</a>
+                </li>
+            {% endif %}
+
+            {% for i in bonificacoes.paginator.page_range %}
+                {% if bonificacoes.number == i %}
+                    <li class="page-item active"><span class="page-link" style="background-color: #bca464; border-color: #bca464;">{{ i }}</span></li>
+                {% elif i > bonificacoes.number|add:'-3' and i < bonificacoes.number|add:'3' %}
+                    <li class="page-item"><a class="page-link text-dark" href="?page={{ i }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ i }}</a></li>
+                {% endif %}
+            {% endfor %}
+
+            {% if bonificacoes.has_next %}
+                <li class="page-item">
+                    <a class="page-link text-dark" href="?page={{ bonificacoes.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Próxima &raquo;</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+{% endif %}
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+
 <script>
-function sortTable(n) {
-  var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
-  table = document.getElementById("tabelaBonificacoes");
-  switching = true;
-  dir = "asc"; 
-  while (switching) {
-    switching = false;
-    rows = table.rows;
-    for (i = 1; i < (rows.length - 1); i++) {
-      shouldSwitch = false;
-      x = rows[i].getElementsByTagName("TD")[n];
-      y = rows[i + 1].getElementsByTagName("TD")[n];
-      if (dir == "asc") {
-        if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
-          shouldSwitch = true;
-          break;
+$(document).ready(function() {
+    $('#tabelaBonificacoes').DataTable({
+        "dom": 't',
+        "paging": false,
+        "ordering": true,
+        "order": [],
+        "info": false,
+        "searching": false,
+        "autoWidth": false,
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.13.4/i18n/pt-BR.json"
         }
-      } else if (dir == "desc") {
-        if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
-          shouldSwitch = true;
-          break;
+    });
+});
+
+function fecharModalExportar() {
+    const modalElement = document.getElementById('modalExportarExcel');
+    const modalInstance = bootstrap.Modal.getInstance(modalElement);
+    
+    setTimeout(() => {
+        if (modalInstance) {
+            modalInstance.hide();
         }
-      }
-    }
-    if (shouldSwitch) {
-      rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
-      switching = true;
-      switchcount ++;
-    } else {
-      if (switchcount == 0 && dir == "asc") {
-        dir = "desc";
-        switching = true;
-      }
-    }
-  }
+        document.getElementById('formExportarExcel').reset();
+    }, 500); 
 }
 </script>
 {% endblock %}
