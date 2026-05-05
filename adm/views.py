@@ -13,18 +13,19 @@ from django.db import connections
 from django.db.models import Q
 from .forms import SolicitacaoVerbaForm
 from .models import SolicitacaoVerba
+from django.core.paginator import Paginator
 
 logger = logging.getLogger(__name__)
 
 def e_gestor(user):
-    return user.groups.filter(name__in=['GESTOR', 'GESTORES']).exists() or user.is_superuser
+    return user.groups.filter(name__in=['Gestão Financeira']).exists()
 
 @login_required
 def listar_solicitacoes_verba(request):
-    if request.user.is_superuser or request.user.groups.filter(name__in=['GESTOR', 'FINANCEIRO']).exists():
-        solicitacoes = SolicitacaoVerba.objects.all()
+    if request.user.groups.filter(name__in=['Gestão Financeira', 'Contas a Pagar']).exists():
+        solicitacoes_qs = SolicitacaoVerba.objects.all()
     else:
-        solicitacoes = SolicitacaoVerba.objects.filter(usuario_solicitante=request.user)
+        solicitacoes_qs = SolicitacaoVerba.objects.filter(usuario_solicitante=request.user)
 
     busca = request.GET.get('busca')
     solicitante_id = request.GET.get('solicitante')
@@ -32,23 +33,26 @@ def listar_solicitacoes_verba(request):
     status_filtro = request.GET.get('status')
 
     if busca:
-        solicitacoes = solicitacoes.filter(
+        solicitacoes_qs = solicitacoes_qs.filter(
             Q(id__icontains=busca) | 
             Q(fornecedor_cpf_cnpj__icontains=busca) |
             Q(fornecedor_nome_razao__icontains=busca)
         )
-
     if solicitante_id:
-        solicitacoes = solicitacoes.filter(usuario_solicitante_id=solicitante_id)
-
+        solicitacoes_qs = solicitacoes_qs.filter(usuario_solicitante_id=solicitante_id)
     if data_filtro:
-        solicitacoes = solicitacoes.filter(data_solicitacao__date=data_filtro)
-
+        solicitacoes_qs = solicitacoes_qs.filter(data_solicitacao__date=data_filtro)
     if status_filtro:
-        solicitacoes = solicitacoes.filter(status=status_filtro)
+        solicitacoes_qs = solicitacoes_qs.filter(status=status_filtro)
+
+    solicitacoes_qs = solicitacoes_qs.order_by('-id')
+
+    paginator = Paginator(solicitacoes_qs, 10)
+    page_number = request.GET.get('page')
+    solicitacoes_paginadas = paginator.get_page(page_number)
 
     context = {
-        'solicitacoes': solicitacoes.order_by('-id'),
+        'solicitacoes': solicitacoes_paginadas,
         'usuarios': User.objects.all().order_by('first_name'),
     }
     return render(request, 'adm/verba_list.html', context)
@@ -83,25 +87,34 @@ def decidir_verba(request, pk):
     if request.method == 'POST':
         solicitacao = get_object_or_404(SolicitacaoVerba, pk=pk)
         acao = request.POST.get('acao')
+        observacao_gestor = request.POST.get('motivo') 
         
+        mensagens_status = {
+            'aprovar': 'aprovada',
+            'reprovar': 'reprovada'
+        }
+        status_texto = mensagens_status.get(acao, acao)
+
         if acao == 'aprovar':
             solicitacao.status = 'APROVADO'
             solicitacao.usuario_aprovador = request.user
             solicitacao.data_aprovacao = timezone.now()
+            if observacao_gestor:
+                solicitacao.obs_aprovacao = observacao_gestor
+            
             solicitacao.save()
 
             subject = f"Solicitação de Verba Aprovada: #{solicitacao.id}"
             template = 'emails/solicitacao_aprovada.html'
-            destinatarios = ['lorrane.ramos@lautbeer.com.br']
+            destinatarios = ['contasapagar@lautbeer.com.br', 'alexsandra@lautbeer.com.br']
             contexto = {
                 'verba': solicitacao,
                 'site_url': settings.SITE_URL,
             }
 
         elif acao == 'reprovar':
-            motivo = request.POST.get('motivo')
             solicitacao.status = 'REPROVADO'
-            solicitacao.obs_aprovacao = motivo
+            solicitacao.obs_aprovacao = observacao_gestor
             solicitacao.usuario_aprovador = request.user
             solicitacao.data_aprovacao = timezone.now()
             solicitacao.save()
@@ -116,13 +129,20 @@ def decidir_verba(request, pk):
 
         try:
             html_content = render_to_string(template, contexto)
-            email = EmailMultiAlternatives(subject, strip_tags(html_content), settings.DEFAULT_FROM_EMAIL, destinatarios)
+            email = EmailMultiAlternatives(
+                subject, 
+                strip_tags(html_content), 
+                settings.DEFAULT_FROM_EMAIL, 
+                destinatarios
+            )
             email.attach_alternative(html_content, "text/html")
             email.send()
-            messages.success(request, f"Solicitação {acao} com sucesso!")
+            
+            messages.success(request, f"Solicitação {status_texto} com sucesso!")
+            
         except Exception as e:
             logger.error(f"Erro ao enviar e-mail: {e}")
-            messages.warning(request, f"Ação {acao} gravada, mas o e-mail falhou.")
+            messages.warning(request, f"Ação realizada, mas o e-mail de notificação falhou.")
 
     return redirect('listar_solicitacoes_verba')
 
@@ -133,8 +153,6 @@ def concluir_verba(request, pk):
         num_titulo = request.POST.get('num_titulo')
         
         solicitacao.status = 'CONCLUIDO'
-        solicitacao.num_titulo = num_titulo
-        solicitacao.obs_aprovacao = f"Título Gerado: {num_titulo}"
         solicitacao.save()
 
         try:
@@ -184,7 +202,7 @@ def nova_solicitacao_verba(request):
             try:
                 subject = f"Nova Solicitação de Verba: #{solicitacao.id} - {solicitacao.fornecedor_nome_razao}"
                 html_content = render_to_string('emails/solicitacao_verba.html', {'verba': solicitacao})
-                email = EmailMultiAlternatives(subject, strip_tags(html_content), settings.DEFAULT_FROM_EMAIL, ['lorrane.ramos@lautbeer.com.br'])
+                email = EmailMultiAlternatives(subject, strip_tags(html_content), settings.DEFAULT_FROM_EMAIL, ['controladoria@lautbeer.com.br', 'alexsandra@lautbeer.com.br', 'financeiro@lautbeer.com.br'])
                 email.attach_alternative(html_content, "text/html")
                 email.send()
                 messages.success(request, f"Solicitação #{solicitacao.id} enviada para análise!")

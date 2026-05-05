@@ -23,17 +23,27 @@ from .models import (
 
 @login_required
 def verbas_mensais(request):
-    vendedores = User.objects.filter(is_active=True).order_by('first_name')
+    vendedores_select = User.objects.filter(is_active=True).order_by('first_name')
+
+    verbas = VerbaMensal.objects.select_related('vendedor', 'vendedor__perfil').all().order_by('-data_criacao')
 
     if request.user.groups.filter(name='Vendedores').exists():
-        verbas = VerbaMensal.objects.filter(vendedor=request.user).order_by('-data_criacao')
-        vendedores = vendedores.filter(id=request.user.id)
-    else:
-        verbas = VerbaMensal.objects.all().order_by('-data_criacao')
-    
-    busca = request.GET.get('busca')
+        verbas = verbas.filter(vendedor=request.user)
+        vendedores_select = vendedores_select.filter(id=request.user.id)
+
+    vendedor_id = request.GET.get('vendedor')
     mes = request.GET.get('mes')
     ano = request.GET.get('ano')
+    busca = request.GET.get('busca')
+
+    if vendedor_id:
+        verbas = verbas.filter(vendedor_id=vendedor_id)
+
+    if mes:
+        verbas = verbas.filter(mes_referencia=mes)
+
+    if ano:
+        verbas = verbas.filter(ano_referencia=ano)
 
     if busca:
         if busca.isdigit():
@@ -47,18 +57,13 @@ def verbas_mensais(request):
                 Q(vendedor__last_name__icontains=busca)
             )
 
-    if mes:
-        verbas = verbas.filter(mes_referencia=mes)
-    if ano:
-        verbas = verbas.filter(ano_referencia=ano)
-
     paginator = Paginator(verbas, 10)
     page_number = request.GET.get('page')
     verbas_paginadas = paginator.get_page(page_number)
 
     context = {
         'verbas': verbas_paginadas,
-        'vendedores': vendedores,
+        'vendedores': vendedores_select,
         'meses': VerbaMensal.MESES_CHOICES
     }
     return render(request, 'cadastros/verbas.html', context)
@@ -205,13 +210,21 @@ def lista_cadastros(request):
     vendedor_id = request.GET.get('vendedor')
     status_filtro = request.GET.get('status')
 
-    if request.user.is_superuser:
+    pode_ver_tudo = request.user.groups.filter(
+        name__in=['Cadastro', 'Contas a Receber', 'Gestão Comercial']
+    ).exists()
+
+    if pode_ver_tudo:
         cadastros_list = Cadastro.objects.all().order_by('-data_cadastro')
+        usuarios = User.objects.filter(is_active=True).order_by('first_name')
     else:
         cadastros_list = Cadastro.objects.filter(vendedor=request.user).order_by('-data_cadastro')
+        usuarios = User.objects.filter(id=request.user.id)
 
     if busca:
-        cadastros_list = cadastros_list.filter(razao_social__icontains=busca) | cadastros_list.filter(cgc__icontains=busca)
+        cadastros_list = cadastros_list.filter(
+            Q(razao_social__icontains=busca) | Q(cgc__icontains=busca)
+        )
     if data_filtro:
         cadastros_list = cadastros_list.filter(data_cadastro__date=data_filtro)
     if vendedor_id:
@@ -219,17 +232,15 @@ def lista_cadastros(request):
     if status_filtro:
         cadastros_list = cadastros_list.filter(situacao=status_filtro)
 
-    items_por_pagina = 10
-    paginator = Paginator(cadastros_list, items_por_pagina)
-    
+    paginator = Paginator(cadastros_list, 10)
     page_number = request.GET.get('page')
     cadastros = paginator.get_page(page_number)
-
-    usuarios = User.objects.filter(is_active=True).order_by('first_name')
 
     context = {
         'cadastros': cadastros,
         'usuarios': usuarios,
+        'user_no_grupo_cadastro': request.user.groups.filter(name='Cadastro').exists(),
+        'user_no_grupo_financeiro': request.user.groups.filter(name='Contas a Receber').exists(),
     }
     return render(request, 'cadastros/cadastros.html', context)
 
@@ -461,7 +472,7 @@ def processar_status(request, pk):
         observacao = request.POST.get('observacao', '')
 
         usuario_eh_cadastro = request.user.groups.filter(name='Cadastro').exists()
-        usuario_eh_financeiro = request.user.groups.filter(name='Financeiro').exists()
+        usuario_eh_financeiro = request.user.groups.filter(name='Contas a Receber').exists()
         
         email_ok = True
 

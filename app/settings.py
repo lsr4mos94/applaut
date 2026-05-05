@@ -9,6 +9,9 @@ SECRET_KEY = 'django-insecure-2m%w6zvng#t3qf2h6!68$&-va)esch1#y&wg3xf4n&^ljlnc+o
 DEBUG = True
 ALLOWED_HOSTS = ['149.57.32.44', 'localhost', '127.0.0.1', 'app.lautbeer.com.br', '192.168.184.24', 'aroma-sullen-evaluate.ngrok-free.dev']
 
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'http')
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -144,4 +147,4 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 mimetypes.add_type("image/png", ".png", True)
 mimetypes.add_type("image/svg+xml", ".svg", True)
 
-SITE_URL = "http://applaut.com.br:8000"
+SITE_URL = "http://app.lautbeer.com.br"

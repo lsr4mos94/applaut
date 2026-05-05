@@ -6,9 +6,11 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3 class="text-gold-title mb-0">Solicitação de Bonificação</h3>
         <div class="d-flex gap-2">
-            <button class="btn btn-outline-success shadow-sm fw-bold d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#modalExportarExcel">
-                <i class="bi bi-file-earmark-excel me-2"></i> Exportar
-            </button>
+            {% if request.user.groups.all.0.name == 'Gestão Comercial' %}
+                <button class="btn btn-outline-success shadow-sm fw-bold d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#modalExportarExcel">
+                    <i class="bi bi-file-earmark-excel me-2"></i> Exportar
+                </button>
+            {% endif %}
             <a href="{% url 'criar_bonificacao' %}" class="btn btn-gold-action px-4 py-2 shadow-sm">
                 <i class="bi bi-plus-circle"></i> Nova Solicitação
             </a>
@@ -131,8 +133,8 @@
                         <button class="btn-square-action btn-view" data-bs-toggle="modal" data-bs-target="#modalVer{{ b.id }}" title="Ver Detalhes">
                             <i class="bi bi-eye-fill"></i>
                         </button>
-
-                        {% if not request.user.groups.all.0.name == 'Vendedores' %}
+                        
+                        {% if 'Gestão Comercial' in request.user.groups.all|stringformat:"s" %}
                             {% if b.status == 'PENDENTE' %}
                                 <a href="{% url 'gerenciar_solicitacao' b.id 'aprovar' %}" class="btn-square-action btn-approve" title="Aprovar">
                                     <i class="bi bi-check-lg"></i>
@@ -143,14 +145,14 @@
                                 </button>
                             {% endif %}
 
-                            {% if b.status != 'CONCLUIDO' %}
+                            {% if 'Gestão Comercial' in request.user.groups.all|stringformat:"s" %}
                                 <button class="btn-square-action btn-delete" data-bs-toggle="modal" data-bs-target="#modalExcluir{{ b.id }}" title="Excluir">
                                     <i class="bi bi-trash3-fill"></i>
                                 </button>
                             {% endif %}
                         {% endif %}
 
-                        {% if b.status == 'APROVADO' %}
+                        {% if 'Faturamento' in request.user.groups.all|stringformat:"s" %}
                             <button type="button" class="btn-square-action btn-confirm" data-bs-toggle="modal" data-bs-target="#modalConfirmar{{ b.id }}" title="Finalizar Pedido">
                                 <i class="bi bi-check-all fs-4"></i>
                             </button>
@@ -160,9 +162,17 @@
             </tr>
 
             {% empty %}
-            <tr><td colspan="6" class="text-center py-5 text-muted">Nenhuma bonificação encontrada.</td></tr>
-
-            {% endfor %}
+            <tr>
+                <td></td>
+                <td></td>
+                <td class="text-center py-5 text-muted">
+                    <i class="bi bi-info-circle me-2"></i>Nenhuma bonificação encontrada.
+                </td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+        {% endfor %}
         </tbody>
     </table>
 </div>

@@ -184,29 +184,54 @@
         <div class="container d-flex justify-content-center">
             <ul class="nav">
                 <li class="nav-item"><a class="nav-link" href="/"><i class="bi bi-house-door"></i> Início</a></li>
+
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown"><i class="bi bi-clipboard-data"></i> Cadastros</a>
                     <ul class="dropdown-menu border-0 shadow">
-                        <li><a class="dropdown-item" href="{% url 'lista_cadastros' %}">Clientes</a></li>
-                        <li><a class="dropdown-item" href="{% url 'acordos_comerciais' %}">Acordos Comerciais</a></li>
-                        <li><a class="dropdown-item" href="{% url 'verbas_mensais' %}">Verbas Mensais</a></li>
+                        {% with user_groups=request.user.groups.all|stringformat:"s" %}
+                            
+                            {% if "Vendedores" in user_groups or "Cadastro" in user_groups or "Contas a Receber" in user_groups %}
+                                <li><a class="dropdown-item" href="{% url 'lista_cadastros' %}">Clientes</a></li>
+                            {% endif %}
+
+                            {% if "Vendedores" in user_groups or "Gestão Comercial" in user_groups %}
+                                <li><a class="dropdown-item" href="{% url 'acordos_comerciais' %}">Acordos Comerciais</a></li>
+                                <li><a class="dropdown-item" href="{% url 'verbas_mensais' %}">Verbas Mensais</a></li>
+                            {% endif %}
+
+                        {% endwith %}
                     </ul>
                 </li>
+
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown"><i class="bi bi-file-earmark-plus"></i> Solicitações</a>
                     <ul class="dropdown-menu border-0 shadow">
-                        <li><a class="dropdown-item" href="{% url 'buscar_boleto' %}">Boletos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'bonificacao_list' %}">Bonificações</a></li>
-                        <li><a class="dropdown-item" href="{% url 'plantao_list' %}">Plantão</a></li>
+                        {% with user_groups=request.user.groups.all|stringformat:"s" %}
+                            
+                            {% if "Vendedores" in user_groups or "Gestão Comercial" in user_groups or "Contas a Receber" in user_groups %}
+                                <li><a class="dropdown-item" href="{% url 'buscar_boleto' %}">Boletos</a></li>  
+                            {% endif %}
+
+                            {% if "Vendedores" in user_groups or "Faturamento" in user_groups or "Gestão Comercial" in user_groups %}
+                                <li><a class="dropdown-item" href="{% url 'bonificacao_list' %}">Bonificações</a></li>
+                                {# <li><a class="dropdown-item" href="{% url 'plantao_list' %}">Plantão</a></li> #}
+                            {% endif %}
+
+                        {% endwith %}
                     </ul>
                 </li>
+
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown"><i class="bi bi-clipboard2-check"></i> Administrativo</a>
-                    <ul class="dropdown-menu border-0 shadow">
-                        <li><a class="dropdown-item" href="{% url 'listar_solicitacoes_verba' %}">Verbas</a></li>
-                        <li><a class="dropdown-item" href="#">Compras</a></li>
-                    </ul>
+                    {% with user_groups=request.user.groups.all|stringformat:"s" %}
+                        {% if "Solicitantes" in user_groups or "Gestão Financeira" in user_groups or "Contas a Pagar" in user_groups %}
+                            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown"><i class="bi bi-clipboard2-check"></i> Administrativo</a>
+                            <ul class="dropdown-menu border-0 shadow">
+                                <li><a class="dropdown-item" href="{% url 'listar_solicitacoes_verba' %}">Verbas</a></li>
+                            </ul>
+                        {% endif %}
+                    {% endwith %}
                 </li>
+
                 <li class="nav-item">
                     <form action="{% url 'logout' %}" method="post" id="logout-form" class="d-none">{% csrf_token %}</form>
                     <a class="nav-link" href="javascript:void(0)" onclick="document.getElementById('logout-form').submit();">

@@ -388,51 +388,43 @@ def bonificacao_list(request):
     plataforma_filtro = request.GET.get('plataforma')
     data_param = request.GET.get('data_solicitacao')
 
-    bonificacoes = Bonificacao.objects.all().prefetch_related('itens').order_by('-data_solicitacao')
+    bonificacoes = Bonificacao.objects.select_related('vendedor').prefetch_related('itens').all().order_by('-data_solicitacao')
 
-    if plataforma_filtro:
-        bonificacoes = bonificacoes.filter(plataforma=plataforma_filtro)
-    
     eh_vendedor = request.user.groups.filter(name='Vendedores').exists()
 
     if eh_vendedor:
         bonificacoes = bonificacoes.filter(vendedor=request.user)
-
-    if eh_vendedor:
-        usuarios = User.objects.filter(pk=request.user.pk)
+        usuarios_select = User.objects.filter(pk=request.user.pk)
     else:
-        usuarios = User.objects.filter(groups__name='Vendedores', is_active=True).order_by('first_name')
+        usuarios_select = User.objects.filter(groups__name='Vendedores', is_active=True).order_by('first_name')
 
-    if request.user.groups.filter(name='Vendedores').exists():
-        bonificacoes = bonificacoes.filter(vendedor=request.user)
+    if plataforma_filtro:
+        bonificacoes = bonificacoes.filter(plataforma=plataforma_filtro)
+
+    if status:
+        bonificacoes = bonificacoes.filter(status=status)
+
+    if tipo:
+        bonificacoes = bonificacoes.filter(tipo=tipo)
+
+    if data_param:
+        bonificacoes = bonificacoes.filter(data_solicitacao__date=data_param)
+
+    if vendedor_id and not eh_vendedor:
+        bonificacoes = bonificacoes.filter(vendedor_id=vendedor_id)
 
     if busca:
         if busca.isdigit():
             bonificacoes = bonificacoes.filter(
                 Q(id=busca) | 
-                Q(cliente_razao_social__icontains=busca) | 
-                Q(cliente_cpf_cnpj__icontains=busca)
+                Q(cliente_cpf_cnpj__icontains=busca) |
+                Q(pedido_protheus__icontains=busca)
             )
         else:
             bonificacoes = bonificacoes.filter(
                 Q(cliente_razao_social__icontains=busca) | 
-                Q(cliente_cpf_cnpj__icontains=busca)
+                Q(cliente_nome_fantasia__icontains=busca)
             )
-
-    if tipo:
-        bonificacoes = bonificacoes.filter(tipo=tipo)
-
-    if vendedor_id:
-        if eh_vendedor:
-            bonificacoes = bonificacoes.filter(vendedor=request.user)
-        else:
-            bonificacoes = bonificacoes.filter(vendedor_id=vendedor_id)
-
-    if status:
-        bonificacoes = bonificacoes.filter(status=status)
-
-    if data_param:
-        bonificacoes = bonificacoes.filter(data_solicitacao__date=data_param)
 
     paginator = Paginator(bonificacoes, 10)
     page_number = request.GET.get('page')
@@ -440,7 +432,8 @@ def bonificacao_list(request):
     
     context = {
         'bonificacoes': page_obj,
-        'usuarios': usuarios,
+        'usuarios': usuarios_select,
+        'status_choices': Bonificacao.STATUS_CHOICES if hasattr(Bonificacao, 'STATUS_CHOICES') else None,
     }
     
     return render(request, 'solicitacoes/bonificacao_list.html', context)
@@ -577,43 +570,52 @@ def criar_bonificacao(request):
 
             if not acordo:
                 status_final = 'PENDENTE'
-                messages.warning(request, "Nenhum acordo vigente encontrado para este cliente. A solicitação seguirá para aprovação manual.")
+                messages.warning(request, "Nenhum acordo vigente encontrado. A solicitação seguirá para aprovação manual.")
             else:
                 realizado_protheus = calcular_realizado_protheus(cliente_cod, cliente_loja, acordo.vigencia_inicio, acordo.vigencia_fim)
                 
-                reservado_local = BonificacaoItem.objects.filter(
-                    bonificacao__cliente_codigo=cliente_cod,
-                    bonificacao__tipo='ACORDO_COMERCIAL',
-                    bonificacao__status__in=['APROVADO'],
-                    bonificacao__data_solicitacao__range=(acordo.vigencia_inicio, acordo.vigencia_fim)
-                ).aggregate(total=Sum('valor_total') if acordo.tipo_acordo == 'valor' else Sum('quantidade'))['total'] or 0
-
+                # --- CORREÇÃO: FILTRAR ITENS DO ACORDO ---
+                codigos_no_acordo = list(acordo.itens.values_list('produto_codigo', flat=True))
+                
                 if acordo.tipo_acordo == 'valor':
+                    reservado_local = BonificacaoItem.objects.filter(
+                        bonificacao__cliente_codigo=cliente_cod,
+                        bonificacao__tipo='ACORDO_COMERCIAL',
+                        bonificacao__status__in=['APROVADO'],
+                        bonificacao__data_solicitacao__range=(acordo.vigencia_inicio, acordo.vigencia_fim)
+                    ).aggregate(total=Sum('valor_total'))['total'] or 0
+
                     objetivo = float(acordo.valor_acordo)
                     consumido = float(realizado_protheus['valor']) + float(reservado_local)
                     disponivel = objetivo - consumido
                     solicitado = total_solicitacao
                     unidade = "R$"
                 else:
+                    # Se for quantidade, filtramos o que já foi gasto localmente apenas dos produtos do acordo
+                    reservado_local = BonificacaoItem.objects.filter(
+                        bonificacao__cliente_codigo=cliente_cod,
+                        bonificacao__tipo='ACORDO_COMERCIAL',
+                        bonificacao__status__in=['APROVADO'],
+                        bonificacao__data_solicitacao__range=(acordo.vigencia_inicio, acordo.vigencia_fim),
+                        produto_codigo__in=codigos_no_acordo
+                    ).aggregate(total=Sum('quantidade'))['total'] or 0
+
+                    # Somamos da solicitação atual APENAS o que for produto do acordo
+                    solicitado_filtrado = sum(item['qtd'] for item in itens_dados if item['codigo'] in codigos_no_acordo)
+
                     objetivo = sum(item.qtd_faturada for item in acordo.itens.all())
                     consumido = realizado_protheus['qtd'] + reservado_local
                     disponivel = objetivo - consumido
-                    solicitado = total_qtd_solicitacao
+                    solicitado = solicitado_filtrado
                     unidade = "UN"
-
-                print(f"DEBUG ACORDO: Objetivo: {objetivo}")
-                print(f"DEBUG PROTHEUS: Realizado: {realizado_protheus}")
-                print(f"DEBUG LOCAL: Reservado: {reservado_local}")
-                print(f"DEBUG SOLICITADO AGORA: {solicitado}")
 
                 if solicitado <= disponivel:
                     status_final = 'APROVADO'
                     messages.success(request, f"Bonificação aprovada automaticamente! Saldo restante: {unidade} {disponivel - solicitado:,.2f}")
                 else:
-                    messages.error(request, f"Saldo insuficiente no acordo! Disponível: {unidade} {disponivel:,.2f}. Solicitado: {unidade} {solicitado:,.2f}")
+                    messages.error(request, f"Saldo insuficiente no acordo! Disponível: {unidade} {disponivel:,.2f}. Solicitado (itens do acordo): {unidade} {solicitado:,.2f}")
                     return render(request, 'solicitacoes/bonificacao_form.html', {'dados': request.POST})
 
-        
         elif tipo == 'VERBA_VENDEDOR':
             verba_configurada = VerbaMensal.objects.filter(
                 vendedor=request.user, 
@@ -687,13 +689,8 @@ def criar_bonificacao(request):
             try:
                 enviar_emails_bonificacao(nova_bonif, request)
                 if status_final == 'PENDENTE':
-                    if tipo == 'SAC':
-                        messages.info(request, "Solicitação de SAC enviada para aprovação.")
-                    elif tipo == 'ACORDO_COMERCIAL':
-                        messages.info(request, "E-mail de solicitação enviado para a equipe de aprovação de acordos.")
-                    elif tipo == 'NEGOCIACAO_ESPECIAL':
-                        messages.info(request, "E-mail de solicitação enviado para aprovação.")
-            except Exception as email_err:
+                    messages.info(request, "Solicitação enviada para aprovação.")
+            except Exception:
                 messages.warning(request, "Gravado, mas houve erro no envio do e-mail.")
 
             return redirect('bonificacao_list')

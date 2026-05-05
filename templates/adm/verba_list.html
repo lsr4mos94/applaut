@@ -2,7 +2,7 @@
 {% block content %}
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="text-gold-title mb-0">Solicitações de Verba</h3>
+    <h3 class="text-gold-title mb-0">Solicitação de Verba</h3>
     <a href="{% url 'nova_solicitacao_verba' %}" class="btn btn-gold-action px-4 py-2 shadow-sm">
         <i class="bi bi-plus-circle"></i> Nova Solicitação
     </a>
@@ -81,7 +81,7 @@
                             </button>
 
                             {% if s.status == 'PENDENTE' %}
-                                {% if request.user.is_superuser or request.user.groups.all.0.name.upper == 'GESTOR' %}
+                                {% if 'Gestão Financeira' in request.user.groups.all|stringformat:"s" %}
                                 <button type="button" class="btn-square-action btn-approve" data-bs-toggle="modal" data-bs-target="#modalAprovar{{ s.id }}" title="Aprovar">
                                     <i class="bi bi-check-lg"></i>
                                 </button>
@@ -92,22 +92,25 @@
                             {% endif %}
 
                             {% if s.status == 'APROVADO' %}
-                                {% if request.user.is_superuser or request.user.groups.all.0.name.upper == 'FINANCEIRO' %}
+                                {% if 'Contas a Pagar' in request.user.groups.all|stringformat:"s" %}
                                 <button type="button" class="btn-square-action btn-confirm" data-bs-toggle="modal" data-bs-target="#modalConfirmarPg{{ s.id }}" title="Concluir">
                                     <i class="bi bi-check-all fs-4"></i>
                                 </button>
                                 {% endif %}
                             {% endif %}
 
-                            {% if s.usuario_solicitante == request.user or request.user.is_superuser %}
+                            {% if s.usuario_solicitante == request.user %}
                                 {% if s.status == 'PENDENTE' or s.status == 'REPROVADO' %}
-                                <a href="{% url 'editar_solicitacao_verba' s.id %}" class="btn-square-action btn-edit" title="Editar">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
+                                    <a href="{% url 'editar_solicitacao_verba' s.id %}" class="btn-square-action btn-edit" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                {% endif %}
+                            {% endif %}
+
+                            {% if 'Gestão Financeira' in request.user.groups.all|stringformat:"s" %}
                                 <button type="button" class="btn-square-action btn-delete" data-bs-toggle="modal" data-bs-target="#modalExcluir{{ s.id }}" title="Excluir">
                                     <i class="bi bi-trash3-fill"></i>
                                 </button>
-                                {% endif %}
                             {% endif %}
                         </div>
                     </td>
@@ -237,6 +240,32 @@
         </div>
     {% endif %}
 {% endfor %}
+
+{% if solicitacoes.has_other_pages %}
+    <nav class="mt-4 mb-4">
+        <ul class="pagination justify-content-center">
+            {% if solicitacoes.has_previous %}
+                <li class="page-item">
+                    <a class="page-link text-dark" href="?page={{ solicitacoes.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">&laquo; Anterior</a>
+                </li>
+            {% endif %}
+
+            {% for i in solicitacoes.paginator.page_range %}
+                {% if solicitacoes.number == i %}
+                    <li class="page-item active"><span class="page-link" style="background-color: #bca464; border-color: #bca464;">{{ i }}</span></li>
+                {% elif i > solicitacoes.number|add:'-3' and i < solicitacoes.number|add:'3' %}
+                    <li class="page-item"><a class="page-link text-dark" href="?page={{ i }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ i }}</a></li>
+                {% endif %}
+            {% endfor %}
+
+            {% if solicitacoes.has_next %}
+                <li class="page-item">
+                    <a class="page-link text-dark" href="?page={{ solicitacoes.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Próxima &raquo;</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+{% endif %}
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>

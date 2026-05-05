@@ -98,17 +98,24 @@
                             {% endif %}
 
                             {% if not cliente.situacao == 'LIBERADO' and not cliente.situacao == 'REJEITADO' %}
-                                {% if request.user.is_superuser or cliente.situacao == 'PENDENTE' and user_no_grupo_cadastro or cliente.situacao == 'CADASTRADO' and user_no_grupo_financeiro %}
-                                    
-                                    <button class="btn-square-action btn-approve" data-bs-toggle="modal" data-bs-target="#modalAprovar{{ cliente.id }}" title="Aprovar">
+    
+                                {% if cliente.situacao == 'PENDENTE' and user_no_grupo_cadastro %}
+                                    <button class="btn-square-action btn-approve" data-bs-toggle="modal" data-bs-target="#modalAprovar{{ cliente.id }}" title="Aprovar Cadastro">
                                         <i class="bi bi-check-lg fs-5"></i>
                                     </button>
-
                                     <button class="btn-square-action btn-reject" data-bs-toggle="modal" data-bs-target="#modalReprovar{{ cliente.id }}" title="Reprovar">
                                         <i class="bi bi-x-circle-fill fs-6"></i>
                                     </button>
 
+                                {% elif cliente.situacao == 'CADASTRADO' and user_no_grupo_financeiro %}
+                                    <button class="btn-square-action btn-approve" data-bs-toggle="modal" data-bs-target="#modalAprovar{{ cliente.id }}" title="Liberar Crédito">
+                                        <i class="bi bi-check-lg fs-5"></i>
+                                    </button>
+                                    <button class="btn-square-action btn-reject" data-bs-toggle="modal" data-bs-target="#modalReprovar{{ cliente.id }}" title="Reprovar">
+                                        <i class="bi bi-x-circle-fill fs-6"></i>
+                                    </button>
                                 {% endif %}
+
                             {% endif %}
                         </div>
                     </td>
