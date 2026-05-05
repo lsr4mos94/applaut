@@ -1,0 +1,20 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ambientes Virtuais (Venv)
+venv/
+env/
+.venv/
+
+# Configurações locais (Segredos e Senhas)
+.env
+db.sqlite3
+
+# Pasta de arquivos estáticos/media coletados
+media/
+
+# Logs e arquivos de sistema
+*.log
+.DS_Store
