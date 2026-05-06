@@ -14,6 +14,7 @@ from django.db.models import Q
 from .forms import SolicitacaoVerbaForm
 from .models import SolicitacaoVerba
 from django.core.paginator import Paginator
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +107,7 @@ def decidir_verba(request, pk):
 
             subject = f"Solicitação de Verba Aprovada: #{solicitacao.id}"
             template = 'emails/solicitacao_aprovada.html'
-            destinatarios = ['contasapagar@lautbeer.com.br', 'alexsandra@lautbeer.com.br']
+            destinatarios = ['contasapagar@lautbeer.com.br', 'alexsandra@lautbeer.com.br', 'keylla.oliveira@lautbeer.com.br']
             contexto = {
                 'verba': solicitacao,
                 'site_url': settings.SITE_URL,
@@ -201,8 +202,20 @@ def nova_solicitacao_verba(request):
 
             try:
                 subject = f"Nova Solicitação de Verba: #{solicitacao.id} - {solicitacao.fornecedor_nome_razao}"
-                html_content = render_to_string('emails/solicitacao_verba.html', {'verba': solicitacao})
-                email = EmailMultiAlternatives(subject, strip_tags(html_content), settings.DEFAULT_FROM_EMAIL, ['controladoria@lautbeer.com.br', 'alexsandra@lautbeer.com.br', 'financeiro@lautbeer.com.br'])
+                
+                contexto_email = {
+                    'verba': solicitacao,
+                    'site_url': settings.SITE_URL
+                }
+                
+                html_content = render_to_string('emails/solicitacao_verba.html', contexto_email)
+                
+                email = EmailMultiAlternatives(
+                    subject, 
+                    strip_tags(html_content), 
+                    settings.DEFAULT_FROM_EMAIL, 
+                    ['controladoria@lautbeer.com.br', 'alexsandra@lautbeer.com.br', 'financeiro@lautbeer.com.br']
+                )
                 email.attach_alternative(html_content, "text/html")
                 email.send()
                 messages.success(request, f"Solicitação #{solicitacao.id} enviada para análise!")
