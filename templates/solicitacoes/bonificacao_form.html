@@ -425,5 +425,31 @@
         originalRemover(id);
         validarRegraCopo();
     };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const radiosTipo = document.querySelectorAll('input[name="tipo"]');
+        const divFotoSac = document.getElementById('div_foto_sac');
+        const inputFoto = document.getElementById('id_foto_sac');
+
+        function toggleSacFoto() {
+            const selecionado = document.querySelector('input[name="tipo"]:checked');
+            
+            if (selecionado && selecionado.value === 'SAC') {
+                divFotoSac.style.display = 'block';
+                inputFoto.required = true;
+            } else {
+                divFotoSac.style.display = 'none';
+                inputFoto.required = false;
+                inputFoto.value = "";
+            }
+        }
+
+        radiosTipo.forEach(radio => {
+            radio.addEventListener('change', toggleSacFoto);
+        });
+
+        toggleSacFoto();
+    });
+
 </script>
 {% endblock %}
