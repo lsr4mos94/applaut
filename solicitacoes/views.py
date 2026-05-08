@@ -27,19 +27,19 @@ logger = logging.getLogger(__name__)
 def disparar_plantao_whatsapp(solicitacao):
     url = "https://api.zenvia.com/v2/channels/whatsapp/messages"
     headers = {
-        "X-API-TOKEN": "hcep0LyOYBZF2A_07_RgMi157uxA8PKVZwkk",
+        "X-API-TOKEN": "Kn3XB8ntqaeCASe7_wFT-vqHW-IvdwMsbwLR",
         "Content-Type": "application/json"
     }
     
     endereco_completo = f"{solicitacao.endereco}, {solicitacao.numero}, {solicitacao.bairro} - {solicitacao.cidade}"
 
     payload = {
-        "from": "553172467334",
+        "from": "553190004411",
         "to": "5531971560752",
         "contents": [
             {
                 "type": "template",
-                "templateId": "9d2d64a6-889f-4058-9f5d-ac994a021542",
+                "templateId": "358e7517-8beb-4161-af5f-8086fe7c6c91",
                 "fields": {
                     "1": str(solicitacao.id),
                     "2": solicitacao.get_tipo_display(),

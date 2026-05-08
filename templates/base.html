@@ -208,13 +208,13 @@
                     <ul class="dropdown-menu border-0 shadow">
                         {% with user_groups=request.user.groups.all|stringformat:"s" %}
                             
-                            {% if "Vendedores" in user_groups or "Gestão Comercial" in user_groups or "Contas a Receber" in user_groups %}
+                            {% if "Vendedores" in user_groups or "Gestão Comercial" in user_groups or "Contas a Receber" in user_groups or "Faturamento" in user_groups %}
                                 <li><a class="dropdown-item" href="{% url 'buscar_boleto' %}">Boletos</a></li>  
                             {% endif %}
 
                             {% if "Vendedores" in user_groups or "Faturamento" in user_groups or "Gestão Comercial" in user_groups %}
                                 <li><a class="dropdown-item" href="{% url 'bonificacao_list' %}">Bonificações</a></li>
-                                {# <li><a class="dropdown-item" href="{% url 'plantao_list' %}">Plantão</a></li> #}
+                                <li><a class="dropdown-item" href="{% url 'plantao_list' %}">Plantão</a></li>
                             {% endif %}
 
                         {% endwith %}
