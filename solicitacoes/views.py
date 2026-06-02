@@ -536,6 +536,10 @@ def criar_bonificacao(request):
                     preco_raw = request.POST.get(f'item_preco_{index}', '0').replace(',', '.')
                     qtd_raw = request.POST.get(f'item_qtd_{index}', '1')
                     
+                    # CAPTURA O ACORDO SELECIONADO NA TELA PELO VENDEDOR:
+                    acordo_id_raw = request.POST.get(f'item_acordo_{index}')
+                    acordo_id = int(acordo_id_raw) if acordo_id_raw and acordo_id_raw.isdigit() else None
+                    
                     preco = float(preco_raw) if preco_raw else 0.0
                     qtd = int(qtd_raw) if qtd_raw else 1
                     total_item = preco * qtd
@@ -545,7 +549,8 @@ def criar_bonificacao(request):
                         'nome': value,
                         'preco': preco,
                         'qtd': qtd,
-                        'total': total_item
+                        'total': total_item,
+                        'acordo_id': acordo_id  # Guardamos o ID aqui
                     })
                     total_solicitacao += total_item
                     total_qtd_solicitacao += qtd
@@ -561,60 +566,53 @@ def criar_bonificacao(request):
             status_final = 'PENDENTE'
 
         elif tipo == 'ACORDO_COMERCIAL':
-            acordo = AcordoComercial.objects.filter(
-                cliente_codigo=cliente_cod,
-                cliente_loja=cliente_loja,
-                vigencia_inicio__lte=hoje_date,
-                vigencia_fim__gte=hoje_date
-            ).first()
+            # 1. Captura o ID do acordo selecionado globalmente no formulário
+            acordo_id_global = request.POST.get('acordo_id_global')
+            
+            if not acordo_id_global:
+                messages.error(
+                    request, 
+                    "Não é possível gravar a solicitação: nenhum Acordo Comercial foi selecionado."
+                )
+                return render(request, 'solicitacoes/bonificacao_form.html', {'dados': request.POST})
+            
+            try:
+                # Busca o acordo no banco de dados do app cadastros
+                from cadastros.models import AcordoComercial
+                acordo = AcordoComercial.objects.get(id=acordo_id_global)
+            except AcordoComercial.DoesNotExist:
+                messages.error(request, "O Acordo Comercial selecionado não foi encontrado no sistema.")
+                return render(request, 'solicitacoes/bonificacao_form.html', {'dados': request.POST})
 
-            if not acordo:
-                status_final = 'PENDENTE'
-                messages.warning(request, "Nenhum acordo vigente encontrado. A solicitação seguirá para aprovação manual.")
-            else:
-                realizado_protheus = calcular_realizado_protheus(cliente_cod, cliente_loja, acordo.vigencia_inicio, acordo.vigencia_fim)
+            # 2. Validação se o acordo for por PRODUTO
+            if acordo.tipo_acordo == 'produto':
+                # Mapeia todos os códigos de produtos permitidos neste acordo específico
+                produtos_permitidos = set(acordo.itens.values_list('produto_codigo', flat=True))
                 
-                # --- CORREÇÃO: FILTRAR ITENS DO ACORDO ---
-                codigos_no_acordo = list(acordo.itens.values_list('produto_codigo', flat=True))
-                
-                if acordo.tipo_acordo == 'valor':
-                    reservado_local = BonificacaoItem.objects.filter(
-                        bonificacao__cliente_codigo=cliente_cod,
-                        bonificacao__tipo='ACORDO_COMERCIAL',
-                        bonificacao__status__in=['APROVADO'],
-                        bonificacao__data_solicitacao__range=(acordo.vigencia_inicio, acordo.vigencia_fim)
-                    ).aggregate(total=Sum('valor_total'))['total'] or 0
+                # Verifica se há algum item na lista da bonificação que NÃO está no acordo
+                for item in itens_dados:
+                    cod_produto = item.get('codigo')  # Ajustado para buscar a chave correta 'codigo'
+                    nome_produto = item.get('nome')
+                    
+                    # EXCEÇÃO: Se for o Copo Brinde da fábrica, ignora a validação do Acordo Comercial
+                    if cod_produto == '000072':
+                        continue
+                    
+                    if cod_produto not in produtos_permitidos:
+                        messages.error(
+                            request, 
+                            f"Gravação Recusada: O produto '{nome_produto}' (Cód: {cod_produto}) não faz parte das regras deste Acordo Comercial."
+                        )
+                        return render(request, 'solicitacoes/bonificacao_form.html', {'dados': request.POST})
 
-                    objetivo = float(acordo.valor_acordo)
-                    consumido = float(realizado_protheus['valor']) + float(reservado_local)
-                    disponivel = objetivo - consumido
-                    solicitado = total_solicitacao
-                    unidade = "R$"
+            # 3. Se passou pelas validações, vincula o acordo aos itens (com exceção do copo brinde)
+            for item in itens_dados:
+                if item.get('codigo') == '000072':
+                    item['acordo_id'] = None  # O copo não consome saldo de contrato
                 else:
-                    # Se for quantidade, filtramos o que já foi gasto localmente apenas dos produtos do acordo
-                    reservado_local = BonificacaoItem.objects.filter(
-                        bonificacao__cliente_codigo=cliente_cod,
-                        bonificacao__tipo='ACORDO_COMERCIAL',
-                        bonificacao__status__in=['APROVADO'],
-                        bonificacao__data_solicitacao__range=(acordo.vigencia_inicio, acordo.vigencia_fim),
-                        produto_codigo__in=codigos_no_acordo
-                    ).aggregate(total=Sum('quantidade'))['total'] or 0
+                    item['acordo_id'] = acordo.id
 
-                    # Somamos da solicitação atual APENAS o que for produto do acordo
-                    solicitado_filtrado = sum(item['qtd'] for item in itens_dados if item['codigo'] in codigos_no_acordo)
-
-                    objetivo = sum(item.qtd_faturada for item in acordo.itens.all())
-                    consumido = realizado_protheus['qtd'] + reservado_local
-                    disponivel = objetivo - consumido
-                    solicitado = solicitado_filtrado
-                    unidade = "UN"
-
-                if solicitado <= disponivel:
-                    status_final = 'APROVADO'
-                    messages.success(request, f"Bonificação aprovada automaticamente! Saldo restante: {unidade} {disponivel - solicitado:,.2f}")
-                else:
-                    messages.error(request, f"Saldo insuficiente no acordo! Disponível: {unidade} {disponivel:,.2f}. Solicitado (itens do acordo): {unidade} {solicitado:,.2f}")
-                    return render(request, 'solicitacoes/bonificacao_form.html', {'dados': request.POST})
+            status_final = 'APROVADO'
 
         elif tipo == 'VERBA_VENDEDOR':
             verba_configurada = VerbaMensal.objects.filter(
@@ -683,7 +681,8 @@ def criar_bonificacao(request):
                         produto_descricao=item['nome'],
                         preco_tabela=item['preco'],
                         quantidade=item['qtd'],
-                        valor_total=item['total']
+                        valor_total=item['total'],
+                        acordo_vinculado_id=item['acordo_id']  # Grava a FK do acordo escolhido (ou None pro copo)
                     )
 
             try:

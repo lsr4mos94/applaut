@@ -58,6 +58,11 @@
                         <input class="form-check-input" type="radio" name="tipo" id="tipo_sac" value="SAC">
                         <label class="form-check-label" for="tipo_sac">SAC</label>
                     </div>
+                    <!-- AJUSTE AQUI: Corrigido o ID e o Value para ATIVACAO_MARCA -->
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="tipo" id="tipo_ativacao" value="ATIVACAO_MARCA">
+                        <label class="form-check-label" for="tipo_ativacao">Ativação de Marca</label>
+                    </div>
                 </div>
             </div>
 
@@ -102,6 +107,11 @@
                 </div>
             </div>
 
+            <div id="wrapper_acordo_selecionado" class="mb-4 p-3 rounded border border-warning" style="display: none; background-color: #fdfdf9;">
+                <label class="form-label-custom text-warning"><i class="bi bi-file-earmark-text-fill me-1"></i> Acordo Comercial Vinculado</label>
+                <div id="texto_acordo_selecionado" class="fw-bold text-dark fs-6"></div>
+            </div>
+
             <div class="mb-4 p-3 rounded box-selecao">
                 <div class="row align-items-center">
                     <div class="col-md-6">
@@ -129,10 +139,11 @@
                 <textarea name="justificativa" class="form-control" rows="2" placeholder="Descreva o motivo..." required></textarea>
             </div>
 
+            <!-- AJUSTE AQUI: Atualizado o label para incluir Ativação de Marca -->
             <div class="mb-5" id="div_foto_sac" style="display: none;">
-                <label class="form-label-custom">Foto do SAC (Obrigatório para este tipo)</label>
+                <label class="form-label-custom">Evidência (Obrigatório para SAC e Ativação de Marca) <span class="text-danger">*</span></label>
                 <input type="file" name="foto_sac" id="id_foto_sac" class="form-control form-control-sm" accept="image/*">
-                <small class="text-muted">Anexe uma imagem para comprovação do SAC.</small>
+                <small class="text-muted">Anexe uma imagem para comprovação da solicitação</small>
             </div>
 
             <h6 class="section-title"><i class="bi bi-box-seam me-2"></i>Itens da Bonificação</h6>
@@ -204,16 +215,35 @@
     </div>
 </div>
 
+<div class="modal fade" id="modalAcordo" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header text-white" style="background-color: #bca464;">
+                <h6 class="modal-title fw-bold"><i class="bi bi-briefcase-fill me-2"></i>Selecione o Acordo Vigente</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="resetarTipoSeNaoEscolheu()"></button>
+            </div>
+            <div class="modal-body p-0" style="max-height: 400px; overflow-y: auto;">
+                <div id="lista-acordos-container" class="list-group list-group-flush">
+                    </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     let contadorItens = 0;
     let linhaAtiva = null;
-    let mCli, mProd;
+    let mCli, mProd, mAco; // Variáveis dos modais
+    
+    // Objeto global para guardar o acordo que o vendedor selecionou
+    let acordoSelecionadoObj = null;
 
     document.addEventListener('DOMContentLoaded', function() {
         mCli = new bootstrap.Modal(document.getElementById('modalCliente'));
         mProd = new bootstrap.Modal(document.getElementById('modalProduto'));
+        mAco = new bootstrap.Modal(document.getElementById('modalAcordo')); // Inicializa
 
-        // Busca de Cliente
+        // Ajuste no clique do cliente para disparar a verificação de Acordo Comercial
         document.getElementById('btn_buscar_cliente').onclick = function() {
             const termo = document.getElementById('input_busca_cliente').value.trim();
             if(termo.length < 3) return alert('Digite ao menos 3 caracteres.');
@@ -236,12 +266,30 @@
                             document.getElementById('res_cnpj').value = c.cnpj;
                             document.getElementById('res_grupo').value = c.grupo || 'GERAL';
                             mCli.hide();
+
+                            // Sempre que selecionar um cliente novo, limpa o acordo anterior
+                            limparAcordoSelecionado();
+
+                            // Se o Rádio "Acordo Comercial" já estiver marcado, dispara a busca do acordo
+                            verificarEDispararAcordo();
                         };
                         lista.appendChild(b);
                     });
                     mCli.show();
                 });
         };
+
+        // Escuta mudanças nos botões de Rádio do Tipo de Bonificação
+        document.querySelectorAll('input[name="tipo"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                toggleCamposAdicionais();
+                if (this.value === 'ACORDO_COMERCIAL') {
+                    verificarEDispararAcordo();
+                } else {
+                    limparAcordoSelecionado();
+                }
+            });
+        });
 
         // Busca de Produto
         document.getElementById('filtro_produto').onkeyup = function() {
@@ -288,13 +336,19 @@
         toggleCamposAdicionais();
     });
 
+    // AJUSTE AQUI: toggleCamposAdicionais atualizada para aceitar ATIVACAO_MARCA
     function toggleCamposAdicionais() {
-        const tipoSelecionado = document.querySelector('input[name="tipo"]:checked').value;
+        const tipoRadio = document.querySelector('input[name="tipo"]:checked');
+        if (!tipoRadio) return;
+        
+        const tipoSelecionado = tipoRadio.value;
         const divFoto = document.getElementById('div_foto_sac');
         const infoBox = document.getElementById('info-acordo');
 
-        // Foto SAC
-        divFoto.style.display = (tipoSelecionado === 'SAC') ? 'block' : 'none';
+        // Foto visível para SAC ou ATIVACAO_MARCA
+        if (divFoto) {
+            divFoto.style.display = (tipoSelecionado === 'SAC' || tipoSelecionado === 'ATIVACAO_MARCA') ? 'block' : 'none';
+        }
 
         // Alerta de Acordo Comercial
         if (tipoSelecionado === 'ACORDO_COMERCIAL') {
@@ -310,10 +364,6 @@
             infoBox.remove();
         }
     }
-
-    document.querySelectorAll('input[name="tipo"]').forEach(radio => {
-        radio.addEventListener('change', toggleCamposAdicionais);
-    });
 
     function addLinha() {
         contadorItens++;
@@ -386,46 +436,111 @@
         const DESCRICAO_COPO = 'COPO DESCARTAVEL 300ML C/LOGO';
         let totalChopp = 0;
         let linhaCopo = null;
+        
         document.querySelectorAll('#tbodyItens tr').forEach(tr => {
             const id = tr.id.split('-')[1];
-            const nomeProd = document.getElementById(`nome_${id}`).value.toUpperCase();
-            const codProd = document.getElementById(`cod_${id}`).value;
-            const qtd = parseFloat(document.getElementById(`qtd_${id}`).value) || 0;
-            if (nomeProd.includes('CHOPP')) totalChopp += qtd;
-            if (codProd === CODIGO_COPO) linhaCopo = id;
+            const nomeInput = document.getElementById(`nome_${id}`);
+            const codInput = document.getElementById(`cod_${id}`);
+            const qtdInput = document.getElementById(`qtd_${id}`);
+            
+            if (nomeInput && codInput && qtdInput) {
+                const nomeProd = nomeInput.value.toUpperCase();
+                const codProd = codInput.value;
+                const qtd = parseFloat(qtdInput.value) || 0;
+                
+                if (nomeProd.includes('CHOPP')) totalChopp += qtd;
+                if (codProd === CODIGO_COPO) linhaCopo = id;
+            }
         });
+        
         if (totalChopp > 0) {
             if (!linhaCopo) {
                 addLinha();
                 const novaId = contadorItens;
+                
                 document.getElementById(`nome_${novaId}`).value = DESCRICAO_COPO;
                 document.getElementById(`cod_${novaId}`).value = CODIGO_COPO;
+                document.getElementById(`cod_${novaId}`).setAttribute('value', CODIGO_COPO);
                 document.getElementById(`preco_${novaId}`).value = "0.00";
                 document.getElementById(`qtd_${novaId}`).value = totalChopp;
-                calc(novaId);
+                
+                const p = parseFloat(document.getElementById(`preco_${novaId}`).value) || 0;
+                document.getElementById(`total_${novaId}`).value = (totalChopp * p).toFixed(2);
+                calcularTotalGeral();
             } else {
                 document.getElementById(`qtd_${linhaCopo}`).value = totalChopp;
                 document.getElementById(`preco_${linhaCopo}`).value = "0.00";
-                calc(linhaCopo);
+                
+                const p = parseFloat(document.getElementById(`preco_${linhaCopo}`).value) || 0;
+                document.getElementById(`total_${linhaCopo}`).value = (totalChopp * p).toFixed(2);
+                calcularTotalGeral();
             }
         } else if (linhaCopo) {
-            document.getElementById(`linha-${linhaCopo}`).remove();
-            calcularTotalGeral();
+            const elementoLinha = document.getElementById(`linha-${linhaCopo}`);
+            if (elementoLinha) {
+                elementoLinha.remove();
+                calcularTotalGeral();
+            }
         }
     }
 
-    const originalCalc = calc;
+    const originalCalcBase = calc; 
     calc = function(id) {
-        originalCalc(id);
-        if (document.getElementById(`cod_${id}`).value !== '000072') validarRegraCopo();
-    };
+        originalCalcBase(id);
 
-    const originalRemover = removerLinha;
-    removerLinha = function(id) {
-        originalRemover(id);
+        const radioChecked = document.querySelector('input[name="tipo"]:checked');
+        const tipoSelecionado = radioChecked ? radioChecked.value : null;
+        const codProd = document.getElementById(`cod_${id}`) ? document.getElementById(`cod_${id}`).value : '';
+
+        if (codProd === '000072') return;
+
+        if (tipoSelecionado === 'ACORDO_COMERCIAL' && acordoSelecionadoObj) {
+            const qtdInput = document.getElementById(`qtd_${id}`);
+            const qtdDigitada = qtdInput ? (parseFloat(qtdInput.value) || 0) : 0;
+
+            if (acordoSelecionadoObj.tipo_acordo === 'produto') {
+                const produtoNoAcordo = acordoSelecionadoObj.produtos_permitidos.find(p => p.codigo === codProd);
+                
+                if (!produtoNoAcordo) {
+                    alert(`O produto código ${codProd} não faz parte deste Acordo Comercial restrito por produtos.`);
+                    document.getElementById(`nome_${id}`).value = '';
+                    document.getElementById(`cod_${id}`).value = '';
+                    document.getElementById(`preco_${id}`).value = '0.00';
+                    document.getElementById(`total_${id}`).value = '0.00';
+                    calcularTotalGeral();
+                    return;
+                }
+                
+                if (qtdDigitada > parseFloat(produtoNoAcordo.saldo_item)) {
+                    alert(`Quantidade indisponível para este produto no acordo. Saldo restante do item: ${produtoNoAcordo.saldo_item} unidades.`);
+                    qtdInput.value = Math.floor(produtoNoAcordo.saldo_item) || 1;
+                    originalCalcBase(id);
+                }
+            } 
+            else if (acordoSelecionadoObj.tipo_acordo === 'valor') {
+                let totalGeralDigitado = 0;
+                document.querySelectorAll('[id^="total_"]').forEach(input => {
+                    totalGeralDigitado += parseFloat(input.value) || 0;
+                });
+
+                if (totalGeralDigitado > parseFloat(acordoSelecionadoObj.saldo)) {
+                    alert(`Atenção: Saldo insuficiente no Acordo Comercial por Valor! O saldo total disponível é R$ ${parseFloat(acordoSelecionadoObj.saldo).toLocaleString('pt-br', {minimumFractionDigits: 2})}.`);
+                    if (qtdInput) qtdInput.value = 1;
+                    originalCalcBase(id);
+                }
+            }
+        }
+
         validarRegraCopo();
     };
 
+    const originalRemoverBase = removerLinha;
+    removerLinha = function(id) {
+        originalRemoverBase(id);
+        validarRegraCopo();
+    };
+
+    // AJUSTE AQUI: O segundo DOMContentLoaded foi unificado e a função toggleSacFoto agora valida SAC e ATIVACAO_MARCA
     document.addEventListener('DOMContentLoaded', function() {
         const radiosTipo = document.querySelectorAll('input[name="tipo"]');
         const divFotoSac = document.getElementById('div_foto_sac');
@@ -434,13 +549,16 @@
         function toggleSacFoto() {
             const selecionado = document.querySelector('input[name="tipo"]:checked');
             
-            if (selecionado && selecionado.value === 'SAC') {
-                divFotoSac.style.display = 'block';
-                inputFoto.required = true;
-            } else {
-                divFotoSac.style.display = 'none';
-                inputFoto.required = false;
-                inputFoto.value = "";
+            if (divFotoSac && inputFoto) {
+                // Torna obrigatório e exibe caso seja SAC ou ATIVACAO_MARCA
+                if (selecionado && (selecionado.value === 'SAC' || selecionado.value === 'ATIVACAO_MARCA')) {
+                    divFotoSac.style.display = 'block';
+                    inputFoto.required = true;
+                } else {
+                    divFotoSac.style.display = 'none';
+                    inputFoto.required = false;
+                    inputFoto.value = "";
+                }
             }
         }
 
@@ -451,5 +569,166 @@
         toggleSacFoto();
     });
 
+    function verificarEDispararAcordo() {
+        const radioChecked = document.querySelector('input[name="tipo"]:checked');
+        if (!radioChecked) return;
+        
+        const tipoSelecionado = radioChecked.value;
+        const inputCodigo = document.getElementById('res_codigo');
+        const inputLoja = document.getElementById('res_loja');
+
+        let codigoCliente = inputCodigo ? (inputCodigo.value || inputCodigo.getAttribute('value') || '') : '';
+        let lojaCliente = inputLoja ? (inputLoja.value || inputLoja.getAttribute('value') || '') : '';
+
+        codigoCliente = codigoCliente.trim();
+        lojaCliente = lojaCliente.trim();
+
+        if (tipoSelecionado === 'ACORDO_COMERCIAL') {
+            if (!codigoCliente || codigoCliente === '0' || codigoCliente === '') {
+                console.log("Tipo 'Acordo Comercial' selecionado. Aguardando a escolha do cliente...");
+                return; 
+            }
+            buscarSaldosDoAcordo(codigoCliente, lojaCliente);
+        }
+    }
+
+    function buscarSaldosDoAcordo(codigoCliente, lojaCliente) {
+        fetch(`/cadastros/api/acordos-vigentes/?cliente=${codigoCliente}&loja=${lojaCliente}`)
+            .then(res => {
+                if (!res.ok) throw new Error(`Erro no servidor: Status ${res.status}`);
+                return res.json();
+            })
+            .then(data => {
+                const container = document.getElementById('lista-acordos-container');
+                if (container) container.innerHTML = '';
+
+                if (!data || data.length === 0) {
+                    if (container) container.innerHTML = '<div class="alert alert-warning">Nenhum acordo cadastrado para este cliente.</div>';
+                    mAco.show();
+                    return;
+                }
+
+                data.forEach(acordo => {
+                    try {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'list-group-item list-group-item-action p-3 mb-2 border rounded';
+                        btn.setAttribute('data-acordo-id', acordo.id);
+
+                        let textoSaldo = '';
+                        if (acordo.tipo_acordo === 'valor') {
+                            let valorNum = parseFloat(acordo.saldo) || 0;
+                            textoSaldo = `R$ ${valorNum.toLocaleString('pt-br', { minimumFractionDigits: 2 })}`;
+                        } else {
+                            let totalUnidades = parseFloat(acordo.saldo) || 0;
+                            if (totalUnidades === 0 && acordo.produtos_permitidos) {
+                                totalUnidades = acordo.produtos_permitidos.reduce((acc, p) => acc + (parseFloat(p.saldo_item) || 0), 0);
+                            }
+                            textoSaldo = `${Math.round(totalUnidades)} un`;
+                        }
+
+                        let badgesProdutos = '';
+                        if (acordo.tipo_acordo === 'produto' && acordo.produtos_permitidos && acordo.produtos_permitidos.length > 0) {
+                            badgesProdutos = '<div class="mt-2">';
+                            acordo.produtos_permitidos.forEach(p => {
+                                badgesProdutos += `<span class="badge bg-light text-dark border me-1">${p.descricao} (${Math.round(p.saldo_item)} un)</span>`;
+                            });
+                            badgesProdutos += '</div>';
+                        }
+
+                        btn.innerHTML = `
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div style="text-align: left;">
+                                    <strong>${acordo.descricao}</strong><br>
+                                    <small class="text-muted">Vigência: ${acordo.inicio || ''} até ${acordo.fim || ''}</small>
+                                    ${badgesProdutos}
+                                </div>
+                                <span class="badge bg-secondary p-2" style="min-width: 100px; font-size: 0.95rem;">
+                                    Saldo: ${textoSaldo}
+                                </span>
+                            </div>
+                        `;
+
+                        btn.addEventListener('click', function() {
+                            if (typeof selecionarAcordoDefinitivo === "function") {
+                                selecionarAcordoDefinitivo(acordo, textoSaldo);
+                            }
+                        });
+
+                        if (container) container.appendChild(btn);
+
+                    } catch (errItem) {
+                        console.error("Erro no item:", errItem);
+                    }
+                });
+
+                mAco.show();
+            })
+            .catch(err => {
+                console.error("Erro no Fetch de Acordos:", err);
+                alert(`Erro ao carregar dados do acordo: ${err.message}`);
+            });
+    }
+
+    function selecionarAcordoDefinitivo(acordo, textoSaldo) {
+        acordoSelecionadoObj = acordo; 
+        
+        let detalhesProdutos = '';
+        if (acordo.tipo_acordo === 'produto' && acordo.produtos_permitidos && acordo.produtos_permitidos.length > 0) {
+            detalhesProdutos = '<div class="mt-2 d-flex flex-wrap gap-1">';
+            acordo.produtos_permitidos.forEach(p => {
+                detalhesProdutos += `<span class="badge bg-light text-dark border fw-normal" style="font-size: 0.8rem;">${p.descricao} (${Math.round(p.saldo_item)} un)</span>`;
+            });
+            detalhesProdutos += '</div>';
+        }
+        
+        document.getElementById('texto_acordo_selecionado').innerHTML = `
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                <div>
+                    <span>#${acordo.id} - ${document.getElementById('res_razao').value}</span>
+                    ${detalhesProdutos}
+                </div>
+                <div class="text-end">
+                    <span class="small text-muted d-block" style="font-size: 0.75rem; font-weight: normal;">SALDO DISPONÍVEL</span>
+                    <span class="text-warning-dark fw-bold" style="font-size: 1.1rem; color: #bca464;">${textoSaldo}</span>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('wrapper_acordo_selecionado').style.display = 'block';
+        
+        let inputOculto = document.getElementById('acordo_id_hidden');
+        if (!inputOculto) {
+            inputOculto = document.createElement('input');
+            inputOculto.type = 'hidden';
+            inputOculto.name = 'acordo_id_global'; 
+            inputOculto.id = 'acordo_id_hidden';
+            document.getElementById('formBonificacao').appendChild(inputOculto);
+        }
+        inputOculto.value = acordo.id;
+
+        mAco.hide(); 
+    }
+
+    function limparAcordoSelecionado() {
+        acordoSelecionadoObj = null;
+        const wrapper = document.getElementById('wrapper_acordo_selecionado');
+        const txtAcordo = document.getElementById('texto_acordo_selecionado');
+        if (wrapper) wrapper.style.display = 'none';
+        if (txtAcordo) txtAcordo.innerHTML = '';
+        
+        const inputOculto = document.getElementById('acordo_id_hidden');
+        if (inputOculto) inputOculto.remove();
+    }
+
+    function resetarTipoSeNaoEscolheu() {
+        if (!acordoSelecionadoObj) {
+            const verbaRadio = document.getElementById('verba');
+            if (verbaRadio) verbaRadio.checked = true;
+            toggleCamposAdicionais();
+            limparAcordoSelecionado();
+        }
+    }
 </script>
+
 {% endblock %}

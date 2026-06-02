@@ -20,5 +20,6 @@ urlpatterns = [
     path('clientes/<int:pk>/status/', views.processar_status, name='processar_status'),
 
     path('api/historico/<int:acordo_id>/', views.api_historico_acordo, name='api_historico_acordo'),
+    path('api/acordos-vigentes/', views.api_acordos_vigentes, name='api_acordos_vigentes'),
 
 ]

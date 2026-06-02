@@ -1,12 +1,15 @@
 from pathlib import Path
 import os
 import mimetypes
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-2m%w6zvng#t3qf2h6!68$&-va)esch1#y&wg3xf4n&^ljlnc+o'
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
-DEBUG = True
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'desenvolvimento-safe-key-123')
+
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = ['149.57.32.44', 'localhost', '127.0.0.1', 'app.lautbeer.com.br', '192.168.184.24', 'aroma-sullen-evaluate.ngrok-free.dev']
 
 USE_X_FORWARDED_HOST = True
@@ -57,38 +60,52 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'app.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE':   'django.db.backends.postgresql',
-        'NAME':     'salesapp',
-        'USER':     'postgres',
-        'PASSWORD': 'Bw)reThOXV8mcel',
-        'HOST':     '149.57.32.44',
-        'PORT':     '5432',
+PROTHEUS_CIEC = {
+    'ENGINE': 'mssql',
+    'NAME': 'MP12OFICIALP',
+    'USER': os.environ.get('PROTHEUS_USER'),
+    'PASSWORD': os.environ.get('PROTHEUS_PASSWORD'),
+    'HOST': os.environ.get('PROTHEUS_HOST'),
+    'PORT': '1433',
+    'OPTIONS': {
+        'driver': 'ODBC Driver 17 for SQL Server',
     },
-    'protheus_ciec': {
-        'ENGINE': 'mssql',
-        'NAME': 'MP12OFICIALP',
-        'USER': 'user_app',
-        'PASSWORD': 'q+E6XkpwwLsh',
-        'HOST': '149.57.32.44',
-        'PORT': '1433',
-        'OPTIONS': {
-            'driver': 'ODBC Driver 17 for SQL Server',
-        },
-    },
-    'protheus_wrp': {
-        'ENGINE': 'mssql',
-        'NAME': 'MP12OFICIALX',
-        'USER': 'user_app',
-        'PASSWORD': 'q+E6XkpwwLsh',
-        'HOST': '149.57.32.44',
-        'PORT': '1432',
-        'OPTIONS': {
-            'driver': 'ODBC Driver 17 for SQL Server',
-        },
-    }
 }
+
+PROTHEUS_WRP = {
+    'ENGINE': 'mssql',
+    'NAME': 'MP12OFICIALX',
+    'USER': os.environ.get('PROTHEUS_USER'),
+    'PASSWORD': os.environ.get('PROTHEUS_PASSWORD'),
+    'HOST': os.environ.get('PROTHEUS_HOST'),
+    'PORT': '1432',
+    'OPTIONS': {
+        'driver': 'ODBC Driver 17 for SQL Server',
+    },
+}
+
+if DEBUG:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        },
+        'protheus_ciec': PROTHEUS_CIEC,
+        'protheus_wrp': PROTHEUS_WRP,
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME'),
+            'USER': os.environ.get('DB_USER'),
+            'PASSWORD': os.environ.get('DB_PASSWORD'),
+            'HOST': os.environ.get('DB_HOST'),
+            'PORT': os.environ.get('DB_PORT'),
+        },
+        'protheus_ciec': PROTHEUS_CIEC,
+        'protheus_wrp': PROTHEUS_WRP,
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -132,15 +149,14 @@ LOGOUT_REDIRECT_URL = 'login'
 
 LOGIN_URL = 'login'
 
-EMAIL_HOST =          'saturno.onexdatacenter.com.br'
-EMAIL_PORT =          465
-EMAIL_USE_TLS =       False
-EMAIL_USE_SSL =       True
-EMAIL_HOST_USER =     'workflow@lautbeer.com.br'
-EMAIL_HOST_PASSWORD = 'cTavQf2HvtlKGh'
-DEFAULT_FROM_EMAIL =  'Workflow Laut Beer <workflow@lautbeer.com.br>'
-SERVER_EMAIL =        'lorrane.ramos@lautbeer.com.br'
-
+EMAIL_HOST = 'saturno.onexdatacenter.com.br'
+EMAIL_PORT = 465
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = True
+EMAIL_HOST_USER = 'workflow@lautbeer.com.br'
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_PASSWORD')
+DEFAULT_FROM_EMAIL = 'Workflow Laut Beer <workflow@lautbeer.com.br>'
+SERVER_EMAIL = 'lorrane.ramos@lautbeer.com.br'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

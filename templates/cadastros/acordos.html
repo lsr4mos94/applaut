@@ -12,7 +12,7 @@
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body card-filter">
         <form method="GET" class="row g-3 align-items-end">
-            <div class="col-md-5">
+            <div class="col-md-4">
                 <label class="small fw-bold text-muted">Cliente (Nome, CPF ou CNPJ)</label>
                 <input type="text" name="busca" class="form-control form-control-sm shadow-sm" placeholder="Buscar cliente..." value="{{ request.GET.busca|default:'' }}">
             </div>
@@ -20,12 +20,20 @@
                 <label class="small fw-bold text-muted">Vigência Até</label>
                 <input type="date" name="data_fim" class="form-control form-control-sm shadow-sm" value="{{ request.GET.data_fim }}">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="small fw-bold text-muted">Tipo de Acordo</label>
                 <select name="tipo_acordo" class="form-select form-select-sm shadow-sm">
                     <option value="">Todos os Tipos</option>
                     <option value="valor" {% if request.GET.tipo_acordo == 'valor' %}selected{% endif %}>Por Valor</option>
                     <option value="produto" {% if request.GET.tipo_acordo == 'produto' %}selected{% endif %}>Por Produto</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="small fw-bold text-muted">Status</label>
+                <select name="status" class="form-select form-select-sm shadow-sm">
+                    <option value="">Todos</option>
+                    <option value="Ativo" {% if request.GET.status == 'Ativo' %}selected{% endif %}>Ativo</option>
+                    <option value="Encerrado" {% if request.GET.status == 'Encerrado' %}selected{% endif %}>Encerrado</option>
                 </select>
             </div>
             <div class="col-md-2 d-flex align-items-end gap-2">
@@ -45,12 +53,12 @@
                     <th class="py-3">DATA ACORDO</th>
                     <th class="py-3">VIGÊNCIA</th>
                     <th class="py-3">TIPO</th>
-                    <th class="py-3 text-center">AÇÕES</th>
+                    <th class="py-3">STATUS</th> <th class="py-3 text-center">AÇÕES</th>
                 </tr>
             </thead>
             <tbody>
                 {% for acordo in acordos %}
-                <tr class="border-bottom">
+                <tr class="border-bottom" {% if acordo.status_vigencia == 'ENCERRADO' %}style="opacity: 0.75; background-color: #fdfdfd;"{% endif %}>
                     <td class="px-3">
                         <strong style="color: #5e4d26;">#{{ acordo.id }} {{ acordo.cliente_nome }}</strong><br>
                         <small class="text-muted">{{ acordo.cliente_codigo }}/{{ acordo.cliente_loja }}</small>
@@ -66,6 +74,13 @@
                             {{ acordo.get_tipo_acordo_display }}
                         </span>
                     </td>
+                    <td>
+                        {% if acordo.status_vigencia == 'Ativo' %}
+                            <span class="badge bg-success">Ativo</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Encerrado</span>
+                        {% endif %}
+                    </td>
                     <td class="text-center">
                         <div class="d-flex justify-content-center gap-1">
                             <button type="button" class="btn-square-action btn-track" onclick="abrirHistorico('{{ acordo.id }}')" title="Ver Progresso">
@@ -78,15 +93,15 @@
                                 <i class="bi bi-trash3-fill"></i>
                             </button>
                         </div>
-
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="5" class="text-center py-5 text-muted">Nenhum acordo comercial encontrado.</td></tr>
+                <tr><td colspan="6" class="text-center py-5 text-muted">Nenhum acordo comercial encontrado.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+    
     <div>
         {% for acordo in acordos %}
             <div class="modal fade" id="modalVisualizar{{ acordo.id }}" tabindex="-1" aria-hidden="true">
@@ -115,7 +130,7 @@
                                     <label class="text-muted small d-block fw-bold">Vigência</label>
                                     <span class="fw-bold text-dark">{{ acordo.vigencia_inicio|date:"d/m/Y" }} a {{ acordo.vigencia_fim|date:"d/m/Y" }}</span>
                                 </div>
-                                    <div class="col-md-4">
+                                <div class="col-md-4">
                                     <label class="text-muted small d-block fw-bold">Data de Emissão</label>
                                     <span>{{ acordo.data_acordo|date:"d/m/Y" }}</span>
                                 </div>
@@ -126,6 +141,14 @@
                                     {% endif %}
                                 </div>
                             </div>
+
+                            {% if acordo.justificativa %}
+                            <div class="mb-4 p-3 bg-light rounded border">
+                                <label class="text-muted small d-block fw-bold text-uppercase mb-1">Justificativa do Acordo</label>
+                                <p class="mb-0 text-secondary small style-quote" style="white-space: pre-line;">{{ acordo.justificativa }}</p>
+                            </div>
+                            {% endif %}
+
                             {% if acordo.tipo_acordo == 'produto' %}
                             <h6 class="fw-bold mb-3" style="color: #bca464;"><i class="bi bi-box-seam me-2"></i>Produtos Acordados</h6>
                             <div class="table-responsive">
@@ -137,7 +160,7 @@
                                             <th class="text-center" style="width: 150px;">Qtd. Acordada</th>
                                         </tr>
                                     </thead>
-                                        <tbody class="small">
+                                    <tbody class="small">
                                         {% for item in acordo.itens.all %}
                                         <tr>
                                             <td class="ps-3 text-muted">{{ item.produto_codigo }}</td>
@@ -247,6 +270,12 @@
                         </div>
                     </div>
                     <div class="row g-3 mb-4">
+                        <div class="col-12">
+                            <label class="small fw-bold">Justificativa</label>
+                            <textarea name="justificativa" class="form-control" rows="2" placeholder="Insira a justificativa ou observações do acordo..." style="border-color: #bca464;"></textarea>
+                        </div>
+                    </div>
+                    <div class="row g-3 mb-4">
                         <div class="col-md-12">
                             <label class="small fw-bold">Tipo de Acordo</label>
                             <select name="tipo_acordo" id="select_tipo" class="form-select" required style="border-color: #bca464;">
@@ -298,7 +327,7 @@
                         <span id="label_porcentagem" class="small fw-bold">0%</span>
                     </div>
                     <div class="progress" style="height: 15px; background-color: #e9ecef; border-radius: 10px;">
-                        <div id="barra_progresso" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%; border-radius: 10px;"></div>
+                        <div id="barra_progresso" class="progress-bar progress-bar-striped progress-bar-animated bg-danger" role="progressbar" style="width: 0%; border-radius: 10px;"></div>
                     </div>
                     <div class="text-center mt-2">
                         <small class="text-muted">Realizado: <strong id="hist_realizado" class="text-dark">---</strong></small>
@@ -458,21 +487,15 @@ $(document).ready(function() {
                 .then(res => res.json())
                 .then(data => {
                     const pct = data.porcentagem;     
-                    barra.className = "progress-bar progress-bar-striped progress-bar-animated";
-                    if (pct <= 50) {
-                        barra.classList.add("bg-danger");
-                        labelPct.style.color = "#dc3545";
-                    } else if (pct < 100) {
-                        barra.classList.add("bg-warning");
-                        labelPct.style.color = "#ffc107";
-                    } else {
-                        barra.classList.add("bg-success");
-                        labelPct.style.color = "#198754";
-                    }
+                    
+                    barra.className = "progress-bar progress-bar-striped progress-bar-animated bg-danger";
+                    labelPct.style.color = "#dc3545";
+
                     barra.style.width = Math.min(pct, 100) + '%';
                     labelPct.innerText = pct + '%';
                     document.getElementById('hist_realizado').innerText = data.label_progresso;
                     corpo.innerHTML = '';
+                    
                     if (data.nfs.length === 0) {
                         corpo.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Nenhuma NF de bonificação encontrada no período.</td></tr>';
                     } else {

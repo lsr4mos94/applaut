@@ -42,6 +42,7 @@ class Bonificacao(models.Model):
         ('ACORDO_COMERCIAL', 'Acordo Comercial'),
         ('NEGOCIACAO_ESPECIAL', 'Negociação Especial'),
         ('SAC', 'SAC'),
+        ('ATIVACAO', "Ativação de Marca"),
     ]
 
     PLATAFORMA_CHOICES = [
@@ -114,6 +115,14 @@ class BonificacaoItem(models.Model):
     preco_tabela = models.DecimalField(max_digits=12, decimal_places=2)
     quantidade = models.IntegerField()
     valor_total = models.DecimalField(max_digits=12, decimal_places=2)
+
+    acordo_vinculado = models.ForeignKey(
+        'cadastros.AcordoComercial',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='utilizacoes_diretas'
+    )
 
     def save(self, *args, **kwargs):
         self.valor_total = self.preco_tabela * self.quantidade

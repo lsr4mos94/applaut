@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
-from solicitacoes.models import Bonificacao
+from django.db import models
+from django.utils import timezone
+from django.db.models import Sum
 
 class VerbaMensal(models.Model):
     MESES_CHOICES = [
@@ -12,7 +14,7 @@ class VerbaMensal(models.Model):
     vendedor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='verbas')
     mes_referencia = models.IntegerField(choices=MESES_CHOICES, verbose_name="Mês de Referência")
     ano_referencia = models.IntegerField(verbose_name="Ano de Referência")
-    valor = models.DecimalField(max_digits=10, decimal_places=2) # Campo correto usado no views.py
+    valor = models.DecimalField(max_digits=10, decimal_places=2)
     usuario_cadastro = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='cadastros_realizados')
     data_criacao = models.DateTimeField(auto_now_add=True)
     percentual_limite_por_cliente = models.DecimalField(
@@ -63,6 +65,11 @@ class VerbaMensal(models.Model):
 
 
 class AcordoComercial(models.Model):
+    SITUACAO_ACORDO = [
+        ('ATIVO', 'Ativo'),
+        ('ENCERRADO', 'Encerrado'),
+    ]
+    
     TIPOS_ACORDO = [
         ('valor', 'Por Valor'),
         ('produto', 'Por Produto'),
@@ -81,7 +88,16 @@ class AcordoComercial(models.Model):
     
     usuario_cadastro = models.ForeignKey(User, on_delete=models.CASCADE)
     data_criacao = models.DateTimeField(auto_now_add=True)
+    justificativa = models.TextField(blank=True, null=True, verbose_name="Justificativa do Acordo")
+    situacao = models.CharField(max_length=15, choices=SITUACAO_ACORDO, default='ATIVO')
 
+    @property
+    def status_vigencia(self):
+        hoje = timezone.now().date()
+        if self.situacao == 'ATIVO' and self.vigencia_inicio <= hoje <= self.vigencia_fim:
+            return 'Ativo'
+        return 'Encerrado'
+    
     def __str__(self):
         return f"{self.cliente_nome} - {self.get_tipo_acordo_display()}"
 
