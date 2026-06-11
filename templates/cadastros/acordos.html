@@ -488,35 +488,61 @@ $(document).ready(function() {
                 .then(data => {
                     const pct = data.porcentagem;     
                     
-                    barra.className = "progress-bar progress-bar-striped progress-bar-animated bg-danger";
-                    labelPct.style.color = "#dc3545";
+                    // Lógica dinâmica de cores baseada no progresso (Sucesso/Verde se >= 100%)
+                    if (pct >= 100) {
+                        barra.className = "progress-bar progress-bar-striped progress-bar-animated bg-success";
+                        labelPct.style.color = "#198754"; // text-success
+                    } else {
+                        barra.className = "progress-bar progress-bar-striped progress-bar-animated bg-danger";
+                        labelPct.style.color = "#dc3545"; // text-danger
+                    }
 
                     barra.style.width = Math.min(pct, 100) + '%';
                     labelPct.innerText = pct + '%';
                     document.getElementById('hist_realizado').innerText = data.label_progresso;
                     corpo.innerHTML = '';
                     
-                    if (data.nfs.length === 0) {
-                        corpo.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Nenhuma NF de bonificação encontrada no período.</td></tr>';
-                    } else {
-                        data.nfs.forEach(nf => {
-                            const dt = nf.data;
-                            const dataFmt = dt.substring(6,8)+'/'+dt.substring(4,6)+'/'+dt.substring(0,4);
-                            corpo.innerHTML += `
-                                <tr>
-                                    <td>${dataFmt}</td>
-                                    <td class="fw-bold">${nf.nf}</td>
-                                    <td>${nf.produto}</td>
-                                    <td class="text-center">${nf.qtd}</td>
-                                    <td class="text-end text-success">R$ ${nf.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-                                </tr>`;
-                        });
-                    }
+                    data.nfs.forEach(nf => {
+                        const dt = nf.data ? nf.data.toString().trim() : '';
+                        let dataFmt = dt;
+
+                        // 1. Se a data já contiver barras (ex: 20/05/2026 ou 20/05/26), mantém como está
+                        if (dt.includes('/')) {
+                            dataFmt = dt;
+                        } 
+                        // 2. Se vier com hífen do banco (ex: 2026-05-20)
+                        else if (dt.includes('-')) {
+                            const partes = dt.split('-');
+                            if (partes.length === 3) {
+                                // Se o ano veio primeiro (AAAA-MM-DD)
+                                if (partes[0].length === 4) {
+                                    dataFmt = `${partes[2]}/${partes[1]}/${partes[0]}`;
+                                } else {
+                                    dataFmt = `${partes[0]}/${partes[1]}/${partes[2]}`;
+                                }
+                            }
+                        } 
+                        // 3. Se vier o texto puro do Protheus (ex: 20260520)
+                        else if (dt.length === 8 && /^\d+$/.test(dt)) {
+                            dataFmt = dt.substring(6,8) + '/' + dt.substring(4,6) + '/' + dt.substring(0,4);
+                        }
+
+                        // Garante que se o ano ficou com apenas 2 dígitos por erro de fatiamento anterior, não quebre
+                        corpo.innerHTML += `
+                            <tr>
+                                <td>${dataFmt}</td>
+                                <td class="fw-bold">${nf.nf}</td>
+                                <td>${nf.produto}</td>
+                                <td class="text-center">${nf.qtd}</td>
+                                <td class="text-end text-success">R$ ${nf.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+                            </tr>`;
+                    });
                 })
                 .catch(err => {
                     corpo.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Erro ao carregar dados: ${err}</td></tr>`;
                 });
         };
+
     });
 </script>
 

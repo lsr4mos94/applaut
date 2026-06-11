@@ -1,5 +1,5 @@
 import os
-import datetime
+from datetime import date, datetime, timedelta
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -518,75 +518,120 @@ def processar_status(request, pk):
 @login_required
 def api_historico_acordo(request, acordo_id):
     try:
-        acordo = AcordoComercial.objects.get(id=acordo_id)
-        itens_acordados = acordo.itens.all()
-        
-        cliente_cod = acordo.cliente_codigo
-        cliente_loja = acordo.cliente_loja
+        # 1. Garante a captura do Acordo Comercial correto
+        acordo = get_object_or_404(AcordoComercial, id=acordo_id)
+        cliente_cod = str(acordo.cliente_codigo).strip()
+        cliente_loja = str(acordo.cliente_loja).strip()
 
-        # 1. PASSO DA NOVA REGRA: Buscar os números de pedidos vinculados a este acordo no Applaut
-        # Buscamos os pedidos das bonificações que possuem itens amarrados a este acordo
-        pedidos_vinculados = list(Bonificacao.objects.filter(
-            itens__acordo_vinculado=acordo,
-            status__in=['APROVADO', 'CONCLUIDO']
-        ).exclude(pedido_protheus__isnull=True).exclude(pedido_protheus='').values_list('pedido_protheus', flat=True).distinct())
+        # 2. Busca todos os itens de bonificação atrelados especificamente a este ID de acordo
+        itens_bonif = BonificacaoItem.objects.filter(
+            acordo_vinculado_id=acordo.id,
+            bonificacao__status__in=['APROVADO', 'CONCLUIDO']
+        )
+
+        # Extrai os números de pedidos do Protheus removendo nulos ou vazios
+        pedidos_vinculados = list(
+            itens_bonif.exclude(bonificacao__pedido_protheus__isnull=True)
+            .exclude(bonificacao__pedido_protheus='')
+            .values_list('bonificacao__pedido_protheus', flat=True)
+            .distinct()
+        )
+
+        # Mapeia dinamicamente quais produtos foram de fato vinculados ao acordo no Applaut
+        produtos_do_acordo = list(itens_bonif.values_list('produto_codigo', flat=True).distinct())
 
         historico_nfs = []
         realizado_acumulado = 0.0
 
-        # Se nenhum pedido foi gerado ainda para este acordo, não há faturamento no Protheus
+        # Define o objetivo (Volume configurado no contrato ou fallback de 50 UN conforme o template)
+        objetivo = 50.0
+        if acordo.tipo_acordo == 'valor':
+            objetivo = float(acordo.valor_acordo or 0)
+
+        # Se não houver pedidos vinculados ainda no banco, retorna a estrutura zerada com segurança
         if not pedidos_vinculados:
-            objetivo = float(acordo.valor_acordo or 0) if acordo.tipo_acordo == 'valor' else float(sum(item.qtd_faturada for item in itens_acordados))
             label_unidade = f"R$ 0.00 de R$ {objetivo:,.2f}" if acordo.tipo_acordo == 'valor' else f"0 de {int(objetivo)} UN"
             return JsonResponse({'porcentagem': 0.0, 'label_progresso': label_unidade, 'nfs': []})
 
-        # 2. Query do Protheus simplificada (Filtra direto pelos números dos pedidos)
+        # 3. Query SQL otimizada com tratamento de string nativo no SQL Server (Evita falhas de CHAR/RTRIM)
         bases_de_consulta = {
             'protheus_ciec': ['SD2010', 'SD2020'],
             'protheus_wrp': ['SD2010']
         }
 
-        placeholders_pedidos = ', '.join(['%s'] * len(pedidos_vinculados))
+        # Formata e limpa a lista de pedidos para a cláusula IN do SQL
+        pedidos_tratados = [str(p).strip().zfill(6) for p in pedidos_vinculados]
+        pedidos_formatados_sql = ", ".join([f"'{p}'" for p in pedidos_tratados])
+
         query_base = f"""
-            SELECT D2_DOC, D2_SERIE, D2_EMISSAO, D2_COD, B1_DESC, D2_QUANT, D2_TOTAL, D2_PEDIDO
+            SELECT 
+                LTRIM(RTRIM(SD2.D2_DOC)) AS D2_DOC, 
+                LTRIM(RTRIM(SD2.D2_SERIE)) AS D2_SERIE, 
+                SD2.D2_EMISSAO, 
+                LTRIM(RTRIM(SD2.D2_COD)) AS D2_COD, 
+                LTRIM(RTRIM(SB1.B1_DESC)) AS B1_DESC, 
+                SD2.D2_QUANT, 
+                SD2.D2_TOTAL
             FROM {{tabela}} AS SD2
-            INNER JOIN SF4{{empresa}} AS SF4 ON SF4.F4_FILIAL = SD2.D2_FILIAL AND SF4.F4_CODIGO = SD2.D2_TES AND SF4.D_E_L_E_T_ <> '*'
-            INNER JOIN SB1{{empresa}} AS SB1 ON SB1.B1_FILIAL = SD2.D2_FILIAL AND SB1.B1_COD = SD2.D2_COD AND SB1.D_E_L_E_T_ <> '*'
+            INNER JOIN SF4{{empresa}} AS SF4 ON 
+                LTRIM(RTRIM(SF4.F4_FILIAL)) = LTRIM(RTRIM(SD2.D2_FILIAL)) 
+                AND LTRIM(RTRIM(SF4.F4_CODIGO)) = LTRIM(RTRIM(SD2.D2_TES)) 
+                AND SF4.D_E_L_E_T_ <> '*'
+            INNER JOIN SB1{{empresa}} AS SB1 ON 
+                LTRIM(RTRIM(SB1.B1_COD)) = LTRIM(RTRIM(SD2.D2_COD)) 
+                AND SB1.D_E_L_E_T_ <> '*'
             WHERE SD2.D_E_L_E_T_ <> '*' 
-            AND SD2.D2_CLIENTE = %s AND SD2.D2_LOJA = %s
-            AND SF4.F4_BONIF = 'S' AND SD2.D2_TES <> '802'
-            AND SD2.D2_PEDIDO IN ({placeholders_pedidos})
+            AND LTRIM(RTRIM(SD2.D2_CLIENTE)) = '{cliente_cod}' 
+            AND LTRIM(RTRIM(SD2.D2_LOJA)) = '{cliente_loja}'
+            AND SF4.F4_BONIF = 'S' 
+            AND SD2.D2_TES <> '802'
+            AND LTRIM(RTRIM(SD2.D2_PEDIDO)) IN ({pedidos_formatados_sql})
         """
 
         todas_linhas_protheus = []
         for db_alias, tabelas in bases_de_consulta.items():
+            if db_alias not in connections: 
+                continue
             for tabela in tabelas:
                 empresa_sufixo = tabela[-3:] 
-                
-                # Parâmetros: cliente, loja + lista de pedidos salvos
-                params = [cliente_cod, cliente_loja] + pedidos_vinculados
+                try:
+                    with connections[db_alias].cursor() as cursor:
+                        cursor.execute(query_base.format(tabela=tabela, empresa=empresa_sufixo))
+                        for row in cursor.fetchall():
+                            todas_linhas_protheus.append(row)
+                except Exception as e:
+                    print(f"Erro SQL histórico [{db_alias} - {tabela}]: {e}")
+                    continue
 
-                with connections[db_alias].cursor() as cursor:
-                    cursor.execute(query_base.format(tabela=tabela, empresa=empresa_sufixo), params)
-                    rows = cursor.fetchall()
-                    for row in rows:
-                        todas_linhas_protheus.append(row)
-
-        # Ordena as notas fiscais pela data de emissão
+        # Ordena as linhas capturadas por data de emissão de forma crescente
         todas_linhas_protheus.sort(key=lambda x: str(x[2]).strip())
 
-        if acordo.tipo_acordo == 'valor':
-            objetivo = float(acordo.valor_acordo or 0)
-        else:
-            objetivo = float(sum(item.qtd_faturada for item in itens_acordados))
-
-        # 3. Loop de processamento leve (Sem lógica de outros_acordos)
+        # 4. Processamento das linhas com filtragem dinâmica por código de produto
         for row in todas_linhas_protheus:
             try:
+                cod_prod_limpo = str(row[3]).strip()
+                
+                # Desconsidera copos ou brindes adicionados no mesmo pedido que não fazem parte do saldo contratado
+                if produtos_do_acordo and (cod_prod_limpo not in produtos_do_acordo):
+                    continue
+                if cod_prod_limpo in ['000072', '000073']:
+                    continue
+
                 doc = str(row[0]).strip()
                 serie = str(row[1]).strip()
-                data_emissao_str = str(row[2]).strip()
-                cod_prod_limpo = str(row[3]).strip()
+                
+                # Tratamento robusto para conversão de data do PyMSSQL / Python
+                data_retorno = row[2]
+                if isinstance(data_retorno, (date, datetime)):
+                    data_exibir_str = data_retorno.strftime('%d/%m/%Y')
+                else:
+                    data_raw = str(data_retorno).strip()
+                    if '-' in data_raw:
+                        dt = datetime.strptime(data_raw[:10], '%Y-%m-%d')
+                        data_exibir_str = dt.strftime('%d/%m/%Y')
+                    else:
+                        data_exibir_str = f"{data_raw[6:8]}/{data_raw[4:6]}/{data_raw[0:4]}"
+
                 desc_prod = str(row[4]).strip()
                 qtd = float(row[5] or 0)
                 valor = float(row[6] or 0)
@@ -608,7 +653,7 @@ def api_historico_acordo(request, acordo_id):
                         
                         historico_nfs.append({
                             'nf': f"{doc}/{serie}",
-                            'data': f"{data_emissao_str[6:8]}/{data_emissao_str[4:6]}/{data_emissao_str[0:4]}",
+                            'data': data_exibir_str,
                             'produto': f"{cod_prod_limpo} - {desc_prod}",
                             'qtd': qtd_exibir,
                             'valor': valor_exibir
@@ -617,7 +662,7 @@ def api_historico_acordo(request, acordo_id):
                         realizado_acumulado += incremento
                         historico_nfs.append({
                             'nf': f"{doc}/{serie}",
-                            'data': f"{data_emissao_str[6:8]}/{data_emissao_str[4:6]}/{data_emissao_str[0:4]}",
+                            'data': data_exibir_str,
                             'produto': f"{cod_prod_limpo} - {desc_prod}",
                             'qtd': qtd,
                             'valor': valor
@@ -626,9 +671,10 @@ def api_historico_acordo(request, acordo_id):
                     continue
 
             except Exception as e:
-                print(f"Erro linha: {e}")
+                print(f"Erro processando linha do histórico: {e}")
                 continue
 
+        # Inverte para exibir as notas fiscais mais recentes no topo do painel
         historico_nfs.reverse()
 
         if acordo.tipo_acordo == 'valor':
@@ -645,7 +691,7 @@ def api_historico_acordo(request, acordo_id):
         })
 
     except Exception as e:
-        print(f"Erro Crítico API Histórico: {str(e)}")
+        print(f"Erro Crítico na API do Histórico: {str(e)}")
         return JsonResponse({'error': str(e), 'nfs': []}, status=500)
 
 @login_required

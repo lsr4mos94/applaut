@@ -24,12 +24,7 @@ def buscar_cliente_protheus_unificado(termo_busca, cod_vendedor_protheus):
         AND (SA1.A1_NOME LIKE %s OR SA1.A1_CGC LIKE %s OR SA1.A1_NREDUZ LIKE %s)
     """
     
-    params = [
-        f'%{termo_busca}%', 
-        f'%{termo_busca}%',
-        f'%{termo_busca}%'
-    ]
-    
+    params = [f'%{termo_busca}%', f'%{termo_busca}%', f'%{termo_busca}%']
     clientes_dict = {}
 
     for db, tabelas in config_busca.items():
@@ -45,25 +40,38 @@ def buscar_cliente_protheus_unificado(termo_busca, cod_vendedor_protheus):
                 with connections[db].cursor() as cursor:
                     cursor.execute(query, params)
                     desc = cursor.description
-                    column_names = [col[0] for col in desc]
+                    
+                    # BLINDAGEM DA COLUNA: Garante que o nome da coluna nunca seja None
+                    column_names = [str(col[0]).strip() if col[0] else f"coluna_{i}" for i, col in enumerate(desc)]
                     
                     for row in cursor.fetchall():
                         row_dict = dict(zip(column_names, row))
                         
-                        cnpj_limpo = row_dict['A1_CGC'].strip()
-                        cod_limpo = row_dict['A1_COD'].strip()
-                        loja_limpa = row_dict['A1_LOJA'].strip()
+                        # TRATAMENTO SEGURO DE CAMPOS NULOS (Fallback para strings vazias)
+                        cnpj_raw = row_dict.get('A1_CGC')
+                        cod_raw = row_dict.get('A1_COD')
+                        loja_raw = row_dict.get('A1_LOJA')
+                        nome_raw = row_dict.get('A1_NOME')
+                        fantasia_raw = row_dict.get('A1_NREDUZ')
+                        grupo_raw = row_dict.get('GRUPO_DESCRI')
+
+                        cnpj_limpo = str(cnpj_raw).strip() if cnpj_raw is not None else ""
+                        cod_limpo = str(cod_raw).strip() if cod_raw is not None else ""
+                        loja_limpa = str(loja_raw).strip() if loja_raw is not None else ""
+                        nome_limpo = str(nome_raw).strip() if nome_raw is not None else "SEM RAZAO SOCIAL"
+                        fantasia_limpa = str(fantasia_raw).strip() if fantasia_raw is not None else nome_limpo
+                        grupo_limpo = str(grupo_raw).strip() if grupo_raw is not None else "GERAL"
                         
                         chave_unica = f"{cnpj_limpo}_{cod_limpo}_{loja_limpa}"
                         
                         if chave_unica not in clientes_dict:
                             clientes_dict[chave_unica] = {
-                                'nome': row_dict['A1_NOME'].strip(),
-                                'fantasia': row_dict['A1_NREDUZ'].strip() if row_dict['A1_NREDUZ'] else row_dict['A1_NOME'].strip(),
+                                'nome': nome_limpo,
+                                'fantasia': fantasia_limpa,
                                 'codigo': cod_limpo,
                                 'loja': loja_limpa,
                                 'cnpj': cnpj_limpo,
-                                'grupo': row_dict['GRUPO_DESCRI'].strip() if row_dict['GRUPO_DESCRI'] else "GERAL",
+                                'grupo': grupo_limpo,
                             }
             except Exception as e:
                 print(f"ERRO SQL [{db} - {tabela}]: {e}")
