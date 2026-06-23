@@ -132,40 +132,55 @@ def excluir_verba(request, pk):
 
 @login_required
 def acordos_comerciais(request):
+    acordos_list = AcordoComercial.objects.all().order_by('-data_criacao')
+
+    if request.user.groups.filter(name='Vendedores').exists():
+        acordos_list = acordos_list.filter(usuario_cadastro=request.user)
+
     busca = request.GET.get('busca')
     data_fim = request.GET.get('data_fim')
-    status_filtro = request.GET.get('status')
-
-    acordos_queryset = AcordoComercial.objects.all().prefetch_related('itens').order_by('-data_acordo')
+    tipo_acordo = request.GET.get('tipo_acordo')
+    status = request.GET.get('status')
 
     if busca:
-        acordos_queryset = acordos_queryset.filter(
-            Q(cliente_nome_fantasia__icontains=busca) |
-            Q(cliente_codigo__icontains=busca)
-        )
+        busca_query = Q(cliente_nome__icontains=busca) | Q(cliente_codigo__icontains=busca)
+        
+        # CORREÇÃO 1: Só converte para ID se o número for pequeno (menor que 9 dígitos)
+        # Isso impede que CNPJs e CPFs quebrem a coluna de ID no banco de dados.
+        if busca.isdigit() and len(busca) < 9:
+            busca_query |= Q(id=int(busca))
+            
+        acordos_list = acordos_list.filter(busca_query)
 
     if data_fim:
-        acordos_queryset = acordos_queryset.filter(vigencia_fim__lte=data_fim)
+        acordos_list = acordos_list.filter(vigencia_fim__lte=data_fim)
 
-    todos_acordos = list(acordos_queryset)
+    if tipo_acordo:
+        acordos_list = acordos_list.filter(tipo_acordo=tipo_acordo)
 
-    if status_filtro and status_filtro.strip() in ['Ativo', 'Encerrado']:
-        status_limpo = status_filtro.strip()
-        todos_acordos = [
-            acordo for acordo in todos_acordos 
-            if acordo.status_atual == status_limpo
-        ]
+    if status:
+        ids_filtrados = []
+        for acordo in acordos_list.prefetch_related('itens'):
+            # CORREÇÃO 2: Bloco Try/Except. 
+            # Se um acordo legado estiver com datas quebradas, ele não vai mais derrubar a tela.
+            try:
+                if acordo.status_vigencia.lower() == status.lower():
+                    ids_filtrados.append(acordo.id)
+            except Exception as e:
+                # Opcional: Imprime no console do servidor para você saber qual ID está com problema
+                print(f"Atenção: O Acordo #{acordo.id} foi ignorado no filtro devido a um erro nos dados: {e}")
+                continue
 
-    paginator = Paginator(todos_acordos, 20)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+        acordos_list = acordos_list.filter(id__in=ids_filtrados)
+
+    paginator = Paginator(acordos_list, 10)
+    page = request.GET.get('page')
+    acordos = paginator.get_page(page)
 
     context = {
-        'page_obj': page_obj,
-        'acordos': page_obj,
-        'request': request
+        'acordos': acordos,
     }
-
+    
     return render(request, 'cadastros/acordos.html', context)
 
 def salvar_acordo(request):
@@ -523,13 +538,12 @@ def api_historico_acordo(request, acordo_id):
         cliente_cod = str(acordo.cliente_codigo).strip()
         cliente_loja = str(acordo.cliente_loja).strip()
 
-        # 2. Busca todos os itens de bonificação atrelados especificamente a este ID de acordo
+        # 2. Busca todos os itens de bonificação atrelados a este acordo
         itens_bonif = BonificacaoItem.objects.filter(
             acordo_vinculado_id=acordo.id,
             bonificacao__status__in=['APROVADO', 'CONCLUIDO']
         )
 
-        # Extrai os números de pedidos do Protheus removendo nulos ou vazios
         pedidos_vinculados = list(
             itens_bonif.exclude(bonificacao__pedido_protheus__isnull=True)
             .exclude(bonificacao__pedido_protheus='')
@@ -537,29 +551,36 @@ def api_historico_acordo(request, acordo_id):
             .distinct()
         )
 
-        # Mapeia dinamicamente quais produtos foram de fato vinculados ao acordo no Applaut
-        produtos_do_acordo = list(itens_bonif.values_list('produto_codigo', flat=True).distinct())
-
         historico_nfs = []
-        realizado_acumulado = 0.0
 
-        # Define o objetivo (Volume configurado no contrato ou fallback de 50 UN conforme o template)
-        objetivo = 50.0
-        if acordo.tipo_acordo == 'valor':
-            objetivo = float(acordo.valor_acordo or 0)
+        # --- SEPARAÇÃO E CORREÇÃO DO OBJETIVO POR PRODUTO ---
+        objetivos_por_produto = {}
+        if acordo.tipo_acordo == 'produto':
+            for item in acordo.itens.all():
+                cod = str(item.produto_codigo).strip()
+                # CORREÇÃO: O limite/meta do acordo é a qtd_faturada, não a bonificada
+                objetivos_por_produto[cod] = objetivos_por_produto.get(cod, 0) + float(item.qtd_faturada or 0)
+            
+            total_objetivo_global = sum(objetivos_por_produto.values())
+            realizado_por_produto = {cod: 0.0 for cod in objetivos_por_produto.keys()}
+        else:
+            objetivo_valor = float(acordo.valor_acordo or 0)
+            realizado_acumulado_valor = 0.0
 
-        # Se não houver pedidos vinculados ainda no banco, retorna a estrutura zerada com segurança
+        # Retorna zerado se não houver pedidos vinculados ou se a meta for zero
         if not pedidos_vinculados:
-            label_unidade = f"R$ 0.00 de R$ {objetivo:,.2f}" if acordo.tipo_acordo == 'valor' else f"0 de {int(objetivo)} UN"
+            if acordo.tipo_acordo == 'valor':
+                label_unidade = f"R$ 0.00 de R$ {objetivo_valor:,.2f}"
+            else:
+                label_unidade = f"0 de {int(total_objetivo_global)} UN"
             return JsonResponse({'porcentagem': 0.0, 'label_progresso': label_unidade, 'nfs': []})
 
-        # 3. Query SQL otimizada com tratamento de string nativo no SQL Server (Evita falhas de CHAR/RTRIM)
+        # 3. Query SQL
         bases_de_consulta = {
             'protheus_ciec': ['SD2010', 'SD2020'],
             'protheus_wrp': ['SD2010']
         }
 
-        # Formata e limpa a lista de pedidos para a cláusula IN do SQL
         pedidos_tratados = [str(p).strip().zfill(6) for p in pedidos_vinculados]
         pedidos_formatados_sql = ", ".join([f"'{p}'" for p in pedidos_tratados])
 
@@ -578,7 +599,8 @@ def api_historico_acordo(request, acordo_id):
                 AND LTRIM(RTRIM(SF4.F4_CODIGO)) = LTRIM(RTRIM(SD2.D2_TES)) 
                 AND SF4.D_E_L_E_T_ <> '*'
             INNER JOIN SB1{{empresa}} AS SB1 ON 
-                LTRIM(RTRIM(SB1.B1_COD)) = LTRIM(RTRIM(SD2.D2_COD)) 
+                LTRIM(RTRIM(SB1.B1_FILIAL)) = LTRIM(RTRIM(SD2.D2_FILIAL))
+                AND LTRIM(RTRIM(SB1.B1_COD)) = LTRIM(RTRIM(SD2.D2_COD)) 
                 AND SB1.D_E_L_E_T_ <> '*'
             WHERE SD2.D_E_L_E_T_ <> '*' 
             AND LTRIM(RTRIM(SD2.D2_CLIENTE)) = '{cliente_cod}' 
@@ -603,24 +625,22 @@ def api_historico_acordo(request, acordo_id):
                     print(f"Erro SQL histórico [{db_alias} - {tabela}]: {e}")
                     continue
 
-        # Ordena as linhas capturadas por data de emissão de forma crescente
         todas_linhas_protheus.sort(key=lambda x: str(x[2]).strip())
 
-        # 4. Processamento das linhas com filtragem dinâmica por código de produto
+        # 4. Processamento das linhas
         for row in todas_linhas_protheus:
             try:
                 cod_prod_limpo = str(row[3]).strip()
                 
-                # Desconsidera copos ou brindes adicionados no mesmo pedido que não fazem parte do saldo contratado
-                if produtos_do_acordo and (cod_prod_limpo not in produtos_do_acordo):
+                # Se for acordo por produto, ignora se o código não estiver no dicionário de objetivos
+                if acordo.tipo_acordo == 'produto' and cod_prod_limpo not in objetivos_por_produto:
                     continue
-                if cod_prod_limpo in ['000072', '000073']:
+                if cod_prod_limpo in ['000072', '000073', '000152']:
                     continue
 
                 doc = str(row[0]).strip()
                 serie = str(row[1]).strip()
                 
-                # Tratamento robusto para conversão de data do PyMSSQL / Python
                 data_retorno = row[2]
                 if isinstance(data_retorno, (date, datetime)):
                     data_exibir_str = data_retorno.strftime('%d/%m/%Y')
@@ -636,53 +656,77 @@ def api_historico_acordo(request, acordo_id):
                 qtd = float(row[5] or 0)
                 valor = float(row[6] or 0)
 
-                incremento = valor if acordo.tipo_acordo == 'valor' else qtd
-
-                if realizado_acumulado < objetivo:
-                    if realizado_acumulado + incremento > objetivo:
-                        fracao_restante = objetivo - realizado_acumulado
-                        
-                        if acordo.tipo_acordo == 'valor':
-                            valor_exibir = fracao_restante
+                # CÁLCULO PARA ACORDOS EM VALOR (R$)
+                if acordo.tipo_acordo == 'valor':
+                    incremento = valor
+                    if realizado_acumulado_valor < objetivo_valor:
+                        if realizado_acumulado_valor + incremento > objetivo_valor:
+                            fracao_restante = objetivo_valor - realizado_acumulado_valor
                             qtd_exibir = round((qtd * fracao_restante) / valor, 2) if valor > 0 else 0
+                            
+                            realizado_acumulado_valor = objetivo_valor
+                            
+                            historico_nfs.append({
+                                'nf': f"{doc}/{serie}",
+                                'data': data_exibir_str,
+                                'produto': f"{cod_prod_limpo} - {desc_prod}",
+                                'qtd': qtd_exibir,
+                                'valor': fracao_restante
+                            })
                         else:
-                            qtd_exibir = fracao_restante
-                            valor_exibir = round((valor * fracao_restante) / qtd, 2) if qtd > 0 else 0
-
-                        realizado_acumulado = objetivo
-                        
-                        historico_nfs.append({
-                            'nf': f"{doc}/{serie}",
-                            'data': data_exibir_str,
-                            'produto': f"{cod_prod_limpo} - {desc_prod}",
-                            'qtd': qtd_exibir,
-                            'valor': valor_exibir
-                        })
-                    else:
-                        realizado_acumulado += incremento
-                        historico_nfs.append({
-                            'nf': f"{doc}/{serie}",
-                            'data': data_exibir_str,
-                            'produto': f"{cod_prod_limpo} - {desc_prod}",
-                            'qtd': qtd,
-                            'valor': valor
-                        })
+                            realizado_acumulado_valor += incremento
+                            historico_nfs.append({
+                                'nf': f"{doc}/{serie}",
+                                'data': data_exibir_str,
+                                'produto': f"{cod_prod_limpo} - {desc_prod}",
+                                'qtd': qtd,
+                                'valor': valor
+                            })
+                            
+                # CÁLCULO PARA ACORDOS EM PRODUTO (UN)
                 else:
-                    continue
+                    obj_produto = objetivos_por_produto[cod_prod_limpo]
+                    realizado_produto = realizado_por_produto[cod_prod_limpo]
+                    incremento = qtd
+                    
+                    if realizado_produto < obj_produto:
+                        if realizado_produto + incremento > obj_produto:
+                            fracao_restante = obj_produto - realizado_produto
+                            valor_exibir = round((valor * fracao_restante) / qtd, 2) if qtd > 0 else 0
+                            
+                            realizado_por_produto[cod_prod_limpo] = obj_produto
+                            
+                            historico_nfs.append({
+                                'nf': f"{doc}/{serie}",
+                                'data': data_exibir_str,
+                                'produto': f"{cod_prod_limpo} - {desc_prod}",
+                                'qtd': fracao_restante,
+                                'valor': valor_exibir
+                            })
+                        else:
+                            realizado_por_produto[cod_prod_limpo] += incremento
+                            historico_nfs.append({
+                                'nf': f"{doc}/{serie}",
+                                'data': data_exibir_str,
+                                'produto': f"{cod_prod_limpo} - {desc_prod}",
+                                'qtd': qtd,
+                                'valor': valor
+                            })
 
             except Exception as e:
                 print(f"Erro processando linha do histórico: {e}")
                 continue
 
-        # Inverte para exibir as notas fiscais mais recentes no topo do painel
         historico_nfs.reverse()
 
+        # Finaliza a montagem da barra de progresso
         if acordo.tipo_acordo == 'valor':
-            label_unidade = f"R$ {realizado_acumulado:,.2f} de R$ {objetivo:,.2f}"
+            label_unidade = f"R$ {realizado_acumulado_valor:,.2f} de R$ {objetivo_valor:,.2f}"
+            porcentagem = (realizado_acumulado_valor / objetivo_valor * 100) if objetivo_valor > 0 else 0
         else:
-            label_unidade = f"{int(realizado_acumulado)} de {int(objetivo)} UN"
-
-        porcentagem = (realizado_acumulado / objetivo * 100) if objetivo > 0 else 0
+            total_realizado_global = sum(realizado_por_produto.values())
+            label_unidade = f"{int(total_realizado_global)} de {int(total_objetivo_global)} UN"
+            porcentagem = (total_realizado_global / total_objetivo_global * 100) if total_objetivo_global > 0 else 0
         
         return JsonResponse({
             'porcentagem': round(porcentagem, 1),

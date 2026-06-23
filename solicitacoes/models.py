@@ -42,7 +42,7 @@ class Bonificacao(models.Model):
         ('ACORDO_COMERCIAL', 'Acordo Comercial'),
         ('NEGOCIACAO_ESPECIAL', 'Negociação Especial'),
         ('SAC', 'SAC'),
-        ('ATIVACAO', "Ativação de Marca"),
+        ('ATIVACAO_MARCA', "Ativação de Marca"),
     ]
 
     PLATAFORMA_CHOICES = [
@@ -93,10 +93,7 @@ class Bonificacao(models.Model):
     
     @property
     def pode_aprovar(self):
-        return self.tipo == 'NEGOCIACAO_ESPECIAL' and self.status == 'PENDENTE'
-    
-    @property
-    def pode_aprovar(self):
+        # Retorna Verdadeiro se for Negociação Especial ou SAC, e estiver PENDENTE
         return self.tipo in ['NEGOCIACAO_ESPECIAL', 'SAC'] and self.status == 'PENDENTE'
 
     class Meta:
