@@ -1,12 +1,12 @@
 import os
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.mail import EmailMessage
 from django.core.paginator import Paginator
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import render_to_string
 from django.utils import timezone
@@ -14,6 +14,7 @@ from django.db import connections
 from django.db.models import Q, Sum
 from usuarios.models import Perfil
 from solicitacoes.models import Bonificacao, BonificacaoItem
+import pandas as pd
 from .models import (
     VerbaMensal, 
     AcordoComercial, 
@@ -845,3 +846,35 @@ def api_acordos_vigentes(request):
         })
 
     return JsonResponse(resultado, safe=False)
+
+def exportar_cadastros_excel(request):
+    data_inicio = request.GET.get('data_inicio')
+    data_fim = request.GET.get('data_fim')
+
+    queryset = Cadastro.objects.all()
+    
+    if data_inicio:
+        queryset = queryset.filter(data_cadastro__date__gte=data_inicio)
+    if data_fim:
+        queryset = queryset.filter(data_cadastro__date__lte=data_fim)
+
+    dados = []
+    for b in queryset:
+        dados.append({
+            'ID': b.id,
+            'Data Cadastro': b.data_cadastro.replace(tzinfo=None),
+            'Vendedor': b.vendedor.get_full_name() if b.vendedor else 'N/A',
+            'Cliente (Razão Social)': b.razao_social,
+            'CPF/CNPJ': b.cgc,
+            'Status': b.get_situacao_display(),
+        })
+
+    df = pd.DataFrame(dados)
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename=cadastros_{data_inicio}_a_{data_fim}.xlsx'
+
+    with pd.ExcelWriter(response, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Cadastros')
+
+    return response

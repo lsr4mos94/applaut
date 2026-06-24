@@ -2,12 +2,20 @@
 
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="text-gold-title mb-0">Cadastro de Clientes</h3>
-    <a href="{% url 'criar_cadastro' %}" class="btn text-white shadow-sm" style="background-color: #bca464;">
-        <i class="bi bi-plus-circle"></i><strong> Novo Cadastro</strong>
-    </a>
-</div>
+<div class="container mt-4 text-start">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="text-gold-title mb-0">Cadastro de Clientes</h3>
+        <div class="d-flex gap-2">
+            {% if request.user.groups.all.0.name == 'Gestão Comercial' %}
+                <button class="btn btn-outline-success shadow-sm fw-bold d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#modalExportarExcel">
+                    <i class="bi bi-file-earmark-excel me-2"></i> Exportar
+                </button>
+            {% endif %}
+            <a href="{% url 'criar_cadastro' %}" class="btn text-white shadow-sm" style="background-color: #bca464;">
+                    <i class="bi bi-plus-circle"></i><strong> Novo Cadastro</strong>
+                </a>
+        </div>
+    </div>
 
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body card-filter">
@@ -263,6 +271,35 @@
                                 </div>
                             </div>
                         </form>
+                    </div>
+                </div>
+
+                <div class="modal fade" id="modalExportarExcel" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-sm modal-dialog-centered">
+                        <div class="modal-content border-0 shadow-lg">
+                            <div class="modal-header text-white border-0" style="background-color: #198754;">
+                                <h6 class="modal-title fw-bold"><i class="bi bi-file-earmark-excel me-2"></i>Exportar para Excel</h6>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <form id="formExportarExcel" action="{% url 'exportar_cadastros_excel' %}" method="GET" target="_blank">
+                                <div class="modal-body p-4">
+                                    <div class="row g-3">
+                                        <div class="col-12">
+                                            <label class="form-label small fw-bold text-muted text-uppercase">Data Início</label>
+                                            <input type="date" name="data_inicio" class="form-control shadow-sm" required>
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label small fw-bold text-muted text-uppercase">Data Fim</label>
+                                            <input type="date" name="data_fim" class="form-control shadow-sm" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer border-0 bg-light p-2">
+                                    <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-success btn-sm px-4 fw-bold" onclick="fecharModalExportar()">GERAR RELATÓRIO</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
 
