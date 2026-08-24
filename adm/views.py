@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
 from django.core.mail import EmailMultiAlternatives
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import render_to_string
 from django.utils import timezone
@@ -15,6 +15,7 @@ from .forms import SolicitacaoVerbaForm
 from .models import SolicitacaoVerba
 from django.core.paginator import Paginator
 from django.conf import settings
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -322,3 +323,41 @@ def busca_fornecedor_protheus(request):
             except Exception as e: 
                 logger.error(f"Erro SQL: {e}")
     return JsonResponse(list(resultados.values()), safe=False)
+
+def exportar_solicitacoes_excel(request):
+    data_inicio = request.GET.get('data_inicio')
+    data_fim = request.GET.get('data_fim')
+
+    queryset = SolicitacaoVerba.objects.all()
+    
+    if data_inicio:
+        queryset = queryset.filter(data_solicitacao__date__gte=data_inicio)
+    if data_fim:
+        queryset = queryset.filter(data_solicitacao__date__lte=data_fim)
+
+    dados = []
+    for b in queryset:
+        dados.append({
+            'ID': b.id,
+            'Data Solicitação': b.data_solicitacao.replace(tzinfo=None) if b.data_solicitacao else '',
+            'Solicitante': b.usuario_solicitante.get_full_name() or b.usuario_solicitante.username if b.usuario_solicitante else 'N/A',
+            'Fornecedor (Razão Social)': b.fornecedor_nome_razao,
+            'CPF/CNPJ': b.fornecedor_cpf_cnpj,
+            'Categoria': b.get_categoria_display(),
+            'Produto/Serviço': b.produto_servico,
+            'Valor': b.valor,
+            'Vencimento': b.data_vencimento if b.data_vencimento else '',
+            'Forma Pagamento': b.get_forma_pagamento_display(),
+            'Status': b.get_status_display(),
+            'Observações': b.observacoes or ''
+        })
+
+    df = pd.DataFrame(dados)
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename=solicitacoes_{data_inicio}_a_{data_fim}.xlsx'
+
+    with pd.ExcelWriter(response, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Solicitações')
+
+    return response

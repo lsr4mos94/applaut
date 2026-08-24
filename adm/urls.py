@@ -14,4 +14,6 @@ urlpatterns = [
     path('verba/decidir/<int:pk>/', views.decidir_verba, name='decidir_solicitacao_verba'),
     
     path('verba/concluir/<int:pk>/', views.concluir_verba, name='concluir_solicitacao_verba'),
+
+    path('verba/exportar/excel/', views.exportar_solicitacoes_excel, name='exportar_solicitacoes_excel'),
 ]
