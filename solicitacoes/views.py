@@ -31,11 +31,11 @@ def disparar_plantao_whatsapp(solicitacao):
         "Content-Type": "application/json"
     }
     
-    endereco_completo = f"{solicitacao.endereco}, {solicitacao.numero}, {solicitacao.bairro} - {solicitacao.cidade}"
+    endereco_completo = f"{solicitacao.endereco}, {solicitacao.numero}, {solicitacao.complemento}, {solicitacao.bairro} - {solicitacao.cidade}"
 
     payload = {
         "from": "553190004411",
-        "to": "5531971560752",
+        "to": "5531998357400",
         "contents": [
             {
                 "type": "template",
@@ -625,6 +625,7 @@ def criar_bonificacao(request):
                 messages.error(request, f"Não existe verba cadastrada para o período {hoje.month}/{hoje.year}.")
                 return render(request, 'solicitacoes/bonificacao_form.html', {'dados': request.POST})
 
+            '''
             limite_valor_cliente = float(verba_configurada.limite_por_cliente)
             
             ja_gasto_cliente = Bonificacao.objects.filter(
@@ -638,7 +639,8 @@ def criar_bonificacao(request):
             if (float(ja_gasto_cliente) + total_solicitacao) > limite_valor_cliente:
                 messages.error(request, f"Limite por cliente excedido! O máximo para este cliente é R$ {limite_valor_cliente:,.2f}")
                 return render(request, 'solicitacoes/bonificacao_form.html', {'dados': request.POST})
-
+            '''
+            
             gastos_totais_mes = Bonificacao.objects.filter(
                 vendedor=request.user, 
                 tipo='VERBA_VENDEDOR',
