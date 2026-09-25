@@ -1,44 +1,94 @@
 {% extends 'base.html' %}
 {% block content %}
 
-<div class="container mt-4 text-start">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="text-gold-title mb-0">Solicitação de Verba</h3>
-        <div class="d-flex gap-2">
-            {% if 'Gestão Financeira' in request.user.groups.all|stringformat:"s" %}
-                <button class="btn btn-outline-success shadow-sm fw-bold d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#modalExportarExcel">
-                    <i class="bi bi-file-earmark-excel me-2"></i> Exportar
-                </button>
-            {% endif %}
-            <a href="{% url 'nova_solicitacao_verba' %}" class="btn btn-gold-action px-4 py-2 shadow-sm">
-                <i class="bi bi-plus-circle"></i> Nova Solicitação
-            </a>
-        </div>
-    </div>
+<style>
+    /* AJUSTE MOBILE: Transforma a tabela em Cards padronizados exatamente igual às outras telas */
+    @media (max-width: 767.98px) {
+        .table-responsive { border: none !important; }
+        #tabelaVerbas thead { display: none; }
+        
+        #tabelaVerbas tbody tr { 
+            display: block; 
+            margin-bottom: 1rem; 
+            border: 1px solid #e9ecef; 
+            border-radius: 12px; 
+            box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.05); 
+            background-color: #fff;
+            overflow: hidden;
+        }
+        
+        #tabelaVerbas tbody td { 
+            display: block; 
+            position: relative;
+            padding: 0.5rem 1rem 0.5rem 40% !important; 
+            text-align: right !important; 
+            border-bottom: 1px solid #f8f9fa;
+            word-wrap: break-word; 
+        }
+        
+        #tabelaVerbas tbody td:last-child { border-bottom: none; }
+        
+        #tabelaVerbas tbody td::before { 
+            content: attr(data-label); 
+            position: absolute;
+            left: 1rem;
+            top: 0.6rem;
+            width: 35%; 
+            font-weight: 700; 
+            color: #6c757d; 
+            text-transform: uppercase; 
+            font-size: 0.75rem !important; 
+            text-align: left; 
+        }
+        
+        #tabelaVerbas tbody td .text-muted { display: block; margin-top: 2px; }
+        
+        #tabelaVerbas tbody td[data-label="Ações"] .d-flex {
+            justify-content: flex-end !important;
+            margin-top: 0 !important;
+        }
+    }
+</style>
 
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-body card-filter">
+<!-- CABEÇALHO RESPONSIVO -->
+<div class="d-md-flex justify-content-between align-items-center mb-4 text-start">
+    <h3 class="text-gold-title mb-3 mb-md-0" style="color: #bca464; font-weight: 600;">Solicitação de Verba</h3>
+    <div class="d-grid d-md-flex gap-2">
+        {% if 'Gestão Financeira' in request.user.groups.all|stringformat:"s" %}
+            <button class="btn btn-outline-success shadow-sm fw-bold d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#modalExportarExcel">
+                <i class="bi bi-file-earmark-excel me-2"></i> Exportar
+            </button>
+        {% endif %}
+        <a href="{% url 'nova_solicitacao_verba' %}" class="btn text-white shadow-sm d-flex justify-content-center align-items-center fw-bold px-4 py-2" style="background-color: #bca464;">
+            <i class="bi bi-plus-circle me-2"></i> Nova Solicitação
+        </a>
+    </div>
+</div>
+
+<!-- FILTROS RESPONSIVOS -->
+<div class="card border-0 shadow-sm mb-4 text-start">
+    <div class="card-body card-filter" style="background-color: #fcfbf7; border: 1px solid #f1ece0;">
         <form method="GET" class="row g-3 align-items-end">
-            <div class="col-md-4">
-                <label class="small fw-bold text-muted text-uppercase">Fornecedor</label>
-                <input type="text" name="busca" class="form-control form-control-sm" value="{{ request.GET.busca|default:'' }}" placeholder="Nome ou CPF/CNPJ...">
+            <div class="col-12 col-md-4">
+                <label class="small fw-bold text-muted">Fornecedor</label>
+                <input type="text" name="busca" class="form-control form-control-sm shadow-sm" value="{{ request.GET.busca|default:'' }}" placeholder="Nome ou CPF/CNPJ...">
             </div>
-            <div class="col-md-2">
-                <label class="small fw-bold text-muted text-uppercase">Solicitante</label>
-                <select name="solicitante" class="form-select form-select-sm">
+            <div class="col-6 col-md-2">
+                <label class="small fw-bold text-muted">Solicitante</label>
+                <select name="solicitante" class="form-select form-select-sm shadow-sm">
                     <option value="">Todos</option>
                     {% for u in usuarios %}
                     <option value="{{ u.id }}" {% if request.GET.solicitante == u.id|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-2">
-                <label class="small fw-bold text-muted text-uppercase">Data</label>
-                <input type="date" name="data" class="form-control form-control-sm" value="{{ request.GET.data }}">
+            <div class="col-6 col-md-2">
+                <label class="small fw-bold text-muted">Data</label>
+                <input type="date" name="data" class="form-control form-control-sm shadow-sm" value="{{ request.GET.data }}">
             </div>
-            <div class="col-md-2">
-                <label class="small fw-bold text-muted text-uppercase">Status</label>
-                <select name="status" class="form-select form-select-sm">
+            <div class="col-6 col-md-2">
+                <label class="small fw-bold text-muted">Status</label>
+                <select name="status" class="form-select form-select-sm shadow-sm">
                     <option value="">Todos</option>
                     <option value="PENDENTE" {% if request.GET.status == 'PENDENTE' %}selected{% endif %}>PENDENTE</option>
                     <option value="APROVADO" {% if request.GET.status == 'APROVADO' %}selected{% endif %}>APROVADO</option>
@@ -46,21 +96,22 @@
                     <option value="CONCLUIDO" {% if request.GET.status == 'CONCLUIDO' %}selected{% endif %}>CONCLUÍDO</option>
                 </select>
             </div>
-            <div class="col-md-2 d-flex align-items-end gap-2">
-                <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">FILTRAR</button>
-                <a href="{% url 'listar_solicitacoes_verba' %}" class="btn btn-link btn-sm text-muted text-decoration-none">Limpar</a>
+            <div class="col-6 col-md-2 d-flex flex-column flex-md-row align-items-stretch align-items-md-end gap-2">
+                <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold shadow-sm">FILTRAR</button>
+                <a href="{% url 'listar_solicitacoes_verba' %}" class="btn btn-link btn-sm text-muted text-decoration-none border-0 p-0 text-center text-md-start align-self-center" style="font-size: 0.85rem;">Limpar</a>
             </div>
         </form>
     </div>
 </div>
 
-<div class="card border-0 shadow-sm overflow-hidden">
+<!-- TABELA / CARDS -->
+<div class="card border-0 shadow-sm overflow-hidden mb-4 text-start">
     <div class="table-responsive">
         <table id="tabelaVerbas" class="table table-applaut w-100 mb-0">
             <thead>
-                <tr class="bg-light">
-                    <th>FORNECEDOR</th>
-                    <th>SOLICITANTE</th>
+                <tr>
+                    <th class="ps-3">FORNECEDOR</th>
+                    <th class="text-center">SOLICITANTE</th>
                     <th class="text-center">VENCIMENTO</th>
                     <th class="text-center">VALOR</th>
                     <th class="text-center">STATUS</th>
@@ -69,20 +120,20 @@
             </thead>
             <tbody>
                 {% for s in solicitacoes %}
-                <tr class="align-middle">
-                    <td>
-                        <span class="fw-bold d-block">#{{ s.id }} {{ s.fornecedor_nome_razao }}</span>
+                <tr class="border-bottom">
+                    <td class="px-3 text-start" data-label="Fornecedor">
+                        <strong style="color: #5e4d26;">#{{ s.id }} {{ s.fornecedor_nome_razao }}</strong><br>
                         <small class="text-muted mask-cpf-cnpj">{{ s.fornecedor_cpf_cnpj }}</small>
                     </td>
-                    <td><span class="small">{{ s.usuario_solicitante.get_full_name|default:s.usuario_solicitante.username }}</span></td>
-                    <td class="text-center small">{{ s.data_vencimento|date:"d/m/Y"|default:"---" }}</td>
-                    <td class="text-center fw-bold text-success">R$ {{ s.valor }}</td>
-                    <td class="text-center">
+                    <td class="text-md-center small" data-label="Solicitante">{{ s.usuario_solicitante.get_full_name|default:s.usuario_solicitante.username }}</td>
+                    <td class="text-md-center small" data-label="Vencimento">{{ s.data_vencimento|date:"d/m/Y"|default:"---" }}</td>
+                    <td class="text-md-center fw-bold text-success" data-label="Valor">R$ {{ s.valor }}</td>
+                    <td class="text-md-center" data-label="Status">
                         <span class="badge {% if s.status == 'PENDENTE' %}badge-pendente{% elif s.status == 'APROVADO' %}badge-confirmado{% elif s.status == 'REPROVADO' %}badge-reprovado{% else %}badge-concluido{% endif %}">
                             {{ s.get_status_display }}
                         </span>
                     </td>
-                    <td class="text-center">
+                    <td class="text-md-center" data-label="Ações" style="white-space: nowrap;">
                         <div class="d-flex justify-content-center gap-1">
                             <button type="button" class="btn-square-action btn-view" onclick="visualizarVerba('{{ s.id }}')" title="Visualizar">
                                 <i class="bi bi-eye-fill"></i>
@@ -123,6 +174,8 @@
                         </div>
                     </td>
                 </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center py-4 text-muted">Nenhuma solicitação encontrada.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -140,8 +193,7 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4 text-dark" id="conteudoVisualizar">
-                </div>
+            <div class="modal-body p-4 text-dark" id="conteudoVisualizar"></div>
             <div class="modal-footer bg-light border-0 justify-content-end">
                 <button type="button" class="btn btn-secondary px-4 shadow-sm" data-bs-dismiss="modal">Fechar</button>
             </div>
@@ -278,27 +330,26 @@
     </div>
 </div>
 
-
 {% if solicitacoes.has_other_pages %}
     <nav class="mt-4 mb-4">
-        <ul class="pagination justify-content-center">
+        <ul class="pagination justify-content-center flex-wrap gap-1">
             {% if solicitacoes.has_previous %}
                 <li class="page-item">
-                    <a class="page-link text-dark" href="?page={{ solicitacoes.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">&laquo; Anterior</a>
+                    <a class="page-link text-dark rounded" href="?page={{ solicitacoes.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">&laquo;</a>
                 </li>
             {% endif %}
 
             {% for i in solicitacoes.paginator.page_range %}
                 {% if solicitacoes.number == i %}
-                    <li class="page-item active"><span class="page-link" style="background-color: #bca464; border-color: #bca464;">{{ i }}</span></li>
+                    <li class="page-item active"><span class="page-link rounded" style="background-color: #bca464; border-color: #bca464;">{{ i }}</span></li>
                 {% elif i > solicitacoes.number|add:'-3' and i < solicitacoes.number|add:'3' %}
-                    <li class="page-item"><a class="page-link text-dark" href="?page={{ i }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ i }}</a></li>
+                    <li class="page-item"><a class="page-link text-dark rounded" href="?page={{ i }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ i }}</a></li>
                 {% endif %}
             {% endfor %}
 
             {% if solicitacoes.has_next %}
                 <li class="page-item">
-                    <a class="page-link text-dark" href="?page={{ solicitacoes.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Próxima &raquo;</a>
+                    <a class="page-link text-dark rounded" href="?page={{ solicitacoes.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">&raquo;</a>
                 </li>
             {% endif %}
         </ul>
@@ -311,18 +362,47 @@
 
 <script>
 $(document).ready(function() {
-    $('#tabelaVerbas').DataTable({
-        "dom": 't',
-        "paging": false,
-        "ordering": true,
-        "order": [],
-        "info": false,
-        "searching": false,
-        "autoWidth": false,
-        "language": {
-            "url": "//cdn.datatables.net/plug-ins/1.13.4/i18n/pt-BR.json"
-        }
-    });
+    if (!$.fn.DataTable.isDataTable('#tabelaVerbas')) {
+        $('#tabelaVerbas').DataTable({
+            "dom": 't',
+            "paging": false,
+            "ordering": true,
+            "order": [],
+            "info": false,
+            "searching": false,
+            "autoWidth": false,
+            "language": {
+                "sEmptyTable": "Nenhum registro encontrado",
+                "sInfo": "Mostrando de _START_ até _END_ de _TOTAL_ registros",
+                "sInfoEmpty": "Mostrando 0 até 0 de 0 registros",
+                "sInfoFiltered": "(Filtrados de _MAX_ registros totais)",
+                "sInfoPostFix": "",
+                "sInfoThousands": ".",
+                "sLengthMenu": "_MENU_ resultados por página",
+                "sLoadingRecords": "Carregando...",
+                "sProcessing": "Processando...",
+                "sZeroRecords": "Nenhum registro encontrado",
+                "sSearch": "Pesquisar: ",
+                "oPaginate": {
+                    "sNext": "Próximo",
+                    "sPrevious": "Anterior",
+                    "sFirst": "Primeiro",
+                    "sLast": "Último"
+                },
+                "oAria": {
+                    "sSortAscending": ": Ordenar colunas de forma ascendente",
+                    "sSortDescending": ": Ordenar colunas de forma descendente"
+                }
+            },
+            "initComplete": function(settings, json) {
+                $('#tabelaVerbas thead th').css({
+                    'background-color': '#bca464',
+                    'color': '#ffffff',
+                    'border-bottom': 'none'
+                });
+            }
+        });
+    }
 });
 
 function visualizarVerba(id) {

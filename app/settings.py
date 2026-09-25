@@ -65,10 +65,11 @@ PROTHEUS_CIEC = {
     'NAME': 'MP12OFICIALP',
     'USER': os.environ.get('PROTHEUS_USER'),
     'PASSWORD': os.environ.get('PROTHEUS_PASSWORD'),
-    'HOST': os.environ.get('PROTHEUS_HOST'), # <-- Coloque o IP do banco do Protheus aqui caso falhe
+    'HOST': os.environ.get('PROTHEUS_HOST'),
     'PORT': '1433',
     'OPTIONS': {
-        'driver': 'ODBC Driver 17 for SQL Server',
+        'driver': 'ODBC Driver 18 for SQL Server',
+        'extra_params': 'TrustServerCertificate=yes;',
     },
 }
 
@@ -80,7 +81,8 @@ PROTHEUS_WRP = {
     'HOST': os.environ.get('PROTHEUS_HOST'),
     'PORT': '1432',
     'OPTIONS': {
-        'driver': 'ODBC Driver 17 for SQL Server',
+        'driver': 'ODBC Driver 18 for SQL Server',
+        'extra_params': 'TrustServerCertificate=yes;',
     },
 }
 

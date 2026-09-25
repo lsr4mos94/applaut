@@ -10,180 +10,225 @@
     .bg-busca { background-color: #fcfbf7; border: 1px solid #bca464 !important; }
     .list-group-item-action:hover { background-color: #fcfaf5; color: #bca464; }
     .box-selecao { background-color: #fcfbf7; border: 1px solid #f1ece0; }
+    
+    /* Regras específicas para Telemóvel (Mobile) */
+    @media (max-width: 767.98px) {
+        .btn-mobile-full { width: 100%; margin-bottom: 0.5rem; }
+        .order-mobile-1 { order: 1; }
+        .order-mobile-2 { order: 2; }
+        
+        /* Tipos de bonificação empilhados no mobile */
+        .tipos-container {
+            flex-direction: column !important;
+            gap: 0.75rem !important;
+        }
+
+        /* Campo de busca do cliente empilhado no mobile */
+        .busca-cliente-group {
+            flex-direction: column !important;
+        }
+        .busca-cliente-group input {
+            border-radius: 0.375rem !important;
+            width: 100% !important;
+        }
+        .busca-cliente-group button {
+            border-radius: 0.375rem !important;
+            width: 100% !important;
+            margin-top: 0.5rem !important;
+        }
+    }
+
+    /* Regras específicas para Computador (Desktop) */
+    @media (min-width: 768px) {
+        .tipos-container {
+            flex-direction: row !important;
+            flex-wrap: wrap !important;
+            gap: 2.5rem !important;
+        }
+        .busca-cliente-group {
+            flex-direction: row !important;
+        }
+        .busca-cliente-group input {
+            border-top-left-radius: 0.375rem !important;
+            border-bottom-left-radius: 0.375rem !important;
+            border-top-right-radius: 0 !important;
+            border-bottom-right-radius: 0 !important;
+        }
+        .busca-cliente-group button {
+            border-top-left-radius: 0 !important;
+            border-bottom-left-radius: 0 !important;
+            border-top-right-radius: 0.375rem !important;
+            border-bottom-right-radius: 0.375rem !important;
+            margin-top: 0 !important;
+            width: auto !important;
+        }
+    }
 </style>
 
-<div class="mb-4">
-    <h3 style="color: #bca464; font-weight: 600;">Nova Solicitação de Bonificação</h3>
-</div>
+<div class="container-fluid text-start">
+    <div class="mb-4">
+        <h3 style="color: #bca464; font-weight: 600;">Nova Solicitação de Bonificação</h3>
+    </div>
 
-<div class="card border-0 shadow-sm">
-    <div class="card-body p-4">
-        <form method="POST" action="{% url 'criar_bonificacao' %}" id="formBonificacao" enctype="multipart/form-data">
-            {% csrf_token %}
-            
-            <div class="mb-3 p-3 rounded box-selecao">
-                <label class="form-label-custom d-block mb-3">Plataforma</label>
-                <div class="d-flex gap-5 flex-wrap">
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="plataforma" id="plat_ciec" value="CIEC" checked>
-                        <label class="form-check-label" for="plat_ciec">CIEC</label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="plataforma" id="plat_isla" value="ISLA">
-                        <label class="form-check-label" for="plat_isla">ISLA</label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="plataforma" id="plat_wrp" value="WRP">
-                        <label class="form-check-label" for="plat_wrp">WRP</label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="mb-3 p-3 rounded box-selecao">
-                <label class="form-label-custom d-block mb-3">Tipo de Bonificação</label>
-                <div class="d-flex gap-5 flex-wrap">
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="tipo" id="verba" value="VERBA_VENDEDOR" checked>
-                        <label class="form-check-label" for="verba">Verba Vendedor</label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="tipo" id="acordo" value="ACORDO_COMERCIAL">
-                        <label class="form-check-label" for="acordo">Acordo Comercial</label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="tipo" id="negociacao" value="NEGOCIACAO_ESPECIAL">
-                        <label class="form-check-label" for="negociacao">Negociação Especial</label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="tipo" id="tipo_sac" value="SAC">
-                        <label class="form-check-label" for="tipo_sac">SAC</label>
-                    </div>
-                    <!-- AJUSTE AQUI: Corrigido o ID e o Value para ATIVACAO_MARCA -->
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="tipo" id="tipo_ativacao" value="ATIVACAO_MARCA">
-                        <label class="form-check-label" for="tipo_ativacao">Ativação de Marca</label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row mb-5">
-                <div class="col-md-12">
-                    <label class="form-label-custom">Localizar Cliente (Razão Social ou CNPJ)</label>
-                    <div class="input-group">
-                        <input type="text" id="input_busca_cliente" class="form-control bg-busca" placeholder="Digite para localizar o cliente...">
-                        <button class="btn text-white px-4 fw-bold" type="button" id="btn_buscar_cliente" style="background-color: #bca464;">
-                            <i class="bi bi-search me-1"></i> BUSCAR CLIENTE
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <h6 class="section-title"><i class="bi bi-person-bounding-box me-2"></i>Informações do Cliente</h6>
-            
-            <div class="row g-3 mb-4">
-                <div class="col-md-6">
-                    <label class="form-label-custom">Razão Social / Nome</label>
-                    <input type="text" name="cliente_razao_social" id="res_razao" class="form-control form-control-sm bg-light" readonly required>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label-custom">Nome Fantasia</label>
-                    <input type="text" name="cliente_nome_fantasia" id="res_fantasia" class="form-control form-control-sm bg-light" readonly>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label-custom">Código</label>
-                    <input type="text" name="cliente_codigo" id="res_codigo" class="form-control form-control-sm bg-light" readonly>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label-custom">Loja</label>
-                    <input type="text" name="cliente_loja" id="res_loja" class="form-control form-control-sm bg-light" readonly>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label-custom">CPF / CNPJ</label>
-                    <input type="text" name="cliente_cpf_cnpj" id="res_cnpj" class="form-control form-control-sm bg-light" readonly required>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label-custom">Grupo de Cliente</label>
-                    <input type="text" name="cliente_grupo" id="res_grupo" class="form-control form-control-sm bg-light" readonly>
-                </div>
-            </div>
-
-            <div id="wrapper_acordo_selecionado" class="mb-4 p-3 rounded border border-warning" style="display: none; background-color: #fdfdf9;">
-                <label class="form-label-custom text-warning"><i class="bi bi-file-earmark-text-fill me-1"></i> Acordo Comercial Vinculado</label>
-                <div id="texto_acordo_selecionado" class="fw-bold text-dark fs-6"></div>
-            </div>
-
-            <div class="mb-4 p-3 rounded box-selecao">
-                <div class="row align-items-center">
-                    <div class="col-md-6">
-                        <label class="form-label-custom d-block mb-3">Método de Recebimento</label>
-                        <div class="d-flex gap-5">
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="metodo_entrega" id="met_entrega" value="ENTREGA" checked>
-                                <label class="form-check-label" for="met_entrega">Entrega</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="metodo_entrega" id="met_retirada" value="RETIRADA">
-                                <label class="form-check-label" for="met_retirada">Retirada</label>
-                            </div>
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-3 p-md-4">
+            <form method="POST" action="{% url 'criar_bonificacao' %}" id="formBonificacao" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <div class="mb-3 p-3 rounded box-selecao">
+                    <label class="form-label-custom d-block mb-3">Plataforma</label>
+                    <div class="d-flex gap-3 gap-md-5 flex-wrap">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="plataforma" id="plat_ciec" value="CIEC" checked>
+                            <label class="form-check-label small fw-medium" for="plat_ciec">CIEC</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="plataforma" id="plat_isla" value="ISLA">
+                            <label class="form-check-label small fw-medium" for="plat_isla">ISLA</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="plataforma" id="plat_wrp" value="WRP">
+                            <label class="form-check-label small fw-medium" for="plat_wrp">WRP</label>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label-custom">Data Prevista Entrega/Retirada</label>
-                        <input type="date" name="data_entrega_retirada" class="form-control form-control-sm">
+                </div>
+
+                <div class="mb-3 p-3 rounded box-selecao">
+                    <label class="form-label-custom d-block mb-3">Tipo de Bonificação</label>
+                    <!-- Classe controlada via CSS responsivo acima -->
+                    <div class="d-flex tipos-container">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tipo" id="verba" value="VERBA_VENDEDOR" checked>
+                            <label class="form-check-label small fw-medium" for="verba">Verba Vendedor</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tipo" id="acordo" value="ACORDO_COMERCIAL">
+                            <label class="form-check-label small fw-medium" for="acordo">Acordo Comercial</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tipo" id="negociacao" value="NEGOCIACAO_ESPECIAL">
+                            <label class="form-check-label small fw-medium" for="negociacao">Negociação Especial</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tipo" id="tipo_sac" value="SAC">
+                            <label class="form-check-label small fw-medium" for="tipo_sac">SAC</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tipo" id="tipo_ativacao" value="ATIVACAO_MARCA">
+                            <label class="form-check-label small fw-medium" for="tipo_ativacao">Ativação de Marca</label>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="mb-4">
-                <label class="form-label-custom">Justificativa da Bonificação</label>
-                <textarea name="justificativa" class="form-control" rows="2" placeholder="Descreva o motivo..." required></textarea>
-            </div>
+                <div class="row mb-4 mb-md-5">
+                    <div class="col-12">
+                        <label class="form-label-custom">Localizar Cliente (Razão Social ou CNPJ)</label>
+                        <!-- Grupo responsivo ajustado via CSS -->
+                        <div class="input-group busca-cliente-group shadow-sm">
+                            <input type="text" id="input_busca_cliente" class="form-control bg-busca" placeholder="Digite para localizar o cliente...">
+                            <button class="btn text-white px-4 fw-bold" type="button" id="btn_buscar_cliente" style="background-color: #bca464;">
+                                <i class="bi bi-search me-1"></i> BUSCAR
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
-            <!-- AJUSTE AQUI: Atualizado o label para incluir Ativação de Marca -->
-            <div class="mb-5" id="div_foto_sac" style="display: none;">
-                <label class="form-label-custom">Evidência (Obrigatório para SAC e Ativação de Marca) <span class="text-danger">*</span></label>
-                <input type="file" name="foto_sac" id="id_foto_sac" class="form-control form-control-sm" accept="image/*">
-                <small class="text-muted">Anexe uma imagem para comprovação da solicitação</small>
-            </div>
+                <h6 class="section-title"><i class="bi bi-person-bounding-box me-2"></i>Informações do Cliente</h6>
+                
+                <div class="row g-3 mb-4">
+                    <div class="col-12 col-md-6">
+                        <label class="form-label-custom">Razão Social / Nome</label>
+                        <input type="text" name="cliente_razao_social" id="res_razao" class="form-control form-control-sm bg-light" readonly required>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label-custom">Nome Fantasia</label>
+                        <input type="text" name="cliente_nome_fantasia" id="res_fantasia" class="form-control form-control-sm bg-light" readonly>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label-custom">Código</label>
+                        <input type="text" name="cliente_codigo" id="res_codigo" class="form-control form-control-sm bg-light" readonly>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label-custom">Loja</label>
+                        <input type="text" name="cliente_loja" id="res_loja" class="form-control form-control-sm bg-light" readonly>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label-custom">CPF / CNPJ</label>
+                        <input type="text" name="cliente_cpf_cnpj" id="res_cnpj" class="form-control form-control-sm bg-light" readonly required>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label-custom">Grupo de Cliente</label>
+                        <input type="text" name="cliente_grupo" id="res_grupo" class="form-control form-control-sm bg-light" readonly>
+                    </div>
+                </div>
 
-            <h6 class="section-title"><i class="bi bi-box-seam me-2"></i>Itens da Bonificação</h6>
-            
-            <div class="table-responsive mb-3">
-                <table class="table table-bordered align-middle">
-                    <thead class="bg-light text-muted small text-uppercase">
-                        <tr>
-                            <th style="width: 45%;">Produto</th>
-                            <th style="width: 15%;" class="text-center">Preço Un.</th>
-                            <th style="width: 15%;" class="text-center">Quantidade</th>
-                            <th style="width: 15%;" class="text-center">Valor Total</th>
-                            <th style="width: 10%;" class="text-center">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tbodyItens"></tbody>
-                    <tfoot>
-                        <tr class="fw-bold" style="background-color: #fcfbf7;">
-                            <td colspan="3" class="text-end text-muted small">TOTAL GERAL DA BONIFICAÇÃO:</td>
-                            <td class="text-center" id="totalGeral" style="color: #bca464; font-size: 1.1rem;">R$ 0,00</td>
-                            <td></td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-            
-            <button type="button" class="btn btn-sm btn-outline-secondary px-3 mb-5" onclick="addLinha()">
-                <i class="bi bi-plus-circle me-1"></i> Adicionar Produto
-            </button>
+                <div id="wrapper_acordo_selecionado" class="mb-4 p-3 rounded border border-warning shadow-sm" style="display: none; background-color: #fdfdf9;">
+                    <label class="form-label-custom text-warning"><i class="bi bi-file-earmark-text-fill me-1"></i> Acordo Comercial Vinculado</label>
+                    <div id="texto_acordo_selecionado" class="fw-bold text-dark fs-6"></div>
+                </div>
 
-            <div class="d-flex justify-content-end gap-2 border-top pt-4">
-                <a href="{% url 'bonificacao_list' %}" class="btn btn-light border px-4">CANCELAR</a>
-                <button type="submit" class="btn text-white px-5" style="background-color: #bca464;">
-                    <strong>ENVIAR SOLICITAÇÃO</strong>
+                <div class="mb-4 p-3 rounded box-selecao">
+                    <div class="row align-items-center g-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label-custom d-block mb-2">Método de Recebimento</label>
+                            <div class="d-flex gap-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="metodo_entrega" id="met_entrega" value="ENTREGA" checked>
+                                    <label class="form-check-label small fw-medium" for="met_entrega">Entrega</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="metodo_entrega" id="met_retirada" value="RETIRADA">
+                                    <label class="form-check-label small fw-medium" for="met_retirada">Retirada</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label-custom">Data Prevista Entrega/Retirada</label>
+                            <input type="date" name="data_entrega_retirada" class="form-control form-control-sm shadow-sm">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label-custom">Justificativa da Bonificação</label>
+                    <textarea name="justificativa" class="form-control shadow-sm" rows="2" placeholder="Descreva o motivo detalhadamente..." required></textarea>
+                </div>
+
+                <div class="mb-5 p-3 bg-light border rounded" id="div_foto_sac" style="display: none;">
+                    <label class="form-label-custom text-danger">Evidência (Obrigatório para SAC e Ativação de Marca) *</label>
+                    <input type="file" name="foto_sac" id="id_foto_sac" class="form-control form-control-sm shadow-sm mt-2" accept="image/*">
+                    <small class="text-muted d-block mt-1">Anexe uma imagem nítida para comprovação da solicitação.</small>
+                </div>
+
+                <h6 class="section-title"><i class="bi bi-box-seam me-2"></i>Itens da Bonificação</h6>
+
+                <div id="tbodyItens" class="mb-3"></div>
+
+                <button type="button" class="btn btn-sm btn-outline-secondary px-3 mb-4 shadow-sm fw-bold" onclick="addLinha()">
+                    <i class="bi bi-plus-circle me-1"></i> Adicionar Produto
                 </button>
-            </div>
-        </form>
+
+                <div class="row mb-4">
+                    <div class="col-12 col-md-5 ms-auto">
+                        <div class="p-3 bg-light border rounded d-flex justify-content-between align-items-center shadow-sm">
+                            <span class="text-muted fw-bold small text-uppercase">Total Geral:</span>
+                            <span id="totalGeral" class="fw-bold fs-5" style="color: #bca464;">R$ 0,00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-column flex-md-row justify-content-md-end gap-2 border-top pt-4">
+                    <a href="{% url 'bonificacao_list' %}" class="btn btn-light border px-4 btn-mobile-full order-mobile-2 text-center fw-bold text-muted">CANCELAR</a>
+                    <button type="submit" class="btn text-white px-5 btn-mobile-full order-mobile-1 shadow-sm" style="background-color: #bca464;">
+                        <strong><i class="bi bi-send me-2"></i>ENVIAR SOLICITAÇÃO</strong>
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
+<!-- MODAIS -->
 <div class="modal fade" id="modalCliente" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
@@ -191,7 +236,7 @@
                 <h6 class="modal-title fw-bold">Selecionar Cliente</h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-0" style="max-height: 400px; overflow-y: auto;">
+            <div class="modal-body p-0" style="max-height: 60vh; overflow-y: auto;">
                 <div id="lista_clientes" class="list-group list-group-flush"></div>
             </div>
         </div>
@@ -206,9 +251,9 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="p-3 border-bottom bg-light">
-                <input type="text" id="filtro_produto" class="form-control" placeholder="Digite nome ou código (min. 3 letras)...">
+                <input type="text" id="filtro_produto" class="form-control shadow-sm" placeholder="Digite nome ou código (min. 3 letras)...">
             </div>
-            <div class="modal-body p-0" style="max-height: 400px; overflow-y: auto;">
+            <div class="modal-body p-0" style="max-height: 60vh; overflow-y: auto;">
                 <div id="lista_produtos" class="list-group list-group-flush"></div>
             </div>
         </div>
@@ -222,9 +267,8 @@
                 <h6 class="modal-title fw-bold"><i class="bi bi-briefcase-fill me-2"></i>Selecione o Acordo Vigente</h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="resetarTipoSeNaoEscolheu()"></button>
             </div>
-            <div class="modal-body p-0" style="max-height: 400px; overflow-y: auto;">
-                <div id="lista-acordos-container" class="list-group list-group-flush">
-                    </div>
+            <div class="modal-body p-0" style="max-height: 60vh; overflow-y: auto;">
+                <div id="lista-acordos-container" class="list-group list-group-flush"></div>
             </div>
         </div>
     </div>
@@ -233,17 +277,14 @@
 <script>
     let contadorItens = 0;
     let linhaAtiva = null;
-    let mCli, mProd, mAco; // Variáveis dos modais
-    
-    // Objeto global para guardar o acordo que o vendedor selecionou
+    let mCli, mProd, mAco;
     let acordoSelecionadoObj = null;
 
     document.addEventListener('DOMContentLoaded', function() {
         mCli = new bootstrap.Modal(document.getElementById('modalCliente'));
         mProd = new bootstrap.Modal(document.getElementById('modalProduto'));
-        mAco = new bootstrap.Modal(document.getElementById('modalAcordo')); // Inicializa
+        mAco = new bootstrap.Modal(document.getElementById('modalAcordo'));
 
-        // Ajuste no clique do cliente para disparar a verificação de Acordo Comercial
         document.getElementById('btn_buscar_cliente').onclick = function() {
             const termo = document.getElementById('input_busca_cliente').value.trim();
             if(termo.length < 3) return alert('Digite ao menos 3 caracteres.');
@@ -255,7 +296,7 @@
                     lista.innerHTML = '';
                     data.forEach(c => {
                         const b = document.createElement('button');
-                        b.className = 'list-group-item list-group-item-action';
+                        b.className = 'list-group-item list-group-item-action py-3';
                         b.type = 'button';
                         b.innerHTML = `<strong>${c.nome}</strong><br><small class="text-muted">${c.cnpj} | Cód: ${c.codigo}</small>`;
                         b.onclick = () => {
@@ -266,11 +307,7 @@
                             document.getElementById('res_cnpj').value = c.cnpj;
                             document.getElementById('res_grupo').value = c.grupo || 'GERAL';
                             mCli.hide();
-
-                            // Sempre que selecionar um cliente novo, limpa o acordo anterior
                             limparAcordoSelecionado();
-
-                            // Se o Rádio "Acordo Comercial" já estiver marcado, dispara a busca do acordo
                             verificarEDispararAcordo();
                         };
                         lista.appendChild(b);
@@ -279,7 +316,6 @@
                 });
         };
 
-        // Escuta mudanças nos botões de Rádio do Tipo de Bonificação
         document.querySelectorAll('input[name="tipo"]').forEach(radio => {
             radio.addEventListener('change', function() {
                 toggleCamposAdicionais();
@@ -291,7 +327,6 @@
             });
         });
 
-        // Busca de Produto
         document.getElementById('filtro_produto').onkeyup = function() {
             const termo = this.value.trim();
             const lista = document.getElementById('lista_produtos');
@@ -299,26 +334,26 @@
                 lista.innerHTML = '<div class="p-3 text-center text-muted small">Continue digitando...</div>';
                 return;
             }
-            lista.innerHTML = '<div class="p-3 text-center"><span class="spinner-border spinner-border-sm text-primary"></span> Consultando Protheus...</div>';
+            lista.innerHTML = '<div class="p-4 text-center"><span class="spinner-border spinner-border-sm text-primary"></span> Consultando Protheus...</div>';
             fetch("{% url 'api_busca_produtos' %}?q=" + encodeURIComponent(termo))
                 .then(res => res.json())
                 .then(data => {
                     lista.innerHTML = '';
                     if(data.length === 0) {
-                        lista.innerHTML = '<div class="p-3 text-center text-muted">Nenhum produto encontrado.</div>';
+                        lista.innerHTML = '<div class="p-4 text-center text-muted">Nenhum produto encontrado.</div>';
                         return;
                     }
                     data.forEach(p => {
                         const b = document.createElement('button');
-                        b.className = 'list-group-item list-group-item-action';
+                        b.className = 'list-group-item list-group-item-action py-3';
                         b.type = 'button';
                         b.innerHTML = `
-                            <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
                                 <div>
                                     <strong>${p.descricao}</strong><br>
                                     <small class="text-muted">Cód: ${p.codigo} | ${p.grupo_familia}</small>
                                 </div>
-                                <span class="badge bg-success">R$ ${parseFloat(p.preco).toLocaleString('pt-br', {minimumFractionDigits: 2})}</span>
+                                <span class="badge bg-success align-self-start align-self-md-center" style="font-size:0.85rem;">R$ ${parseFloat(p.preco).toLocaleString('pt-br', {minimumFractionDigits: 2})}</span>
                             </div>`;
                         b.onclick = () => {
                             document.getElementById(`nome_${linhaAtiva}`).value = p.descricao;
@@ -334,23 +369,38 @@
 
         addLinha(); 
         toggleCamposAdicionais();
+        
+        const radiosTipo = document.querySelectorAll('input[name="tipo"]');
+        radiosTipo.forEach(radio => {
+            radio.addEventListener('change', toggleSacFoto);
+        });
+        toggleSacFoto();
     });
 
-    // AJUSTE AQUI: toggleCamposAdicionais atualizada para aceitar ATIVACAO_MARCA
+    function toggleSacFoto() {
+        const selecionado = document.querySelector('input[name="tipo"]:checked');
+        const divFotoSac = document.getElementById('div_foto_sac');
+        const inputFoto = document.getElementById('id_foto_sac');
+        
+        if (divFotoSac && inputFoto) {
+            if (selecionado && (selecionado.value === 'SAC' || selecionado.value === 'ATIVACAO_MARCA')) {
+                divFotoSac.style.display = 'block';
+                inputFoto.required = true;
+            } else {
+                divFotoSac.style.display = 'none';
+                inputFoto.required = false;
+                inputFoto.value = "";
+            }
+        }
+    }
+
     function toggleCamposAdicionais() {
         const tipoRadio = document.querySelector('input[name="tipo"]:checked');
         if (!tipoRadio) return;
         
         const tipoSelecionado = tipoRadio.value;
-        const divFoto = document.getElementById('div_foto_sac');
         const infoBox = document.getElementById('info-acordo');
 
-        // Foto visível para SAC ou ATIVACAO_MARCA
-        if (divFoto) {
-            divFoto.style.display = (tipoSelecionado === 'SAC' || tipoSelecionado === 'ATIVACAO_MARCA') ? 'block' : 'none';
-        }
-
-        // Alerta de Acordo Comercial
         if (tipoSelecionado === 'ACORDO_COMERCIAL') {
             if (!infoBox) {
                 const alerta = `
@@ -367,39 +417,54 @@
 
     function addLinha() {
         contadorItens++;
-        const tbody = document.getElementById('tbodyItens');
-        const tr = document.createElement('tr');
-        tr.id = `linha-${contadorItens}`;
-        tr.innerHTML = `
-            <td>
-                <div class="input-group input-group-sm">
-                    <input type="text" name="item_nome_${contadorItens}" id="nome_${contadorItens}" class="form-control" readonly placeholder="Selecione o produto..." required>
-                    <button class="btn btn-outline-secondary" type="button" onclick="abrirBuscaProduto(${contadorItens})">
-                        <i class="bi bi-search"></i>
-                    </button>
+        const container = document.getElementById('tbodyItens');
+        const cardItem = document.createElement('div');
+        cardItem.className = 'p-3 mb-3 border rounded shadow-sm bg-white position-relative';
+        cardItem.id = `linha-${contadorItens}`;
+        
+        cardItem.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge bg-secondary" style="font-size: 0.75rem;">Item #${contadorItens}</span>
+                <button type="button" class="btn btn-sm text-danger border-0 p-0" onclick="removerLinha(${contadorItens})" title="Remover Item">
+                    <i class="bi bi-trash fs-5"></i>
+                </button>
+            </div>
+            
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label-custom">Produto</label>
+                    <div class="input-group">
+                        <input type="text" name="item_nome_${contadorItens}" id="nome_${contadorItens}" class="form-control bg-white" readonly placeholder="Selecione o produto..." required>
+                        <button class="btn btn-outline-secondary px-3" type="button" onclick="abrirBuscaProduto(${contadorItens})">
+                            <i class="bi bi-search me-1"></i> Buscar
+                        </button>
+                    </div>
+                    <input type="hidden" name="item_codigo_${contadorItens}" id="cod_${contadorItens}">
                 </div>
-                <input type="hidden" name="item_codigo_${contadorItens}" id="cod_${contadorItens}">
-            </td>
-            <td>
-                <div class="input-group input-group-sm">
-                    <span class="input-group-text">R$</span>
-                    <input type="number" step="0.01" name="item_preco_${contadorItens}" id="preco_${contadorItens}" class="form-control text-center" value="0.00" oninput="calc(${contadorItens})">
+
+                <div class="col-12 col-md-4">
+                    <label class="form-label-custom">Preço Unitário</label>
+                    <div class="input-group">
+                        <span class="input-group-text text-muted">R$</span>
+                        <input type="number" step="0.01" name="item_preco_${contadorItens}" id="preco_${contadorItens}" class="form-control text-center" value="0.00" oninput="calc(${contadorItens})">
+                    </div>
                 </div>
-            </td>
-            <td>
-                <input type="number" name="item_qtd_${contadorItens}" id="qtd_${contadorItens}" class="form-control form-control-sm text-center" value="1" min="1" oninput="calc(${contadorItens})">
-            </td>
-            <td>
-                <div class="input-group input-group-sm">
-                    <span class="input-group-text bg-light">R$</span>
-                    <input type="number" step="0.01" name="item_total_${contadorItens}" id="total_${contadorItens}" class="form-control text-center bg-light" readonly value="0.00">
+
+                <div class="col-6 col-md-4">
+                    <label class="form-label-custom">Quantidade</label>
+                    <input type="number" name="item_qtd_${contadorItens}" id="qtd_${contadorItens}" class="form-control text-center fw-bold" value="1" min="1" oninput="calc(${contadorItens})">
                 </div>
-            </td>
-            <td class="text-center">
-                <button type="button" class="btn btn-sm text-danger" onclick="removerLinha(${contadorItens})"><i class="bi bi-trash"></i></button>
-            </td>
+
+                <div class="col-6 col-md-4">
+                    <label class="form-label-custom">Subtotal</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light text-muted">R$</span>
+                        <input type="number" step="0.01" name="item_total_${contadorItens}" id="total_${contadorItens}" class="form-control text-center bg-light fw-bold text-dark" readonly value="0.00">
+                    </div>
+                </div>
+            </div>
         `;
-        tbody.appendChild(tr);
+        container.appendChild(cardItem);
     }
 
     function abrirBuscaProduto(id) {
@@ -410,7 +475,7 @@
     }
 
     function removerLinha(id) {
-        if(document.querySelectorAll('#tbodyItens tr').length > 1) {
+        if(document.querySelectorAll('[id^="linha-"]').length > 1) {
             document.getElementById(`linha-${id}`).remove();
             calcularTotalGeral();
         }
@@ -437,7 +502,7 @@
         let totalChopp = 0;
         let linhaCopo = null;
         
-        document.querySelectorAll('#tbodyItens tr').forEach(tr => {
+        document.querySelectorAll('[id^="linha-"]').forEach(tr => {
             const id = tr.id.split('-')[1];
             const nomeInput = document.getElementById(`nome_${id}`);
             const codInput = document.getElementById(`cod_${id}`);
@@ -455,25 +520,46 @@
         
         if (totalChopp > 0) {
             if (!linhaCopo) {
-                addLinha();
-                const novaId = contadorItens;
+                contadorItens++;
+                const container = document.getElementById('tbodyItens');
+                const cardItem = document.createElement('div');
+                cardItem.className = 'p-3 mb-3 border rounded shadow-sm bg-white position-relative';
+                cardItem.id = `linha-${contadorItens}`;
                 
-                document.getElementById(`nome_${novaId}`).value = DESCRICAO_COPO;
-                document.getElementById(`cod_${novaId}`).value = CODIGO_COPO;
-                document.getElementById(`cod_${novaId}`).setAttribute('value', CODIGO_COPO);
-                document.getElementById(`preco_${novaId}`).value = "0.00";
-                document.getElementById(`qtd_${novaId}`).value = totalChopp;
-                
-                const p = parseFloat(document.getElementById(`preco_${novaId}`).value) || 0;
-                document.getElementById(`total_${novaId}`).value = (totalChopp * p).toFixed(2);
-                calcularTotalGeral();
+                cardItem.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="badge bg-secondary" style="font-size: 0.75rem;">Item #${contadorItens} (Automático)</span>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label-custom">Produto</label>
+                            <input type="text" name="item_nome_${contadorItens}" id="nome_${contadorItens}" class="form-control bg-light" value="${DESCRICAO_COPO}" readonly required>
+                            <input type="hidden" name="item_codigo_${contadorItens}" id="cod_${contadorItens}" value="${CODIGO_COPO}">
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label-custom">Preço Unitário</label>
+                            <div class="input-group">
+                                <span class="input-group-text text-muted">R$</span>
+                                <input type="number" step="0.01" name="item_preco_${contadorItens}" id="preco_${contadorItens}" class="form-control text-center" value="0.00" readonly>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <label class="form-label-custom">Quantidade</label>
+                            <input type="number" name="item_qtd_${contadorItens}" id="qtd_${contadorItens}" class="form-control text-center fw-bold" value="${totalChopp}" readonly>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <label class="form-label-custom">Subtotal</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-muted">R$</span>
+                                <input type="number" step="0.01" name="item_total_${contadorItens}" id="total_${contadorItens}" class="form-control text-center bg-light fw-bold text-dark" readonly value="0.00">
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(cardItem);
             } else {
                 document.getElementById(`qtd_${linhaCopo}`).value = totalChopp;
-                document.getElementById(`preco_${linhaCopo}`).value = "0.00";
-                
-                const p = parseFloat(document.getElementById(`preco_${linhaCopo}`).value) || 0;
-                document.getElementById(`total_${linhaCopo}`).value = (totalChopp * p).toFixed(2);
-                calcularTotalGeral();
+                calc(linhaCopo);
             }
         } else if (linhaCopo) {
             const elementoLinha = document.getElementById(`linha-${linhaCopo}`);
@@ -540,35 +626,6 @@
         validarRegraCopo();
     };
 
-    // AJUSTE AQUI: O segundo DOMContentLoaded foi unificado e a função toggleSacFoto agora valida SAC e ATIVACAO_MARCA
-    document.addEventListener('DOMContentLoaded', function() {
-        const radiosTipo = document.querySelectorAll('input[name="tipo"]');
-        const divFotoSac = document.getElementById('div_foto_sac');
-        const inputFoto = document.getElementById('id_foto_sac');
-
-        function toggleSacFoto() {
-            const selecionado = document.querySelector('input[name="tipo"]:checked');
-            
-            if (divFotoSac && inputFoto) {
-                // Torna obrigatório e exibe caso seja SAC ou ATIVACAO_MARCA
-                if (selecionado && (selecionado.value === 'SAC' || selecionado.value === 'ATIVACAO_MARCA')) {
-                    divFotoSac.style.display = 'block';
-                    inputFoto.required = true;
-                } else {
-                    divFotoSac.style.display = 'none';
-                    inputFoto.required = false;
-                    inputFoto.value = "";
-                }
-            }
-        }
-
-        radiosTipo.forEach(radio => {
-            radio.addEventListener('change', toggleSacFoto);
-        });
-
-        toggleSacFoto();
-    });
-
     function verificarEDispararAcordo() {
         const radioChecked = document.querySelector('input[name="tipo"]:checked');
         if (!radioChecked) return;
@@ -585,7 +642,6 @@
 
         if (tipoSelecionado === 'ACORDO_COMERCIAL') {
             if (!codigoCliente || codigoCliente === '0' || codigoCliente === '') {
-                console.log("Tipo 'Acordo Comercial' selecionado. Aguardando a escolha do cliente...");
                 return; 
             }
             buscarSaldosDoAcordo(codigoCliente, lojaCliente);
@@ -603,7 +659,7 @@
                 if (container) container.innerHTML = '';
 
                 if (!data || data.length === 0) {
-                    if (container) container.innerHTML = '<div class="alert alert-warning">Nenhum acordo cadastrado para este cliente.</div>';
+                    if (container) container.innerHTML = '<div class="alert alert-warning m-3 shadow-sm border-0"><i class="bi bi-exclamation-triangle me-2"></i>Nenhum acordo cadastrado para este cliente.</div>';
                     mAco.show();
                     return;
                 }
@@ -612,7 +668,7 @@
                     try {
                         const btn = document.createElement('button');
                         btn.type = 'button';
-                        btn.className = 'list-group-item list-group-item-action p-3 mb-2 border rounded';
+                        btn.className = 'list-group-item list-group-item-action p-4 border-bottom';
                         btn.setAttribute('data-acordo-id', acordo.id);
 
                         let textoSaldo = '';
@@ -629,21 +685,21 @@
 
                         let badgesProdutos = '';
                         if (acordo.tipo_acordo === 'produto' && acordo.produtos_permitidos && acordo.produtos_permitidos.length > 0) {
-                            badgesProdutos = '<div class="mt-2">';
+                            badgesProdutos = '<div class="mt-2 d-flex flex-wrap gap-1">';
                             acordo.produtos_permitidos.forEach(p => {
-                                badgesProdutos += `<span class="badge bg-light text-dark border me-1">${p.descricao} (${Math.round(p.saldo_item)} un)</span>`;
+                                badgesProdutos += `<span class="badge bg-light text-dark border">${p.descricao} (${Math.round(p.saldo_item)} un)</span>`;
                             });
                             badgesProdutos += '</div>';
                         }
 
                         btn.innerHTML = `
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div style="text-align: left;">
-                                    <strong>${acordo.descricao}</strong><br>
+                            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+                                <div>
+                                    <strong class="fs-6">${acordo.descricao}</strong><br>
                                     <small class="text-muted">Vigência: ${acordo.inicio || ''} até ${acordo.fim || ''}</small>
                                     ${badgesProdutos}
                                 </div>
-                                <span class="badge bg-secondary p-2" style="min-width: 100px; font-size: 0.95rem;">
+                                <span class="badge bg-secondary p-2 align-self-start align-self-md-center shadow-sm" style="font-size: 0.95rem;">
                                     Saldo: ${textoSaldo}
                                 </span>
                             </div>
@@ -665,7 +721,6 @@
                 mAco.show();
             })
             .catch(err => {
-                console.error("Erro no Fetch de Acordos:", err);
                 alert(`Erro ao carregar dados do acordo: ${err.message}`);
             });
     }
@@ -683,14 +738,14 @@
         }
         
         document.getElementById('texto_acordo_selecionado').innerHTML = `
-            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
                 <div>
-                    <span>#${acordo.id} - ${document.getElementById('res_razao').value}</span>
+                    <span class="d-block">#${acordo.id} - ${document.getElementById('res_razao').value}</span>
                     ${detalhesProdutos}
                 </div>
-                <div class="text-end">
+                <div class="text-start text-md-end">
                     <span class="small text-muted d-block" style="font-size: 0.75rem; font-weight: normal;">SALDO DISPONÍVEL</span>
-                    <span class="text-warning-dark fw-bold" style="font-size: 1.1rem; color: #bca464;">${textoSaldo}</span>
+                    <span class="fw-bold" style="font-size: 1.1rem; color: #bca464;">${textoSaldo}</span>
                 </div>
             </div>
         `;
