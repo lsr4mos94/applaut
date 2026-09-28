@@ -18,7 +18,7 @@ from django.utils.html import strip_tags
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth.models import User
-from .models import Plantao, Bonificacao, BonificacaoItem
+from .models import Plantao, Bonificacao, BonificacaoItem, FotoBonificacao
 from .services import buscar_cliente_protheus_unificado
 from cadastros.models import VerbaMensal, AcordoComercial
 
@@ -675,6 +675,12 @@ def criar_bonificacao(request):
                     data_entrega_retirada=request.POST.get('data_entrega_retirada') or None,
                     foto_sac=request.FILES.get('foto_sac')
                 )
+
+                for f in request.FILES.getlist('foto_sac'):
+                    FotoBonificacao.objects.create(
+                        bonificacao=nova_bonif,
+                        arquivo=f
+                    )
 
                 for item in itens_dados:
                     BonificacaoItem.objects.create(

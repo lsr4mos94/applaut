@@ -124,3 +124,11 @@ class BonificacaoItem(models.Model):
     def save(self, *args, **kwargs):
         self.valor_total = self.preco_tabela * self.quantidade
         super().save(*args, **kwargs)
+
+class FotoBonificacao(models.Model):
+    bonificacao = models.ForeignKey(Bonificacao, on_delete=models.CASCADE, related_name='fotos')
+    arquivo = models.ImageField(upload_to='sac/')
+    data_upload = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Foto #{self.id} - Bonificação {self.bonificacao.id}"

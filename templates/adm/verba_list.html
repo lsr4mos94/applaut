@@ -466,8 +466,28 @@ function visualizarVerba(id) {
                 <div class="col-12">
                     <label class="fw-bold text-muted text-uppercase x-small d-block">Justificativa</label>
                     <div class="p-2 bg-light border rounded mt-1" style="white-space: pre-wrap; max-height: 60px; overflow-y: auto;">${data.descricao || 'Sem descrição.'}</div>
-                </div>
-            </div>`;
+                </div>`;
+
+        // Bloco do Documento Anexado (idêntico ao padrão compacto de evidências)
+        if (data.arquivo_nota_url) {
+            html += `
+                <div class="col-12 mt-2">
+                    <label class="fw-bold text-muted text-uppercase x-small d-block mb-1">Nota / Recibo</label>
+                    <div class="row g-2">
+                        <div class="col-12 col-md-6">
+                            <div class="d-flex align-items-center justify-content-between p-2 bg-light border rounded shadow-sm">
+                                <div class="d-flex align-items-center text-truncate me-2">
+                                    <i class="bi bi-file-earmark-text text-primary fs-5 me-2"></i>
+                                    <span class="small fw-bold text-dark text-truncate">Nota / Recibo Anexado</span>
+                                </div>
+                                <a href="${data.arquivo_nota_url}" target="_blank" class="btn btn-sm btn-outline-primary px-2 py-1 text-nowrap" style="font-size: 0.75rem;">
+                                    <i class="bi bi-eye-fill me-1"></i> Ver Documento
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        }
         
         if (data.status.toUpperCase() !== 'PENDENTE') {
             html += `

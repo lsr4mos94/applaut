@@ -72,13 +72,13 @@
     <!-- FILTROS RESPONSIVOS -->
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-body card-filter">
-            <form method="GET" class="row g-3 align-items-end">
-                <div class="col-12 col-md-3">
-                    <label class="small fw-bold text-muted">Busca</label>
+            <form method="GET" class="row g-2 align-items-end">
+                <div class="col-12 col-md-2">
+                    <label class="small fw-bold text-muted" style="font-size: 0.7rem;">Busca</label>
                     <input type="text" name="busca" class="form-control form-control-sm" placeholder="Nome ou CPF/CNPJ" value="{{ request.GET.busca }}">
                 </div>
                 <div class="col-6 col-md-2">
-                    <label class="small fw-bold text-muted">Plataforma</label>
+                    <label class="small fw-bold text-muted" style="font-size: 0.7rem;">Plataforma</label>
                     <select name="plataforma" class="form-select form-select-sm">
                         <option value="">Todas</option>
                         <option value="CIEC" {% if request.GET.plataforma == 'CIEC' %}selected{% endif %}>CIEC</option>
@@ -87,7 +87,7 @@
                     </select>
                 </div>
                 <div class="col-6 col-md-2">
-                    <label class="small fw-bold text-muted">Tipo</label>
+                    <label class="small fw-bold text-muted" style="font-size: 0.7rem;">Tipo</label>
                     <select name="tipo" class="form-select form-select-sm">
                         <option value="">Todos</option>
                         <option value="VERBA_VENDEDOR" {% if request.GET.tipo == 'VERBA_VENDEDOR' %}selected{% endif %}>Verba Vendedor</option>
@@ -98,7 +98,7 @@
                     </select>
                 </div>
                 <div class="col-6 col-md-2">
-                    <label class="small fw-bold text-muted">Vendedor</label>
+                    <label class="small fw-bold text-muted" style="font-size: 0.7rem;">Vendedor</label>
                     <select name="vendedor" class="form-select form-select-sm">
                         <option value="">Todos</option>
                         {% for user in usuarios %}
@@ -109,7 +109,7 @@
                     </select>
                 </div>
                 <div class="col-6 col-md-2">
-                    <label class="small fw-bold text-muted">Status</label>
+                    <label class="small fw-bold text-muted" style="font-size: 0.7rem;">Status</label>
                     <select name="status" class="form-select form-select-sm">
                         <option value="">Todos</option>
                         <option value="PENDENTE" {% if request.GET.status == 'PENDENTE' %}selected{% endif %}>Pendente</option>
@@ -118,15 +118,17 @@
                         <option value="CONCLUIDO" {% if request.GET.status == 'CONCLUIDO' %}selected{% endif %}>Concluído</option>
                     </select>
                 </div>
-                <div class="col-6 col-md-2">
-                    <label class="small fw-bold text-muted">Emissão</label>
-                    <input type="date" name="data_solicitacao" class="form-control form-control-sm" value="{{ request.GET.data_solicitacao }}">
-                </div>
-                <div class="col-12 col-md-1 d-flex flex-column flex-md-row align-items-stretch align-items-md-end gap-2">
-                    <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold" title="Filtrar">
-                        <i class="bi bi-filter d-md-none me-1"></i><span class="d-md-none">FILTRAR</span><i class="bi bi-filter d-none d-md-inline"></i>
+                <div class="col-12 col-md-2 d-flex align-items-end gap-1">
+                    <div class="flex-grow-1">
+                        <label class="small fw-bold text-muted" style="font-size: 0.7rem;">Emissão</label>
+                        <input type="date" name="data_solicitacao" class="form-control form-control-sm px-1" value="{{ request.GET.data_solicitacao }}" style="font-size: 0.75rem;">
+                    </div>
+                    <button type="submit" class="btn btn-dark btn-sm fw-bold px-2" title="Filtrar" style="height: 31px;">
+                        <i class="bi bi-filter"></i>
                     </button>
-                    <a href="{% url request.resolver_match.url_name %}" class="btn btn-link btn-sm text-muted text-decoration-none border-0 p-0 text-center text-md-start">Limpar</a>
+                    <a href="{% url request.resolver_match.url_name %}" class="btn btn-outline-secondary btn-sm text-center px-2 text-decoration-none" title="Limpar" style="font-size: 0.75rem; height: 31px; line-height: 1.5;">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
                 </div>
             </form>
         </div>
@@ -257,18 +259,24 @@
                             <p class="mb-0 small text-secondary p-2 bg-light border rounded">
                                 <strong>Justificativa do Vendedor:</strong> {{ b.justificativa|default:"Sem observações." }}
                             </p>
-                            {% if b.foto_sac %}
+                            {% if b.fotos.all %}
                             <br>
                             <div class="col-12 mb-4">
-                                <h6 class="fw-bold mb-3" style="color: #bca464;"><i class="bi bi-box-seam me-2"></i>Evidência de SAC</h6>
-                                <div class="d-flex align-items-center p-2 bg-light border rounded">
-                                    <i class="bi bi-image text-primary fs-4 me-3 ms-2"></i>
-                                    <div class="flex-grow-1">
-                                        <p class="mb-0 small fw-bold text-dark">Foto anexada pelo solicitante</p>
+                                <h6 class="fw-bold mb-3" style="color: #bca464;"><i class="bi bi-box-seam me-2"></i>Evidências de SAC</h6>
+                                <div class="row g-2">
+                                    {% for foto in b.fotos.all %}
+                                    <div class="col-12 col-md-4">
+                                        <div class="d-flex align-items-center justify-content-between p-2 bg-light border rounded shadow-sm">
+                                            <div class="d-flex align-items-center text-truncate me-2">
+                                                <i class="bi bi-image text-primary fs-5 me-2"></i>
+                                                <span class="small fw-bold text-dark text-truncate">Evidência #{{ forloop.counter }}</span>
+                                            </div>
+                                            <a href="{{ foto.arquivo.url }}" target="_blank" class="btn btn-sm btn-outline-primary px-2 py-1 text-nowrap" style="font-size: 0.75rem;">
+                                                <i class="bi bi-eye-fill me-1"></i> Ver Foto
+                                            </a>
+                                        </div>
                                     </div>
-                                    <a href="{{ b.foto_sac.url }}" target="_blank" class="btn btn-sm btn-outline-primary px-3 me-2">
-                                        <i class="bi bi-eye-fill me-1"></i> Ver Foto
-                                    </a>
+                                    {% endfor %}
                                 </div>
                             </div>
                             {% endif %}
