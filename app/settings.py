@@ -10,7 +10,7 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'desenvolvimento-safe-key-123')
 
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = ['149.57.32.44', 'localhost', '127.0.0.1', 'app.lautbeer.com.br', '192.168.184.24', 'aroma-sullen-evaluate.ngrok-free.dev']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'app.lautbeer.com.br', '192.168.184.24', '149.57.32.44', '149.57.32.233']
 
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'http')
@@ -68,7 +68,8 @@ PROTHEUS_CIEC = {
     'HOST': os.environ.get('PROTHEUS_HOST'),
     'PORT': '1433',
     'OPTIONS': {
-        'driver': 'ODBC Driver 17 for SQL Server',
+        'driver': 'ODBC Driver 18 for SQL Server',
+        'extra_params': 'TrustServerCertificate=yes;',
     },
 }
 
@@ -80,7 +81,8 @@ PROTHEUS_WRP = {
     'HOST': os.environ.get('PROTHEUS_HOST'),
     'PORT': '1432',
     'OPTIONS': {
-        'driver': 'ODBC Driver 17 for SQL Server',
+        'driver': 'ODBC Driver 18 for SQL Server',
+        'extra_params': 'TrustServerCertificate=yes;',
     },
 }
 

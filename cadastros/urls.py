@@ -22,4 +22,6 @@ urlpatterns = [
     path('api/historico/<int:acordo_id>/', views.api_historico_acordo, name='api_historico_acordo'),
     path('api/acordos-vigentes/', views.api_acordos_vigentes, name='api_acordos_vigentes'),
 
+    path('cadastros/exportar/excel/', views.exportar_cadastros_excel, name='exportar_cadastros_excel'),
+
 ]

@@ -42,7 +42,7 @@ class Bonificacao(models.Model):
         ('ACORDO_COMERCIAL', 'Acordo Comercial'),
         ('NEGOCIACAO_ESPECIAL', 'Negociação Especial'),
         ('SAC', 'SAC'),
-        ('ATIVACAO', "Ativação de Marca"),
+        ('ATIVACAO_MARCA', "Ativação de Marca"),
     ]
 
     PLATAFORMA_CHOICES = [
@@ -93,10 +93,7 @@ class Bonificacao(models.Model):
     
     @property
     def pode_aprovar(self):
-        return self.tipo == 'NEGOCIACAO_ESPECIAL' and self.status == 'PENDENTE'
-    
-    @property
-    def pode_aprovar(self):
+        # Retorna Verdadeiro se for Negociação Especial ou SAC, e estiver PENDENTE
         return self.tipo in ['NEGOCIACAO_ESPECIAL', 'SAC'] and self.status == 'PENDENTE'
 
     class Meta:
@@ -127,3 +124,11 @@ class BonificacaoItem(models.Model):
     def save(self, *args, **kwargs):
         self.valor_total = self.preco_tabela * self.quantidade
         super().save(*args, **kwargs)
+
+class FotoBonificacao(models.Model):
+    bonificacao = models.ForeignKey(Bonificacao, on_delete=models.CASCADE, related_name='fotos')
+    arquivo = models.ImageField(upload_to='sac/')
+    data_upload = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Foto #{self.id} - Bonificação {self.bonificacao.id}"

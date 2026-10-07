@@ -80,6 +80,7 @@ def detalhes_solicitacao_verba(request, pk):
         'descricao': solicitacao.observacoes, 
         'obs_aprovacao': solicitacao.obs_aprovacao or "",
         'num_titulo': solicitacao.num_titulo or "",
+        'arquivo_nota_url': solicitacao.arquivo_nota.url if solicitacao.arquivo_nota else "", # Adicionado aqui
     }
     return JsonResponse(data)
 
@@ -184,6 +185,8 @@ def nova_solicitacao_verba(request):
         try:
             v_raw = request.POST.get('valor', '0')
             v_limpo = v_raw.replace('R$', '').replace('.', '').replace(',', '.').strip()
+
+            tem_doc = request.POST.get('tem_documento') == 'True'
             
             solicitacao = SolicitacaoVerba.objects.create(
                 usuario_solicitante=request.user,
@@ -197,7 +200,8 @@ def nova_solicitacao_verba(request):
                 valor=v_limpo,
                 data_vencimento=request.POST.get('data_vencimento'),
                 observacoes=request.POST.get('observacoes', ''),
-                tem_documento=request.POST.get('tem_documento') == 'True',
+                tem_documento=tem_doc,
+                arquivo_nota=request.FILES.get('arquivo_nota') if tem_doc else None,
                 status='PENDENTE'
             )
 

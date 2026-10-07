@@ -2,17 +2,71 @@
 
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="text-gold-title mb-0">Verbas Mensais</h3>
-    <button class="btn btn-gold-action px-4 py-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalVerba">
-        <i class="bi bi-plus-circle"></i><strong> Nova Verba</strong>
-    </button>
+<style>
+    /* AJUSTE MOBILE: Transforma a tabela em Cards para Verbas */
+    @media (max-width: 767.98px) {
+        .table-responsive { border: none !important; }
+        #tabelaVerbas thead { display: none; }
+        
+        #tabelaVerbas tbody tr { 
+            display: block; 
+            margin-bottom: 1rem; 
+            border: 1px solid #e9ecef; 
+            border-radius: 12px; 
+            box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.05); 
+            background-color: #fff;
+            overflow: hidden;
+        }
+        
+        #tabelaVerbas tbody td { 
+            display: block; 
+            position: relative;
+            /* Espaçamento reduzido (0.5rem em cima/baixo) com margem à esquerda (40%) para o título */
+            padding: 0.5rem 1rem 0.5rem 40% !important; 
+            text-align: right !important; 
+            border-bottom: 1px solid #f8f9fa;
+            word-wrap: break-word; 
+        }
+        
+        #tabelaVerbas tbody td:last-child { border-bottom: none; }
+        
+        /* Cria o título da célula baseado no atributo data-label */
+        #tabelaVerbas tbody td::before { 
+            content: attr(data-label); 
+            position: absolute;
+            left: 1rem;
+            top: 0.6rem;
+            width: 35%; 
+            font-weight: 700; 
+            color: #6c757d; 
+            text-transform: uppercase; 
+            font-size: 0.75rem; 
+            text-align: left; 
+        }
+        
+        /* Força os botões de ação a irem para a direita no telemóvel */
+        #tabelaVerbas tbody td[data-label="Ações"] .d-flex {
+            justify-content: flex-end !important;
+            margin-top: 0 !important;
+        }
+    }
+</style>
+
+<!-- CABEÇALHO RESPONSIVO -->
+<div class="d-md-flex justify-content-between align-items-center mb-4">
+    <h3 class="text-gold-title mb-3 mb-md-0">Verbas Mensais</h3>
+    <div class="d-grid d-md-flex">
+        <button class="btn btn-gold-action px-4 py-2 shadow-sm d-flex justify-content-center align-items-center" data-bs-toggle="modal" data-bs-target="#modalVerba">
+            <i class="bi bi-plus-circle me-2"></i><strong>Nova Verba</strong>
+        </button>
+    </div>
 </div>
 
+<!-- FILTROS RESPONSIVOS -->
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body card-filter">
         <form method="GET" class="row g-3 align-items-end">
-            <div class="col-md-5">
+            <div class="col-12 col-md-5">
                 <label class="small fw-bold text-muted">Vendedor</label>
                 <select name="vendedor" class="form-select form-select-sm border-0 shadow-sm">
                     <option value="">Todos os Vendedores</option>
@@ -23,92 +77,94 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-6 col-md-3">
                 <label class="small fw-bold text-muted">Mês</label>
                 <select name="mes" class="form-select form-select-sm border-0 shadow-sm">
-                    <option value="">Todos os Meses</option>
+                    <option value="">Todos</option>
                     {% for id, nome in meses %}
                     <option value="{{ id }}" {% if request.GET.mes == id|stringformat:"i" %}selected{% endif %}>{{ nome }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-6 col-md-2">
                 <label class="small fw-bold text-muted">Ano</label>
                 <input type="number" name="ano" class="form-control form-control-sm border-0 shadow-sm" value="{{ request.GET.ano|default:'2026' }}">
             </div>
-             <div class="col-md-2 d-flex align-items-end gap-2">
+             <div class="col-12 col-md-2 d-flex flex-column flex-md-row align-items-stretch align-items-md-end gap-2">
                 <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">FILTRAR</button>
-                <a href="{% url request.resolver_match.url_name %}" class="btn btn-link btn-sm text-muted text-decoration-none border-0 p-0 mb-1" style="font-size: 0.85rem;">Limpar</a>
+                <a href="{% url request.resolver_match.url_name %}" class="btn btn-link btn-sm text-muted text-decoration-none border-0 p-0 text-center text-md-start">Limpar</a>
             </div>
         </form>
     </div>
 </div>
 
-<table id="tabelaVerbas" class="table table-applaut w-100 mb-0">
-    <thead>
-        <tr>
-            <th class="ps-3">VENDEDOR</th>
-            <th class="text-center">REFERÊNCIA</th>
-            <th class="text-center">VALOR TOTAL</th>
-            <th class="text-center">LIMITE/CLI (%)</th>
-            <th class="text-center">AÇÕES</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for verba in verbas %}
-        <tr>
-            <td class="ps-3">
-                <strong style="color: #5e4d26;">#{{ verba.vendedor.perfil.codigo_vendedor }} {{ verba.vendedor.get_full_name }}</strong>
-            </td>
-            <td class="text-center">{{ verba.get_mes_referencia_display }} / {{ verba.ano_referencia }}</td>
-            <td class="fw-bold text-success text-center">R$ {{ verba.valor|floatformat:2 }}</td>
-            <td class="text-center">
-                <span class="badge bg-light text-dark border">{{ verba.percentual_limite_por_cliente }}%</span>
-            </td>
-            <td class="text-center">
-                <div class="d-flex justify-content-center gap-1">
-                    <button type="button" class="btn-square-action btn-track" title="Acompanhamento" onclick="abrirAcompanhamentoVerba('{{ verba.id }}', '{{ verba.vendedor.get_full_name }}')">
-                        <i class="bi bi-bar-chart-line-fill"></i>
-                    </button>
+<!-- TABELA / CARDS -->
+<div class="card border-0 shadow-sm overflow-hidden mb-4">
+    <div class="table-responsive">
+        <table id="tabelaVerbas" class="table table-applaut w-100 mb-0">
+            <thead>
+                <tr>
+                    <th class="ps-3">VENDEDOR</th>
+                    <th class="text-center">REFERÊNCIA</th>
+                    <th class="text-center">VALOR TOTAL</th>
+                    <th class="text-center">LIMITE/CLI (%)</th>
+                    <th class="text-center">AÇÕES</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for verba in verbas %}
+                <tr>
+                    <td class="ps-3 text-start" data-label="Vendedor">
+                        <strong style="color: #5e4d26;">#{{ verba.vendedor.perfil.codigo_vendedor }} {{ verba.vendedor.get_full_name }}</strong>
+                    </td>
+                    <td class="text-md-center" data-label="Referência">{{ verba.get_mes_referencia_display }} / {{ verba.ano_referencia }}</td>
+                    <td class="fw-bold text-success text-md-center" data-label="Valor Total">R$ {{ verba.valor|floatformat:2 }}</td>
+                    <td class="text-md-center" data-label="Limite">
+                        <span class="badge bg-light text-dark border">{{ verba.percentual_limite_por_cliente }}%</span>
+                    </td>
+                    <td class="text-md-center" data-label="Ações">
+                        <div class="d-flex justify-content-center gap-1">
+                            <button type="button" class="btn-square-action btn-track" title="Acompanhamento" onclick="abrirAcompanhamentoVerba('{{ verba.id }}', '{{ verba.vendedor.get_full_name }}')">
+                                <i class="bi bi-bar-chart-line-fill"></i>
+                            </button>
 
-                    {% if not request.user.groups.all|stringformat:"s" == "['Vendedores']" %}
-                        <button type="button" class="btn-square-action btn-edit" title="Editar" data-bs-toggle="modal" data-bs-target="#modalEditar{{ verba.id }}">
-                            <i class="bi bi-pencil"></i>
-                        </button>
-                        {% if not verba.tem_movimentacao %}
-                        <button type="button" class="btn-square-action btn-delete" title="Excluir" data-bs-toggle="modal" data-bs-target="#modalExcluir{{ verba.id }}">
-                            <i class="bi bi-trash3-fill"></i>
-                        </button>
-                        {% endif %}
-                    {% endif %}
-                </div>
-            </td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td class="ps-3"></td>
-            <td class="text-center"></td>
-            <td class="text-center text-muted py-4">Nenhuma verba encontrada.</td>
-            <td class="text-center"></td>
-            <td class="text-center"></td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+                            {% if not request.user.groups.all|stringformat:"s" == "['Vendedores']" %}
+                                <button type="button" class="btn-square-action btn-edit" title="Editar" data-bs-toggle="modal" data-bs-target="#modalEditar{{ verba.id }}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                {% if not verba.tem_movimentacao %}
+                                <button type="button" class="btn-square-action btn-delete" title="Excluir" data-bs-toggle="modal" data-bs-target="#modalExcluir{{ verba.id }}">
+                                    <i class="bi bi-trash3-fill"></i>
+                                </button>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-4">Nenhuma verba encontrada.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 
+<!-- MODAIS DE EDIÇÃO -->
 {% for verba in verbas %}
 <div class="modal fade" id="modalEditar{{ verba.id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
             <div class="modal-header border-0 text-white" style="background-color: #bca464;">
-                <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Editar Verba</h5>
+                <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Editar Verba</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form action="{% url 'editar_verba' verba.id %}" method="POST">
                 {% csrf_token %}
                 <div class="modal-body p-4">
                     <div class="row g-3">
-                        <div class="col-md-6">
+                        <div class="col-6">
                             <label class="form-label small fw-bold">Mês</label>
                             <select name="mes" class="form-select form-select-sm" required>
                                 {% for id, nome in meses %}
@@ -116,23 +172,23 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-6">
                             <label class="form-label small fw-bold">Ano</label>
                             <input type="number" name="ano" class="form-control form-control-sm" value="{{ verba.ano_referencia }}" required>
                         </div>
-                        <div class="col-md-7">
+                        <div class="col-12 col-md-7">
                             <label class="form-label small fw-bold">Valor Mensal (R$)</label>
                             <input type="number" step="0.01" name="valor" class="form-control form-control-sm" value="{{ verba.valor|stringformat:'.2f' }}" min="{{ verba.valor_utilizado|stringformat:'.2f' }}" required>
                         </div>
-                        <div class="col-md-5">
+                        <div class="col-12 col-md-5">
                             <label class="form-label small fw-bold">Limite/Cli (%)</label>
                             <input type="number" step="0.1" name="percentual_limite" class="form-control form-control-sm" value="{{ verba.percentual_limite_por_cliente|default:100 }}" required>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer border-0 bg-light text-end">
-                    <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-sm px-4 text-white shadow-sm fw-bold" style="background-color: #bca464;">Salvar</button>
+                <div class="modal-footer border-0 bg-light d-flex flex-column flex-sm-row">
+                    <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none w-100 w-sm-auto order-2 order-sm-1" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-sm px-4 text-white shadow-sm fw-bold w-100 w-sm-auto order-1 order-sm-2 mb-2 mb-sm-0" style="background-color: #bca464;">Salvar</button>
                 </div>
             </form>
         </div>
@@ -140,23 +196,24 @@
 </div>
 {% endfor %}
 
+<!-- MODAIS DE EXCLUSÃO -->
 {% for verba in verbas %}
 <div class="modal fade" id="modalExcluir{{ verba.id }}" tabindex="-1">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content border-0 shadow">
             <div class="modal-header border-0 bg-danger text-white">
-                <h5 class="modal-title"><i class="bi bi-exclamation-triangle"></i> Excluir Verba</h5>
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Excluir Verba</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body text-center p-4">
                 <p class="mb-0">Deseja realmente excluir a verba de <strong>{{ verba.vendedor.get_full_name }}</strong>?</p>
                 <small class="text-muted">Referência: {{ verba.get_mes_referencia_display }}/{{ verba.ano_referencia }}</small>
             </div>
-            <div class="modal-footer border-0 bg-light d-flex justify-content-center">
-                <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none" data-bs-dismiss="modal">Não</button>
-                <form action="{% url 'excluir_verba' verba.id %}" method="POST" style="display: inline;">
+            <div class="modal-footer border-0 bg-light d-flex flex-column flex-sm-row justify-content-center">
+                <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none w-100 w-sm-auto mb-2 mb-sm-0" data-bs-dismiss="modal">Não</button>
+                <form action="{% url 'excluir_verba' verba.id %}" method="POST" class="w-100 w-sm-auto">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-danger px-4 shadow-sm fw-bold">Sim, Excluir</button>
+                    <button type="submit" class="btn btn-sm btn-danger px-4 shadow-sm fw-bold w-100">Sim, Excluir</button>
                 </form>
             </div>
         </div>
@@ -164,17 +221,17 @@
 </div>
 {% endfor %}
 
+<!-- MODAL DE ACOMPANHAMENTO -->
 <div class="modal fade" id="modalHistVerba" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header border-0 text-white" style="background-color: #bca464;">
-                <h5 class="modal-title">
-                    Acompanhamento da Verba - 
-                    <span id="vendedor_nome_modal" class="text-white fw-bold"></span>
+                <h5 class="modal-title fs-6">
+                    Acompanhamento - <span id="vendedor_nome_modal" class="text-white fw-bold"></span>
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4">
+            <div class="modal-body p-3 p-md-4">
                 <div class="mb-4">
                     <div class="d-flex justify-content-between mb-1">
                         <span class="small fw-bold text-muted text-uppercase">Consumo da Verba no Período</span>
@@ -192,7 +249,7 @@
                     <table class="table table-sm table-hover align-middle">
                         <thead class="bg-light">
                             <tr class="small text-muted text-uppercase" style="font-size: 0.7rem;">
-                                <th class="ps-3">ID</th>
+                                <th class="ps-2">ID</th>
                                 <th>Cliente</th>
                                 <th class="text-center">Valor Utilizado</th>
                                 <th class="text-center">Pedido Protheus</th>
@@ -202,10 +259,14 @@
                     </table>
                 </div>
             </div>
+            <div class="modal-footer border-0 bg-light">
+                <button type="button" class="btn btn-secondary w-100 w-sm-auto" data-bs-dismiss="modal">Fechar</button>
+            </div>
         </div>
     </div>
 </div>
 
+<!-- MODAL NOVA VERBA -->
 <div class="modal fade" id="modalVerba" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
@@ -217,16 +278,16 @@
                 {% csrf_token %}
                 <div class="modal-body p-4">
                     <div class="row g-3">
-                        <div class="col-md-4">
+                        <div class="col-12 col-md-4">
                             <label class="form-label small fw-bold">Cód. Vendedor</label>
                             <input type="text" id="input_codigo" class="form-control form-control-sm shadow-sm" required>
                         </div>
-                        <div class="col-md-8">
+                        <div class="col-12 col-md-8">
                             <label class="form-label small fw-bold text-muted">Vendedor</label>
                             <input type="text" id="input_nome" class="form-control form-control-sm bg-light border-0" readonly>
                             <input type="hidden" name="vendedor_id" id="vendedor_id">
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-6">
                             <label class="form-label small fw-bold">Mês Referência</label>
                             <select name="mes" class="form-select form-select-sm shadow-sm" required>
                                 {% for id, nome in meses %}
@@ -234,62 +295,62 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-6">
                             <label class="form-label small fw-bold">Ano</label>
                             <input type="number" name="ano" class="form-control form-control-sm shadow-sm" value="2026" required>
                         </div>
-                        <div class="col-md-7">
+                        <div class="col-12 col-md-7">
                             <label class="form-label small fw-bold">Valor Total (R$)</label>
                             <input type="number" step="0.01" name="valor" class="form-control form-control-sm shadow-sm" required>
                         </div>
-                        <div class="col-md-5">
+                        <div class="col-12 col-md-5">
                             <label class="form-label small fw-bold">Limite/Cli (%)</label>
                             <input type="number" step="0.1" name="percentual_limite" class="form-control form-control-sm shadow-sm" value="100" required>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer border-0 bg-light text-end">
-                    <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-sm px-4 text-white shadow-sm fw-bold" style="background-color: #bca464;">Cadastrar</button>
+                <div class="modal-footer border-0 bg-light d-flex flex-column flex-sm-row">
+                    <button type="button" class="btn btn-link text-muted text-decoration-none w-100 w-sm-auto order-2 order-sm-1" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn px-4 text-white shadow-sm fw-bold w-100 w-sm-auto order-1 order-sm-2 mb-2 mb-sm-0" style="background-color: #bca464;">Cadastrar</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-    {% if verbas.has_other_pages %}
-    <nav class="mt-4 mb-4">
-        <ul class="pagination justify-content-center">
-            {% if verbas.has_previous %}
-                <li class="page-item">
-                    <a class="page-link text-dark" href="?page={{ verbas.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">&laquo; Anterior</a>
-                </li>
-            {% endif %}
+<!-- PAGINAÇÃO -->
+{% if verbas.has_other_pages %}
+<nav class="mt-4 mb-4">
+    <ul class="pagination justify-content-center flex-wrap gap-1">
+        {% if verbas.has_previous %}
+            <li class="page-item">
+                <a class="page-link text-dark rounded" href="?page={{ verbas.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">&laquo;</a>
+            </li>
+        {% endif %}
 
-            {% for i in verbas.paginator.page_range %}
-                {% if verbas.number == i %}
-                    <li class="page-item active"><span class="page-link" style="background-color: #bca464; border-color: #bca464;">{{ i }}</span></li>
-                {% elif i > verbas.number|add:'-3' and i < verbas.number|add:'3' %}
-                    <li class="page-item"><a class="page-link text-dark" href="?page={{ i }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ i }}</a></li>
-                {% endif %}
-            {% endfor %}
-
-            {% if verbas.has_next %}
-                <li class="page-item">
-                    <a class="page-link text-dark" href="?page={{ verbas.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Próxima &raquo;</a>
-                </li>
+        {% for i in verbas.paginator.page_range %}
+            {% if verbas.number == i %}
+                <li class="page-item active"><span class="page-link rounded" style="background-color: #bca464; border-color: #bca464;">{{ i }}</span></li>
+            {% elif i > verbas.number|add:'-3' and i < verbas.number|add:'3' %}
+                <li class="page-item"><a class="page-link text-dark rounded" href="?page={{ i }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ i }}</a></li>
             {% endif %}
-        </ul>
-    </nav>
-    {% endif %}
+        {% endfor %}
+
+        {% if verbas.has_next %}
+            <li class="page-item">
+                <a class="page-link text-dark rounded" href="?page={{ verbas.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">&raquo;</a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
 
 <script>
-$(document).ready(function() {
-    $('#tabelaVerbas').DataTable({
+$(document).ready(function() {$('#tabelaVerbas').DataTable({
         "dom": 't',
         "paging": false,
         "ordering": true,
@@ -341,9 +402,9 @@ $(document).ready(function() {
                         data.registros.forEach(item => {
                             corpo.innerHTML += `
                                 <tr>
-                                    <td class="ps-3 text-muted">#${item.id}</td>
+                                    <td class="ps-2 text-muted">#${item.id}</td>
                                     <td class="fw-bold">${item.cliente}</td>
-                                    <td class="text-center text-success fw-bold">R$ ${item.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+                                    <td class="text-center text-success fw-bold text-nowrap">R$ ${item.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
                                     <td class="text-center"><span class="badge ${item.pedido === 'Pendente' ? 'bg-light text-muted border' : 'bg-dark text-white'}">${item.pedido}</span></td>
                                 </tr>`;
                         });
@@ -357,7 +418,7 @@ $(document).ready(function() {
         const nomeField = document.getElementById('input_nome');
         const idField = document.getElementById('vendedor_id');
         if (codigo) {
-            nomeField.value = "Buscando...";
+            nomeField.value = "A procurar...";
             fetch(`/cadastros/buscar-vendedor/?codigo=${codigo}`)
                 .then(response => response.json())
                 .then(data => {
