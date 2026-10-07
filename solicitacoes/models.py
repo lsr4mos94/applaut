@@ -43,6 +43,7 @@ class Bonificacao(models.Model):
         ('NEGOCIACAO_ESPECIAL', 'Negociação Especial'),
         ('SAC', 'SAC'),
         ('ATIVACAO_MARCA', "Ativação de Marca"),
+        ('MARKETING', "Marketing")
     ]
 
     PLATAFORMA_CHOICES = [
