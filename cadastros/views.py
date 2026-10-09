@@ -180,11 +180,19 @@ def acordos_comerciais(request):
 
     context = {
         'acordos': acordos,
+        'pode_incluir_acordo': not request.user.groups.filter(name='Vendedores').exists(),
+        'pode_excluir_acordo': not request.user.groups.filter(name='Vendedores').exists(),
     }
     
     return render(request, 'cadastros/acordos.html', context)
 
+@login_required
 def salvar_acordo(request):
+    # Vendedor não pode incluir acordo comercial (bloqueio também no servidor, não só na tela)
+    if request.user.groups.filter(name='Vendedores').exists():
+        messages.error(request, "Vendedores não têm permissão para incluir Acordo Comercial.")
+        return redirect('acordos_comerciais')
+
     if request.method == 'POST':
         try:
             acordo = AcordoComercial(
@@ -222,6 +230,11 @@ def salvar_acordo(request):
 
 @login_required
 def excluir_acordo(request, pk):
+    # Vendedor não pode excluir acordo comercial (bloqueio também no servidor, não só na tela)
+    if request.user.groups.filter(name='Vendedores').exists():
+        messages.error(request, "Vendedores não têm permissão para excluir Acordo Comercial.")
+        return redirect('acordos_comerciais')
+
     if request.method == 'POST':
         acordo = get_object_or_404(AcordoComercial, pk=pk)
         nome_cliente = acordo.cliente_nome
@@ -796,44 +809,30 @@ def api_acordos_vigentes(request):
     if not cliente_cod:
         return JsonResponse([], safe=False)
 
-    # Traz todos os acordos vinculados ao cliente e loja cadastrados
+    # Só acordos ATIVOS: os encerrados (inclusive por saldo zerado) não podem ser usados
     acordos = AcordoComercial.objects.filter(
         cliente_codigo=cliente_cod,
-        cliente_loja=loja_cod
+        cliente_loja=loja_cod,
+        situacao='ATIVO'
     )
 
     resultado = []
     for acordo in acordos:
         produtos_permitidos = []
-        total_saldo_produtos = 0 
 
-        # Varre os itens calculando o saldo real disponível
-        for item in acordo.itens.all():
-            # CORREÇÃO: O limite total definido no acordo está salvo em qtd_faturada
-            qtd_limite = item.qtd_faturada or 0
-            
-            # O consumo do que já foi retirado/solicitado deste acordo fica em qtd_bonificada
-            qtd_utilizada = item.qtd_bonificada or 0
-            
-            # O saldo disponível é o limite total do contrato menos o que já usou
-            saldo_disponivel_item = max(0, qtd_limite - qtd_utilizada)
-            
-            # Acumula o saldo total do acordo de produto
-            total_saldo_produtos += saldo_disponivel_item
-
-            produtos_permitidos.append({
-                'codigo': item.produto_codigo,
-                'descricao': item.produto_descricao,
-                'saldo_item': float(saldo_disponivel_item)
-            })
-
-        # Define a descrição e o saldo de exibição conforme o tipo de acordo
         if acordo.tipo_acordo == 'produto':
+            # Saldo real: limite do acordo menos o que já foi solicitado em bonificações
+            for codigo, dados in acordo.saldos_por_produto().items():
+                produtos_permitidos.append({
+                    'codigo': codigo,
+                    'descricao': dados['descricao'],
+                    'saldo_item': float(dados['saldo'])
+                })
             descricao_final = f"Acordo #{acordo.id} (Por Produto) - {acordo.cliente_nome}"
-            saldo_exibicao = total_saldo_produtos  
+            saldo_exibicao = sum(p['saldo_item'] for p in produtos_permitidos)
         else:
             descricao_final = f"Acordo #{acordo.id} (Por Valor) - {acordo.cliente_nome}"
-            saldo_exibicao = float(acordo.valor_acordo) if acordo.valor_acordo else 0.0
+            saldo_exibicao = float(acordo.saldo_disponivel)
 
         resultado.append({
             'id': acordo.id,

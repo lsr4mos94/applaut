@@ -2,6 +2,7 @@ import os
 import base64
 import logging
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 import pandas as pd
 import requests
 from xhtml2pdf import pisa
@@ -483,6 +484,49 @@ def enviar_emails_bonificacao(bonificacao, request):
     email.attach_alternative(html_content, "text/html")
     email.send()
 
+class SaldoAcordoInsuficiente(Exception):
+    pass
+
+
+def validar_saldo_acordo(acordo, itens_dados):
+    """Levanta SaldoAcordoInsuficiente se a solicitação ultrapassar o saldo do acordo."""
+    itens_do_acordo = [i for i in itens_dados if i.get('acordo_id') == acordo.id]
+
+    if acordo.situacao != 'ATIVO':
+        raise SaldoAcordoInsuficiente(
+            f"O Acordo Comercial #{acordo.id} está encerrado e não aceita novas solicitações."
+        )
+
+    if acordo.tipo_acordo == 'produto':
+        solicitado = {}
+        for item in itens_do_acordo:
+            cod = str(item['codigo']).strip()
+            solicitado[cod] = solicitado.get(cod, 0) + item['qtd']
+
+        saldos = acordo.saldos_por_produto()
+        for cod, qtd in solicitado.items():
+            saldo = saldos.get(cod, {}).get('saldo', 0)
+            if qtd > saldo:
+                raise SaldoAcordoInsuficiente(
+                    f"Saldo insuficiente no Acordo #{acordo.id} para o produto {cod}: "
+                    f"solicitado {qtd}, disponível {saldo}."
+                )
+    else:
+        total = sum(Decimal(str(round(i['total'], 2))) for i in itens_do_acordo)
+        saldo = acordo.saldo_disponivel
+        if total > saldo:
+            raise SaldoAcordoInsuficiente(
+                f"Saldo insuficiente no Acordo #{acordo.id}: "
+                f"solicitado R$ {total:.2f}, disponível R$ {saldo:.2f}."
+            )
+
+
+def recalcular_situacao_acordos(acordo_ids):
+    """Reavalia ATIVO/ENCERRADO dos acordos após reprovar ou excluir uma bonificação."""
+    for acordo in AcordoComercial.objects.filter(id__in=[i for i in acordo_ids if i]):
+        acordo.atualizar_situacao()
+
+
 def validar_limite_por_cliente(vendedor, cliente_cnpj, valor_nova_solicitacao):
     try:
         verba = VerbaMensal.objects.get(vendedor=vendedor)
@@ -558,6 +602,7 @@ def criar_bonificacao(request):
                     continue
 
         status_final = 'PENDENTE'
+        acordo = None
         
         if tipo == 'SAC':
             status_final = 'PENDENTE'
@@ -582,6 +627,13 @@ def criar_bonificacao(request):
                 acordo = AcordoComercial.objects.get(id=acordo_id_global)
             except AcordoComercial.DoesNotExist:
                 messages.error(request, "O Acordo Comercial selecionado não foi encontrado no sistema.")
+                return render(request, 'solicitacoes/bonificacao_form.html', {'dados': request.POST})
+
+            if acordo.situacao != 'ATIVO':
+                messages.error(
+                    request,
+                    f"O Acordo Comercial #{acordo.id} está encerrado e não aceita novas solicitações."
+                )
                 return render(request, 'solicitacoes/bonificacao_form.html', {'dados': request.POST})
 
             # 2. Validação se o acordo for por PRODUTO
@@ -657,8 +709,15 @@ def criar_bonificacao(request):
             
             status_final = 'APROVADO'
 
+        acordo_encerrado = False
+
         try:
             with transaction.atomic():
+                if acordo:
+                    # Trava o acordo para duas solicitações simultâneas não consumirem o mesmo saldo
+                    acordo = AcordoComercial.objects.select_for_update().get(pk=acordo.pk)
+                    validar_saldo_acordo(acordo, itens_dados)
+
                 nova_bonif = Bonificacao.objects.create(
                     tipo=tipo,
                     vendedor=request.user,
@@ -693,6 +752,16 @@ def criar_bonificacao(request):
                         acordo_vinculado_id=item['acordo_id']  # Grava a FK do acordo escolhido (ou None pro copo)
                     )
 
+                # Saldo zerou com esta solicitação -> encerra o acordo automaticamente
+                if acordo:
+                    acordo_encerrado = acordo.atualizar_situacao() == 'ENCERRADO'
+
+            if acordo_encerrado:
+                messages.info(
+                    request,
+                    f"O saldo do Acordo Comercial #{acordo.id} foi totalmente utilizado e o acordo foi encerrado."
+                )
+
             try:
                 enviar_emails_bonificacao(nova_bonif, request)
                 if status_final == 'PENDENTE':
@@ -701,6 +770,10 @@ def criar_bonificacao(request):
                 messages.warning(request, "Gravado, mas houve erro no envio do e-mail.")
 
             return redirect('bonificacao_list')
+
+        except SaldoAcordoInsuficiente as e:
+            messages.error(request, str(e))
+            return render(request, 'solicitacoes/bonificacao_form.html', {'dados': request.POST})
 
         except Exception as e:
             messages.error(request, f"Erro técnico ao salvar: {str(e)}")
@@ -750,6 +823,10 @@ def gerenciar_solicitacao(request, pk, acao):
             solicitacao.usuario_aprovador = request.user
             solicitacao.data_aprovacao = timezone.now()
             solicitacao.save()
+            # A reprovação devolve o saldo: reabre o acordo se ele tinha sido encerrado
+            recalcular_situacao_acordos(
+                solicitacao.itens.values_list('acordo_vinculado_id', flat=True).distinct()
+            )
             messages.success(request, f"Solicitação {pk} reprovada.")
         else:
             messages.error(request, "É necessário informar o motivo da reprovação.")
@@ -782,7 +859,10 @@ def confirmar_plantao(request, pk):
 def excluir_bonificacao(request, pk):
     bonificacao = get_object_or_404(Bonificacao, pk=pk)
     if not request.user.groups.filter(name='Vendedores').exists() and bonificacao.status != 'CONCLUIDO':
+        acordo_ids = list(bonificacao.itens.values_list('acordo_vinculado_id', flat=True).distinct())
         bonificacao.delete()
+        # A exclusão devolve o saldo: reabre o acordo se ele tinha sido encerrado
+        recalcular_situacao_acordos(acordo_ids)
         messages.success(request, "Solicitação excluída com sucesso.")
     else:
         messages.error(request, "Não é permitido excluir esta solicitação.")

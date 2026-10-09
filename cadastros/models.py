@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db import models
 from django.contrib.auth.models import User
 from django.db import models
@@ -98,6 +99,55 @@ class AcordoComercial(models.Model):
             return 'Ativo'
         return 'Encerrado'
     
+    # Bonificações reprovadas (ou excluídas) devolvem o saldo ao acordo.
+    STATUS_QUE_CONSOMEM_SALDO = ['PENDENTE', 'APROVADO', 'CONCLUIDO']
+
+    def _utilizacoes(self):
+        return self.utilizacoes_diretas.filter(
+            bonificacao__status__in=self.STATUS_QUE_CONSOMEM_SALDO
+        )
+
+    def saldos_por_produto(self):
+        """
+        Acordo por produto: limite (qtd_faturada), utilizado e saldo de cada produto.
+        O utilizado é somado direto das bonificações vinculadas a este acordo.
+        """
+        utilizado = {}
+        for linha in self._utilizacoes().values('produto_codigo').annotate(total=Sum('quantidade')):
+            cod = str(linha['produto_codigo']).strip()
+            utilizado[cod] = utilizado.get(cod, 0) + (linha['total'] or 0)
+
+        saldos = {}
+        for item in self.itens.all():
+            cod = str(item.produto_codigo).strip()
+            dados = saldos.setdefault(cod, {'descricao': item.produto_descricao, 'limite': 0})
+            dados['limite'] += item.qtd_faturada or 0
+
+        for cod, dados in saldos.items():
+            dados['utilizado'] = utilizado.get(cod, 0)
+            dados['saldo'] = max(0, dados['limite'] - dados['utilizado'])
+        return saldos
+
+    @property
+    def saldo_disponivel(self):
+        """Unidades restantes (acordo por produto) ou R$ restantes (acordo por valor)."""
+        if self.tipo_acordo == 'produto':
+            return sum(d['saldo'] for d in self.saldos_por_produto().values())
+
+        utilizado = self._utilizacoes().aggregate(total=Sum('valor_total'))['total'] or Decimal('0')
+        return max(Decimal('0'), (self.valor_acordo or Decimal('0')) - utilizado)
+
+    def atualizar_situacao(self):
+        """
+        Encerra o acordo quando o saldo zera e reabre se o saldo voltar
+        (bonificação reprovada ou excluída). Retorna a situação resultante.
+        """
+        nova = 'ATIVO' if self.saldo_disponivel > 0 else 'ENCERRADO'
+        if nova != self.situacao:
+            self.situacao = nova
+            self.save(update_fields=['situacao'])
+        return nova
+
     def __str__(self):
         return f"{self.cliente_nome} - {self.get_tipo_acordo_display()}"
 

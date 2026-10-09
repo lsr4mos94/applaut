@@ -59,11 +59,13 @@
 <!-- CABEÇALHO RESPONSIVO -->
 <div class="d-md-flex justify-content-between align-items-center mb-4">
     <h3 class="text-gold-title mb-3 mb-md-0">Acordos Comerciais</h3>
+    {% if pode_incluir_acordo %}
     <div class="d-grid d-md-flex">
         <button class="btn btn-gold-action px-4 py-2 shadow-sm d-flex justify-content-center align-items-center" data-bs-toggle="modal" data-bs-target="#modalAcordo">
             <i class="bi bi-plus-circle me-2"></i><strong>Novo Acordo</strong>
         </button>
     </div>
+    {% endif %}
 </div>
 
 <!-- FILTROS RESPONSIVOS -->
@@ -149,9 +151,11 @@
                             <button type="button" class="btn-square-action btn-view" data-bs-toggle="modal" data-bs-target="#modalVisualizar{{ acordo.id }}" title="Ver Detalhes">
                                 <i class="bi bi-eye-fill"></i>
                             </button>
+                            {% if pode_excluir_acordo %}
                             <button type="button" class="btn-square-action btn-delete" data-bs-toggle="modal" data-bs-target="#modalExcluir{{ acordo.id }}" title="Excluir">
                                 <i class="bi bi-trash3-fill"></i>
                             </button>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
