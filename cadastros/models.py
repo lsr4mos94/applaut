@@ -5,6 +5,10 @@ from django.db import models
 from django.utils import timezone
 from django.db.models import Sum
 
+# Bonificações de verba que consomem o saldo do mês (mesma regra em todo o sistema)
+STATUS_QUE_CONSOMEM_VERBA = ['PENDENTE', 'APROVADO', 'CONCLUIDO']
+
+
 class VerbaMensal(models.Model):
     MESES_CHOICES = [
         (1, 'Janeiro'), (2, 'Fevereiro'), (3, 'Março'), (4, 'Abril'),
@@ -49,7 +53,7 @@ class VerbaMensal(models.Model):
             data_solicitacao__month=self.mes_referencia,
             data_solicitacao__year=self.ano_referencia,
             tipo='VERBA_VENDEDOR',
-            status__in=['APROVADO', 'PENDENTE', 'PROCESSADO', 'FINALIZADO'] 
+            status__in=STATUS_QUE_CONSOMEM_VERBA,
         )
 
         total = bonificacoes.aggregate(total_gasto=Sum('itens__valor_total'))['total_gasto']

@@ -1,0 +1,84 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#141417">
+    <title>{% block title %}Sistema Läut{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --text: #111827; --text-2: #374151; --muted: #6b7280;
+            --border: #e5e7eb; --border-strong: #d1d5db;
+            --ink: #18181b; --ink-hover: #27272a;
+            --accent: #bca464; --accent-strong: #8c7234; --accent-ring: rgba(188, 164, 100, .28);
+            --dark: #141417;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh; min-height: 100dvh;
+            font-family: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            font-size: .9rem; color: var(--text); background: #f6f7f9;
+            -webkit-font-smoothing: antialiased;
+            display: grid; grid-template-columns: 1fr;
+        }
+
+        /* Formulário */
+        .auth-main { display: flex; align-items: center; justify-content: center; padding: 2rem 1.25rem; }
+        .auth-card {
+            width: 100%; max-width: 400px;
+            background: #fff; border: 1px solid var(--border); border-radius: 14px;
+            box-shadow: 0 1px 3px rgba(16,24,40,.08), 0 12px 32px -12px rgba(16,24,40,.12);
+            padding: 2.5rem 2rem;
+        }
+        @media (max-width: 420px) { .auth-card { padding: 2rem 1.25rem; } }
+        .auth-logo { display: block; height: 120px; max-width: 280px; width: auto; object-fit: contain; margin: 0 auto 2rem; }
+        @media (max-width: 420px) { .auth-logo { height: 100px; } }
+        .auth-card h2 { font-size: 1.5rem; font-weight: 700; letter-spacing: -.02em; margin: 0 0 .35rem; }
+        .auth-card .sub { color: var(--muted); margin-bottom: 1.75rem; }
+
+        .form-label { font-size: .8rem; font-weight: 500; color: var(--text-2); margin-bottom: .35rem; }
+        .form-control {
+            min-height: 44px; font-size: 16px;
+            border: 1px solid var(--border-strong); border-radius: 8px; box-shadow: none !important;
+        }
+        .form-control:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring) !important; }
+
+        .btn-ink {
+            width: 100%; min-height: 44px;
+            background: var(--ink); color: #fff; border: 0; border-radius: 8px;
+            font-weight: 600; font-size: .9rem;
+        }
+        .btn-ink:hover, .btn-ink:focus { background: var(--ink-hover); color: #fff; }
+        .btn-ink:focus-visible { box-shadow: 0 0 0 3px var(--accent-ring); }
+        .link-sutil { color: var(--accent-strong); text-decoration: none; font-weight: 500; font-size: .85rem; }
+        .link-sutil:hover { color: var(--text); text-decoration: underline; }
+
+        .alert { border-radius: 8px; font-size: .85rem; }
+        .alert-danger { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+        .alert-success { background: #ecfdf3; border: 1px solid #bbf7d0; color: #14532d; }
+        .errorlist { list-style: none; padding: 0; margin: .4rem 0 0; color: #b91c1c; font-size: .8rem; }
+        .ajuda { color: var(--muted); font-size: .75rem; margin-top: .35rem; }
+        .ajuda ul { padding-left: 1rem; margin: .25rem 0 0; }
+
+        .modal-content { border: 0; border-radius: 14px; box-shadow: 0 20px 40px -12px rgba(16,24,40,.25); }
+        .modal-header { border-bottom: 1px solid var(--border); }
+        .modal-title { font-size: 1rem; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <main class="auth-main">
+        <div class="auth-card">
+            {% block card %}{% endblock %}
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

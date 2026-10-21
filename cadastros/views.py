@@ -1,4 +1,5 @@
 import os
+import logging
 from datetime import date, datetime
 from django.conf import settings
 from django.contrib import messages
@@ -15,8 +16,16 @@ from django.db.models import Q, Sum
 from usuarios.models import Perfil
 from solicitacoes.models import Bonificacao, BonificacaoItem
 import pandas as pd
+from app.permissoes import (
+    grupo_requerido, no_grupo, GESTAO_COMERCIAL, pode_ver_cadastro, pode_ver_verba_mensal, pode_ver_acordo
+)
+from django.http import Http404
+from app.protheus import consultar, ProtheusIndisponivel
+
+logger = logging.getLogger(__name__)
 from .models import (
     VerbaMensal, 
+    STATUS_QUE_CONSOMEM_VERBA,
     AcordoComercial, 
     AcordoItem, 
     Cadastro, 
@@ -66,10 +75,12 @@ def verbas_mensais(request):
     context = {
         'verbas': verbas_paginadas,
         'vendedores': vendedores_select,
+        'pode_gerenciar_verba': no_grupo(request.user, *GESTAO_COMERCIAL),
         'meses': VerbaMensal.MESES_CHOICES
     }
     return render(request, 'cadastros/verbas.html', context)
 
+@login_required
 def buscar_vendedor_por_codigo(request):
     codigo = request.GET.get('codigo')
     try:
@@ -83,7 +94,7 @@ def buscar_vendedor_por_codigo(request):
         data = {'sucesso': False}
     return JsonResponse(data)
 
-@login_required
+@grupo_requerido(*GESTAO_COMERCIAL, destino='verbas_mensais')
 def salvar_verba(request):
     if request.method == 'POST':
         vendedor_id = request.POST.get('vendedor_id')
@@ -103,6 +114,7 @@ def salvar_verba(request):
         messages.success(request, "Verba cadastrada com sucesso!")
     return redirect('verbas_mensais')
 
+@grupo_requerido(*GESTAO_COMERCIAL, destino='verbas_mensais')
 def editar_verba(request, pk):
     verba = get_object_or_404(VerbaMensal, pk=pk)
     
@@ -121,9 +133,9 @@ def editar_verba(request, pk):
         verba.save()
         
         messages.success(request, "Verba atualizada com sucesso!")
-        return redirect('verbas_mensais')
+    return redirect('verbas_mensais')
 
-@login_required
+@grupo_requerido(*GESTAO_COMERCIAL, destino='verbas_mensais')
 def excluir_verba(request, pk):
     verba = get_object_or_404(VerbaMensal, pk=pk)
     if request.method == 'POST':
@@ -135,7 +147,7 @@ def excluir_verba(request, pk):
 def acordos_comerciais(request):
     acordos_list = AcordoComercial.objects.all().order_by('-data_criacao')
 
-    if request.user.groups.filter(name='Vendedores').exists():
+    if request.user.groups.filter(name='Vendedores').exists() and not no_grupo(request.user, *GESTAO_COMERCIAL):
         acordos_list = acordos_list.filter(usuario_cadastro=request.user)
 
     busca = request.GET.get('busca')
@@ -169,7 +181,7 @@ def acordos_comerciais(request):
                     ids_filtrados.append(acordo.id)
             except Exception as e:
                 # Opcional: Imprime no console do servidor para você saber qual ID está com problema
-                print(f"Atenção: O Acordo #{acordo.id} foi ignorado no filtro devido a um erro nos dados: {e}")
+                logger.warning(f"Acordo #{acordo.id} ignorado no filtro por erro nos dados: {e}")
                 continue
 
         acordos_list = acordos_list.filter(id__in=ids_filtrados)
@@ -180,8 +192,8 @@ def acordos_comerciais(request):
 
     context = {
         'acordos': acordos,
-        'pode_incluir_acordo': not request.user.groups.filter(name='Vendedores').exists(),
-        'pode_excluir_acordo': not request.user.groups.filter(name='Vendedores').exists(),
+        'pode_incluir_acordo': no_grupo(request.user, *GESTAO_COMERCIAL),
+        'pode_excluir_acordo': no_grupo(request.user, *GESTAO_COMERCIAL),
     }
     
     return render(request, 'cadastros/acordos.html', context)
@@ -189,8 +201,8 @@ def acordos_comerciais(request):
 @login_required
 def salvar_acordo(request):
     # Vendedor não pode incluir acordo comercial (bloqueio também no servidor, não só na tela)
-    if request.user.groups.filter(name='Vendedores').exists():
-        messages.error(request, "Vendedores não têm permissão para incluir Acordo Comercial.")
+    if not no_grupo(request.user, *GESTAO_COMERCIAL):
+        messages.error(request, "Somente a Gestão Comercial pode incluir Acordo Comercial.")
         return redirect('acordos_comerciais')
 
     if request.method == 'POST':
@@ -231,8 +243,8 @@ def salvar_acordo(request):
 @login_required
 def excluir_acordo(request, pk):
     # Vendedor não pode excluir acordo comercial (bloqueio também no servidor, não só na tela)
-    if request.user.groups.filter(name='Vendedores').exists():
-        messages.error(request, "Vendedores não têm permissão para excluir Acordo Comercial.")
+    if not no_grupo(request.user, *GESTAO_COMERCIAL):
+        messages.error(request, "Somente a Gestão Comercial pode excluir Acordo Comercial.")
         return redirect('acordos_comerciais')
 
     if request.method == 'POST':
@@ -365,6 +377,8 @@ def criar_cadastro(request):
 @login_required
 def detalhes_cadastro(request, pk):
     cadastro = get_object_or_404(Cadastro.objects.prefetch_related('anexos'), pk=pk)
+    if not pode_ver_cadastro(request.user, cadastro):
+        raise Http404("Cadastro não encontrado.")
     return render(request, 'cadastros/detalhes_cadastro.html', {'cadastro': cadastro})
 
 @login_required
@@ -440,7 +454,7 @@ def editar_cadastro(request, pk):
                             try:
                                 os.remove(anexo_antigo.arquivo.path)
                             except Exception as e:
-                                print(f"Erro ao deletar arquivo físico: {e}")
+                                logger.error(f"Erro ao apagar anexo antigo do cadastro #{cadastro.id}: {e}")
                         anexo_antigo.delete()
                     AnexoCadastro.objects.create(cadastro=cadastro, nome=nome_doc, arquivo=arquivo_novo)
 
@@ -463,8 +477,8 @@ def editar_cadastro(request, pk):
 
 def enviar_email_fluxo(cadastro, fase):
  
-    email_cadastro_equipe = ['cadastroclientes@lautbeer.com.br']
-    email_financeiro_equipe = ['cobranca@lautbeer.com.br']
+    email_cadastro_equipe = settings.EMAILS_CADASTRO_CLIENTES
+    email_financeiro_equipe = settings.EMAILS_COBRANCA
     email_vendedor = [cadastro.vendedor.email]
 
     contexto = {'cadastro': cadastro, 'fase': fase}
@@ -516,7 +530,10 @@ def processar_status(request, pk):
         
         email_ok = True
 
-        if acao == 'aprovar':
+        if acao == 'aprovar' and (
+            (usuario_eh_cadastro and cadastro.situacao == 'PENDENTE') or
+            (usuario_eh_financeiro and cadastro.situacao == 'CADASTRADO')
+        ):
             if usuario_eh_cadastro and cadastro.situacao == 'PENDENTE':
                 cadastro.situacao = 'CADASTRADO'
                 cadastro.observacoes = observacao
@@ -531,24 +548,34 @@ def processar_status(request, pk):
                 if email_ok:
                     messages.success(request, "Cadastro liberado com sucesso!")
 
-        elif acao == 'reprovar':
+        elif acao == 'reprovar' and (
+            (usuario_eh_cadastro and cadastro.situacao == 'PENDENTE') or
+            (usuario_eh_financeiro and cadastro.situacao == 'CADASTRADO')
+        ):
             cadastro.situacao = 'REJEITADO'
             cadastro.observacoes = observacao
             email_ok = enviar_email_fluxo(cadastro, 'rejeitado')
             if email_ok:
                 messages.warning(request, "Cadastro reprovado e vendedor notificado.")
 
+        else:
+            messages.error(request, "Você não tem permissão para esta ação neste cadastro.")
+            return redirect('lista_cadastros')
+
         if not email_ok:
             messages.error(request, f"O cadastro de '{cadastro.razao_social}' foi processado no sistema, mas ocorreu um erro ao enviar a notificação por e-mail.")
 
         cadastro.save()
         return redirect('lista_cadastros')
+    return redirect('lista_cadastros')
 
 @login_required
 def api_historico_acordo(request, acordo_id):
     try:
         # 1. Garante a captura do Acordo Comercial correto
         acordo = get_object_or_404(AcordoComercial, id=acordo_id)
+        if not pode_ver_acordo(request.user, acordo):
+            return JsonResponse({'error': 'Sem permissão.', 'nfs': []}, status=403)
         cliente_cod = str(acordo.cliente_codigo).strip()
         cliente_loja = str(acordo.cliente_loja).strip()
 
@@ -596,7 +623,9 @@ def api_historico_acordo(request, acordo_id):
         }
 
         pedidos_tratados = [str(p).strip().zfill(6) for p in pedidos_vinculados]
-        pedidos_formatados_sql = ", ".join([f"'{p}'" for p in pedidos_tratados])
+        # Valores sempre como parâmetros da consulta, nunca colados no texto do SQL
+        marcadores_pedidos = ", ".join(["%s"] * len(pedidos_tratados))
+        parametros_sql = [cliente_cod, cliente_loja] + pedidos_tratados
 
         query_base = f"""
             SELECT 
@@ -617,27 +646,18 @@ def api_historico_acordo(request, acordo_id):
                 AND LTRIM(RTRIM(SB1.B1_COD)) = LTRIM(RTRIM(SD2.D2_COD)) 
                 AND SB1.D_E_L_E_T_ <> '*'
             WHERE SD2.D_E_L_E_T_ <> '*' 
-            AND LTRIM(RTRIM(SD2.D2_CLIENTE)) = '{cliente_cod}' 
-            AND LTRIM(RTRIM(SD2.D2_LOJA)) = '{cliente_loja}'
+            AND LTRIM(RTRIM(SD2.D2_CLIENTE)) = %s 
+            AND LTRIM(RTRIM(SD2.D2_LOJA)) = %s
             AND SF4.F4_BONIF = 'S' 
             AND SD2.D2_TES <> '802'
-            AND LTRIM(RTRIM(SD2.D2_PEDIDO)) IN ({pedidos_formatados_sql})
+            AND LTRIM(RTRIM(SD2.D2_PEDIDO)) IN ({marcadores_pedidos})
         """
 
-        todas_linhas_protheus = []
-        for db_alias, tabelas in bases_de_consulta.items():
-            if db_alias not in connections: 
-                continue
-            for tabela in tabelas:
-                empresa_sufixo = tabela[-3:] 
-                try:
-                    with connections[db_alias].cursor() as cursor:
-                        cursor.execute(query_base.format(tabela=tabela, empresa=empresa_sufixo))
-                        for row in cursor.fetchall():
-                            todas_linhas_protheus.append(row)
-                except Exception as e:
-                    print(f"Erro SQL histórico [{db_alias} - {tabela}]: {e}")
-                    continue
+        try:
+            resultados = consultar(bases_de_consulta, query_base, parametros_sql)
+        except ProtheusIndisponivel:
+            return JsonResponse({'error': 'Não foi possível consultar o Protheus agora. Tente novamente em instantes.', 'nfs': []}, status=503)
+        todas_linhas_protheus = [linha for r in resultados for linha in r['linhas']]
 
         todas_linhas_protheus.sort(key=lambda x: str(x[2]).strip())
 
@@ -728,7 +748,7 @@ def api_historico_acordo(request, acordo_id):
                             })
 
             except Exception as e:
-                print(f"Erro processando linha do histórico: {e}")
+                logger.warning(f"Linha ignorada no histórico do acordo #{acordo.id}: {e}")
                 continue
 
         historico_nfs.reverse()
@@ -749,20 +769,23 @@ def api_historico_acordo(request, acordo_id):
         })
 
     except Exception as e:
-        print(f"Erro Crítico na API do Histórico: {str(e)}")
-        return JsonResponse({'error': str(e), 'nfs': []}, status=500)
+        logger.exception(f"Erro no histórico do acordo #{acordo_id}")
+        return JsonResponse({'error': 'Erro ao montar o histórico do acordo.', 'nfs': []}, status=500)
 
 @login_required
 def historico_utilizacao_verba(request, verba_id):
     try:
         verba = get_object_or_404(VerbaMensal, id=verba_id)
+        if not pode_ver_verba_mensal(request.user, verba):
+            return JsonResponse({'error': 'Sem permissão.'}, status=403)
         
         utilizacoes = Bonificacao.objects.filter(
             vendedor=verba.vendedor,
             tipo='VERBA_VENDEDOR',
             data_solicitacao__month=verba.mes_referencia,
-            data_solicitacao__year=verba.ano_referencia
-        ).exclude(status='PENDENTE').prefetch_related('itens')
+            data_solicitacao__year=verba.ano_referencia,
+            status__in=STATUS_QUE_CONSOMEM_VERBA,
+        ).prefetch_related('itens')
 
         lista_dados = []
         total_acumulado = 0
@@ -775,7 +798,7 @@ def historico_utilizacao_verba(request, verba_id):
                 'id': bonif.id,
                 'cliente': bonif.cliente_nome_fantasia,
                 'valor': float(valor_bonif),
-                'pedido': bonif.pedido_protheus or 'Pendente'
+                'pedido': bonif.pedido_protheus or bonif.get_status_display()
             })
 
         objetivo = float(verba.valor or 0)
@@ -846,11 +869,12 @@ def api_acordos_vigentes(request):
 
     return JsonResponse(resultado, safe=False)
 
+@grupo_requerido(*GESTAO_COMERCIAL, destino='lista_cadastros')
 def exportar_cadastros_excel(request):
     data_inicio = request.GET.get('data_inicio')
     data_fim = request.GET.get('data_fim')
 
-    queryset = Cadastro.objects.all()
+    queryset = Cadastro.objects.select_related('vendedor')
     
     if data_inicio:
         queryset = queryset.filter(data_cadastro__date__gte=data_inicio)

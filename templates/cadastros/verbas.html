@@ -2,64 +2,18 @@
 
 {% block content %}
 
-<style>
-    /* AJUSTE MOBILE: Transforma a tabela em Cards para Verbas */
-    @media (max-width: 767.98px) {
-        .table-responsive { border: none !important; }
-        #tabelaVerbas thead { display: none; }
-        
-        #tabelaVerbas tbody tr { 
-            display: block; 
-            margin-bottom: 1rem; 
-            border: 1px solid #e9ecef; 
-            border-radius: 12px; 
-            box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.05); 
-            background-color: #fff;
-            overflow: hidden;
-        }
-        
-        #tabelaVerbas tbody td { 
-            display: block; 
-            position: relative;
-            /* Espaçamento reduzido (0.5rem em cima/baixo) com margem à esquerda (40%) para o título */
-            padding: 0.5rem 1rem 0.5rem 40% !important; 
-            text-align: right !important; 
-            border-bottom: 1px solid #f8f9fa;
-            word-wrap: break-word; 
-        }
-        
-        #tabelaVerbas tbody td:last-child { border-bottom: none; }
-        
-        /* Cria o título da célula baseado no atributo data-label */
-        #tabelaVerbas tbody td::before { 
-            content: attr(data-label); 
-            position: absolute;
-            left: 1rem;
-            top: 0.6rem;
-            width: 35%; 
-            font-weight: 700; 
-            color: #6c757d; 
-            text-transform: uppercase; 
-            font-size: 0.75rem; 
-            text-align: left; 
-        }
-        
-        /* Força os botões de ação a irem para a direita no telemóvel */
-        #tabelaVerbas tbody td[data-label="Ações"] .d-flex {
-            justify-content: flex-end !important;
-            margin-top: 0 !important;
-        }
-    }
-</style>
+
 
 <!-- CABEÇALHO RESPONSIVO -->
 <div class="d-md-flex justify-content-between align-items-center mb-4">
     <h3 class="text-gold-title mb-3 mb-md-0">Verbas Mensais</h3>
+    {% if pode_gerenciar_verba %}
     <div class="d-grid d-md-flex">
         <button class="btn btn-gold-action px-4 py-2 shadow-sm d-flex justify-content-center align-items-center" data-bs-toggle="modal" data-bs-target="#modalVerba">
             <i class="bi bi-plus-circle me-2"></i><strong>Nova Verba</strong>
         </button>
     </div>
+    {% endif %}
 </div>
 
 <!-- FILTROS RESPONSIVOS -->
@@ -88,10 +42,10 @@
             </div>
             <div class="col-6 col-md-2">
                 <label class="small fw-bold text-muted">Ano</label>
-                <input type="number" name="ano" class="form-control form-control-sm border-0 shadow-sm" value="{{ request.GET.ano|default:'2026' }}">
+                <input type="number" name="ano" class="form-control form-control-sm border-0 shadow-sm" value="{% if request.GET.ano %}{{ request.GET.ano }}{% else %}{% now 'Y' %}{% endif %}">
             </div>
              <div class="col-12 col-md-2 d-flex flex-column flex-md-row align-items-stretch align-items-md-end gap-2">
-                <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">FILTRAR</button>
+                <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">Filtrar</button>
                 <a href="{% url request.resolver_match.url_name %}" class="btn btn-link btn-sm text-muted text-decoration-none border-0 p-0 text-center text-md-start">Limpar</a>
             </div>
         </form>
@@ -115,7 +69,7 @@
                 {% for verba in verbas %}
                 <tr>
                     <td class="ps-3 text-start" data-label="Vendedor">
-                        <strong style="color: #5e4d26;">#{{ verba.vendedor.perfil.codigo_vendedor }} {{ verba.vendedor.get_full_name }}</strong>
+                        <strong class="text-strong">#{{ verba.vendedor.perfil.codigo_vendedor }} {{ verba.vendedor.get_full_name }}</strong>
                     </td>
                     <td class="text-md-center" data-label="Referência">{{ verba.get_mes_referencia_display }} / {{ verba.ano_referencia }}</td>
                     <td class="fw-bold text-success text-md-center" data-label="Valor Total">R$ {{ verba.valor|floatformat:2 }}</td>
@@ -128,7 +82,7 @@
                                 <i class="bi bi-bar-chart-line-fill"></i>
                             </button>
 
-                            {% if not request.user.groups.all|stringformat:"s" == "['Vendedores']" %}
+                            {% if pode_gerenciar_verba %}
                                 <button type="button" class="btn-square-action btn-edit" title="Editar" data-bs-toggle="modal" data-bs-target="#modalEditar{{ verba.id }}">
                                     <i class="bi bi-pencil"></i>
                                 </button>
@@ -156,7 +110,7 @@
 <div class="modal fade" id="modalEditar{{ verba.id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
-            <div class="modal-header border-0 text-white" style="background-color: #bca464;">
+            <div class="modal-header border-0">
                 <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Editar Verba</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -188,7 +142,7 @@
                 </div>
                 <div class="modal-footer border-0 bg-light d-flex flex-column flex-sm-row">
                     <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none w-100 w-sm-auto order-2 order-sm-1" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-sm px-4 text-white shadow-sm fw-bold w-100 w-sm-auto order-1 order-sm-2 mb-2 mb-sm-0" style="background-color: #bca464;">Salvar</button>
+                    <button type="submit" class="btn btn-sm px-4 text-white shadow-sm fw-bold w-100 w-sm-auto order-1 order-sm-2 mb-2 mb-sm-0 bg-brand">Salvar</button>
                 </div>
             </form>
         </div>
@@ -225,7 +179,7 @@
 <div class="modal fade" id="modalHistVerba" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header border-0 text-white" style="background-color: #bca464;">
+            <div class="modal-header border-0">
                 <h5 class="modal-title fs-6">
                     Acompanhamento - <span id="vendedor_nome_modal" class="text-white fw-bold"></span>
                 </h5>
@@ -270,7 +224,7 @@
 <div class="modal fade" id="modalVerba" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header border-0 text-white" style="background-color: #bca464;">
+            <div class="modal-header border-0">
                 <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle me-2"></i>Nova Verba Mensal</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -297,7 +251,7 @@
                         </div>
                         <div class="col-6">
                             <label class="form-label small fw-bold">Ano</label>
-                            <input type="number" name="ano" class="form-control form-control-sm shadow-sm" value="2026" required>
+                            <input type="number" name="ano" class="form-control form-control-sm shadow-sm" value="{% now 'Y' %}" required>
                         </div>
                         <div class="col-12 col-md-7">
                             <label class="form-label small fw-bold">Valor Total (R$)</label>
@@ -311,7 +265,7 @@
                 </div>
                 <div class="modal-footer border-0 bg-light d-flex flex-column flex-sm-row">
                     <button type="button" class="btn btn-link text-muted text-decoration-none w-100 w-sm-auto order-2 order-sm-1" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn px-4 text-white shadow-sm fw-bold w-100 w-sm-auto order-1 order-sm-2 mb-2 mb-sm-0" style="background-color: #bca464;">Cadastrar</button>
+                    <button type="submit" class="btn px-4 text-white shadow-sm fw-bold w-100 w-sm-auto order-1 order-sm-2 mb-2 mb-sm-0 bg-brand">Cadastrar</button>
                 </div>
             </form>
         </div>
@@ -330,7 +284,7 @@
 
         {% for i in verbas.paginator.page_range %}
             {% if verbas.number == i %}
-                <li class="page-item active"><span class="page-link rounded" style="background-color: #bca464; border-color: #bca464;">{{ i }}</span></li>
+                <li class="page-item active"><span class="page-link rounded">{{ i }}</span></li>
             {% elif i > verbas.number|add:'-3' and i < verbas.number|add:'3' %}
                 <li class="page-item"><a class="page-link text-dark rounded" href="?page={{ i }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ i }}</a></li>
             {% endif %}
@@ -345,12 +299,9 @@
 </nav>
 {% endif %}
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
 
 <script>
-$(document).ready(function() {$('#tabelaVerbas').DataTable({
+$(document).ready(function() {if (!document.querySelector('#tabelaVerbas tbody td[colspan]')) $('#tabelaVerbas').DataTable({
         "dom": 't',
         "paging": false,
         "ordering": true,

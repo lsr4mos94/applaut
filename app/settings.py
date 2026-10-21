@@ -13,7 +13,21 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'app.lautbeer.com.br', '192.168.184.24', '149.57.32.44', '149.57.32.233']
 
 USE_X_FORWARDED_HOST = True
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'http')
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+# Endereços de onde o formulário de login pode ser enviado quando o site estiver em HTTPS
+CSRF_TRUSTED_ORIGINS = ['https://app.lautbeer.com.br']
+
+# Em produção (DEBUG=False) a chave secreta precisa vir do .env
+if not DEBUG and SECRET_KEY == 'desenvolvimento-safe-key-123':
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured("Defina DJANGO_SECRET_KEY no .env do servidor.")
+
+# Quando o site passar a usar HTTPS, basta DJANGO_HTTPS=True no .env
+if os.environ.get('DJANGO_HTTPS', 'False') == 'True':
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = True
+SESSION_COOKIE_HTTPONLY = True
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -158,6 +172,24 @@ EMAIL_USE_SSL = True
 EMAIL_HOST_USER = 'workflow@lautbeer.com.br'
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_PASSWORD')
 DEFAULT_FROM_EMAIL = 'Workflow Laut Beer <workflow@lautbeer.com.br>'
+EMAIL_TIMEOUT = 20  # segundos: o servidor de e-mail lento não trava a tela
+
+
+def _emails(variavel, padrao):
+    """Lista de e-mails do .env (separados por vírgula), com o valor atual como padrão."""
+    return [e.strip() for e in os.environ.get(variavel, padrao).split(',') if e.strip()]
+
+
+# Quem recebe cada aviso do sistema (dá para trocar no .env sem mexer no código)
+EMAILS_CADASTRO_CLIENTES = _emails('EMAILS_CADASTRO_CLIENTES', 'cadastroclientes@lautbeer.com.br')
+EMAILS_COBRANCA = _emails('EMAILS_COBRANCA', 'cobranca@lautbeer.com.br')
+EMAILS_VERBA_NOVA = _emails('EMAILS_VERBA_NOVA', 'controladoria@lautbeer.com.br,alexsandra@lautbeer.com.br,financeiro@lautbeer.com.br')
+EMAILS_VERBA_APROVADA = _emails('EMAILS_VERBA_APROVADA', 'contasapagar@lautbeer.com.br,alexsandra@lautbeer.com.br,keylla.oliveira@lautbeer.com.br')
+EMAILS_BONIF_ACORDO_PENDENTE = _emails('EMAILS_BONIF_ACORDO_PENDENTE', 'admcomercial@lautbeer.com.br')
+EMAILS_BONIF_NEGOCIACAO = _emails('EMAILS_BONIF_NEGOCIACAO', 'wellington@lautbeer.com.br')
+EMAILS_BONIF_SAC = _emails('EMAILS_BONIF_SAC', 'admcomercial@lautbeer.com.br')
+EMAILS_BONIF_CHOPP = _emails('EMAILS_BONIF_CHOPP', 'adm1@lautbeer.com.br')
+EMAILS_BONIF_GERAL = _emails('EMAILS_BONIF_GERAL', 'admcomercial@lautbeer.com.br')
 SERVER_EMAIL = 'lorrane.ramos@lautbeer.com.br'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -165,4 +197,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 mimetypes.add_type("image/png", ".png", True)
 mimetypes.add_type("image/svg+xml", ".svg", True)
 
-SITE_URL = "http://app.lautbeer.com.br"
+SITE_URL = os.environ.get('SITE_URL', "http://app.lautbeer.com.br")
+
+# Integração WhatsApp (Zenvia): o token fica só no .env
+ZENVIA_API_TOKEN = os.environ.get('ZENVIA_API_TOKEN', '')
+ZENVIA_REMETENTE = os.environ.get('ZENVIA_REMETENTE', '553190004411')
+ZENVIA_DESTINO_PLANTAO = os.environ.get('ZENVIA_DESTINO_PLANTAO', '5531998357400')
+ZENVIA_TEMPLATE_PLANTAO = os.environ.get('ZENVIA_TEMPLATE_PLANTAO', '358e7517-8beb-4161-af5f-8086fe7c6c91')
+# Chave que a Zenvia envia no cabeçalho X-API-KEY ao chamar o webhook de plantão
+WEBHOOK_PLANTAO_TOKEN = os.environ.get('WEBHOOK_PLANTAO_TOKEN', '')

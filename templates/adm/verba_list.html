@@ -1,65 +1,18 @@
 {% extends 'base.html' %}
 {% block content %}
 
-<style>
-    /* AJUSTE MOBILE: Transforma a tabela em Cards padronizados exatamente igual às outras telas */
-    @media (max-width: 767.98px) {
-        .table-responsive { border: none !important; }
-        #tabelaVerbas thead { display: none; }
-        
-        #tabelaVerbas tbody tr { 
-            display: block; 
-            margin-bottom: 1rem; 
-            border: 1px solid #e9ecef; 
-            border-radius: 12px; 
-            box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.05); 
-            background-color: #fff;
-            overflow: hidden;
-        }
-        
-        #tabelaVerbas tbody td { 
-            display: block; 
-            position: relative;
-            padding: 0.5rem 1rem 0.5rem 40% !important; 
-            text-align: right !important; 
-            border-bottom: 1px solid #f8f9fa;
-            word-wrap: break-word; 
-        }
-        
-        #tabelaVerbas tbody td:last-child { border-bottom: none; }
-        
-        #tabelaVerbas tbody td::before { 
-            content: attr(data-label); 
-            position: absolute;
-            left: 1rem;
-            top: 0.6rem;
-            width: 35%; 
-            font-weight: 700; 
-            color: #6c757d; 
-            text-transform: uppercase; 
-            font-size: 0.75rem !important; 
-            text-align: left; 
-        }
-        
-        #tabelaVerbas tbody td .text-muted { display: block; margin-top: 2px; }
-        
-        #tabelaVerbas tbody td[data-label="Ações"] .d-flex {
-            justify-content: flex-end !important;
-            margin-top: 0 !important;
-        }
-    }
-</style>
+
 
 <!-- CABEÇALHO RESPONSIVO -->
 <div class="d-md-flex justify-content-between align-items-center mb-4 text-start">
-    <h3 class="text-gold-title mb-3 mb-md-0" style="color: #bca464; font-weight: 600;">Solicitação de Verba</h3>
+    <h3 class="text-gold-title mb-3 mb-md-0 text-brand fw-semibold">Solicitação de Verba</h3>
     <div class="d-grid d-md-flex gap-2">
         {% if 'Gestão Financeira' in request.user.groups.all|stringformat:"s" %}
             <button class="btn btn-outline-success shadow-sm fw-bold d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#modalExportarExcel">
                 <i class="bi bi-file-earmark-excel me-2"></i> Exportar
             </button>
         {% endif %}
-        <a href="{% url 'nova_solicitacao_verba' %}" class="btn text-white shadow-sm d-flex justify-content-center align-items-center fw-bold px-4 py-2" style="background-color: #bca464;">
+        <a href="{% url 'nova_solicitacao_verba' %}" class="btn text-white shadow-sm d-flex justify-content-center align-items-center fw-bold px-4 py-2 bg-brand">
             <i class="bi bi-plus-circle me-2"></i> Nova Solicitação
         </a>
     </div>
@@ -67,7 +20,7 @@
 
 <!-- FILTROS RESPONSIVOS -->
 <div class="card border-0 shadow-sm mb-4 text-start">
-    <div class="card-body card-filter" style="background-color: #fcfbf7; border: 1px solid #f1ece0;">
+    <div class="card-body card-filter panel-soft">
         <form method="GET" class="row g-3 align-items-end">
             <div class="col-12 col-md-4">
                 <label class="small fw-bold text-muted">Fornecedor</label>
@@ -97,7 +50,7 @@
                 </select>
             </div>
             <div class="col-6 col-md-2 d-flex flex-column flex-md-row align-items-stretch align-items-md-end gap-2">
-                <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold shadow-sm">FILTRAR</button>
+                <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold shadow-sm">Filtrar</button>
                 <a href="{% url 'listar_solicitacoes_verba' %}" class="btn btn-link btn-sm text-muted text-decoration-none border-0 p-0 text-center text-md-start align-self-center" style="font-size: 0.85rem;">Limpar</a>
             </div>
         </form>
@@ -122,7 +75,7 @@
                 {% for s in solicitacoes %}
                 <tr class="border-bottom">
                     <td class="px-3 text-start" data-label="Fornecedor">
-                        <strong style="color: #5e4d26;">#{{ s.id }} {{ s.fornecedor_nome_razao }}</strong><br>
+                        <strong class="text-strong">#{{ s.id }} {{ s.fornecedor_nome_razao }}</strong><br>
                         <small class="text-muted mask-cpf-cnpj">{{ s.fornecedor_cpf_cnpj }}</small>
                     </td>
                     <td class="text-md-center small" data-label="Solicitante">{{ s.usuario_solicitante.get_full_name|default:s.usuario_solicitante.username }}</td>
@@ -186,7 +139,7 @@
     <div class="modal fade" id="modalVer" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg text-start">
-            <div class="modal-header text-white" style="background-color: #bca464;">
+            <div class="modal-header">
                 <h5 class="modal-title small fw-bold text-uppercase mt-1">
                     <i class="bi bi-info-circle-fill me-2"></i>
                     <span id="modalTitulo">Detalhes da Solicitação</span>
@@ -222,7 +175,7 @@
                             </div>
                         </div>
                         <div class="modal-footer border-0 p-2">
-                            <button type="submit" class="btn btn-danger btn-sm w-100 fw-bold">REPROVAR AGORA</button>
+                            <button type="submit" class="btn btn-danger btn-sm w-100 fw-bold">Reprovar agora</button>
                         </div>
                     </form>
                 </div>
@@ -249,7 +202,7 @@
                             </div>
                         </div>
                         <div class="modal-footer border-0 p-2">
-                            <button type="submit" class="btn btn-success btn-sm w-100 fw-bold">APROVAR SOLICITAÇÃO</button>
+                            <button type="submit" class="btn btn-success btn-sm w-100 fw-bold">Aprovar solicitação</button>
                         </div>
                     </form>
                 </div>
@@ -261,14 +214,18 @@
         <div class="modal fade" id="modalConfirmarPg{{ s.id }}" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered modal-sm">
                 <div class="modal-content border-0 shadow-lg">
-                    <div class="modal-header text-white border-0" style="background-color: #bca464;">
+                    <div class="modal-header border-0">
                         <h6 class="modal-title fw-bold small"><i class="bi bi-check-all me-2"></i>Concluir Solicitação</h6>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <form action="{% url 'concluir_solicitacao_verba' s.id %}" method="POST">
                         {% csrf_token %}
+                        <div class="modal-body">
+                            <label class="form-label">Número do título no Protheus</label>
+                            <input type="text" name="num_titulo" class="form-control" maxlength="9" placeholder="Opcional">
+                        </div>
                         <div class="modal-footer border-0 p-2">
-                            <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">CONCLUIR SOLICITAÇÃO</button>
+                            <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">Concluir solicitação</button>
                         </div>
                     </form>
                 </div>
@@ -281,7 +238,7 @@
             <div class="modal-dialog modal-sm modal-dialog-centered">
                 <div class="modal-content border-0 shadow">
                     <div class="modal-header border-0 bg-danger text-white">
-                        <h5 class="modal-title small fw-bold"><i class="bi bi-exclamation-triangle"></i> EXCLUIR SOLICITAÇÃO</h5>
+                        <h5 class="modal-title small fw-bold"><i class="bi bi-exclamation-triangle"></i> Excluir solicitação</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body text-center p-4">
@@ -323,7 +280,7 @@
                 </div>
                 <div class="modal-footer border-0 bg-light p-2">
                     <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-success btn-sm px-4 fw-bold" onclick="fecharModalExportar()">GERAR RELATÓRIO</button>
+                    <button type="submit" class="btn btn-success btn-sm px-4 fw-bold" onclick="fecharModalExportar()">Gerar relatório</button>
                 </div>
             </form>
         </div>
@@ -341,7 +298,7 @@
 
             {% for i in solicitacoes.paginator.page_range %}
                 {% if solicitacoes.number == i %}
-                    <li class="page-item active"><span class="page-link rounded" style="background-color: #bca464; border-color: #bca464;">{{ i }}</span></li>
+                    <li class="page-item active"><span class="page-link rounded">{{ i }}</span></li>
                 {% elif i > solicitacoes.number|add:'-3' and i < solicitacoes.number|add:'3' %}
                     <li class="page-item"><a class="page-link text-dark rounded" href="?page={{ i }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ i }}</a></li>
                 {% endif %}
@@ -356,14 +313,11 @@
     </nav>
 {% endif %}
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
 
 <script>
 $(document).ready(function() {
     if (!$.fn.DataTable.isDataTable('#tabelaVerbas')) {
-        $('#tabelaVerbas').DataTable({
+        if (!document.querySelector('#tabelaVerbas tbody td[colspan]')) $('#tabelaVerbas').DataTable({
             "dom": 't',
             "paging": false,
             "ordering": true,
@@ -396,9 +350,9 @@ $(document).ready(function() {
             },
             "initComplete": function(settings, json) {
                 $('#tabelaVerbas thead th').css({
-                    'background-color': '#bca464',
-                    'color': '#ffffff',
-                    'border-bottom': 'none'
+                    'background-color': '',
+                    'color': '',
+                    'border-bottom': ''
                 });
             }
         });
@@ -491,7 +445,7 @@ function visualizarVerba(id) {
         
         if (data.status.toUpperCase() !== 'PENDENTE') {
             html += `
-                <div class="mt-2 p-2 rounded" style="border-left: 4px solid #bca464; background-color: #fcfaf5; border-top: 1px solid #f1ece0; border-right: 1px solid #f1ece0; border-bottom: 1px solid #f1ece0;">
+                <div class="mt-2 p-2 panel-accent">
                     <h6 class="fw-bold text-uppercase mb-1" style="color: #8a733a; font-size: 0.7rem;">
                         <i class="bi bi-shield-check me-1"></i>Decisão da Gestão
                     </h6>

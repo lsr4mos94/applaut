@@ -1,0 +1,312 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-md-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="text-gold-title">Solicitação de Chopp</h3>
+        {% if not eh_gestor %}
+            <p class="page-subtitle">Você vê os seus pedidos de {{ inicio_janela|date:"d/m" }} até hoje.</p>
+        {% endif %}
+    </div>
+    <div class="d-grid d-md-flex gap-2 mt-3 mt-md-0">
+        {% if eh_gestor %}
+        <button class="btn btn-outline-success fw-bold d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#modalExportar">
+            <i class="bi bi-file-earmark-excel me-2"></i> Exportar
+        </button>
+        {% endif %}
+        <a href="{% url 'chopp_novo' %}" class="btn btn-gold-action d-flex align-items-center justify-content-center">
+            <i class="bi bi-plus-circle me-2"></i> Novo Pedido
+        </a>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body card-filter">
+        <form method="GET" class="row g-3 align-items-end">
+            {% if eh_gestor %}
+            <div class="col-12 col-md-2">
+                <label>Busca</label>
+                <input type="text" name="busca" class="form-control form-control-sm" placeholder="Cliente, CNPJ, nº ou pedido Protheus" value="{{ request.GET.busca|default:'' }}">
+            </div>
+            <div class="col-6 col-md-2">
+                <label>Vendedor</label>
+                <select name="vendedor" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    {% for v in vendedores %}
+                        <option value="{{ v.id }}" {% if request.GET.vendedor == v.id|stringformat:"s" %}selected{% endif %}>{{ v.get_full_name|default:v.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="col-6 col-md-2">
+                <label>Status</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    {% for valor, rotulo in status_choices %}
+                        <option value="{{ valor }}" {% if request.GET.status == valor %}selected{% endif %}>{{ rotulo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% if eh_gestor %}
+            <div class="col-6 col-md-2">
+                <label>De</label>
+                <input type="date" name="data_ini" class="form-control form-control-sm" value="{{ request.GET.data_ini|default:'' }}">
+            </div>
+            <div class="col-6 col-md-2">
+                <label>Até</label>
+                <input type="date" name="data_fim" class="form-control form-control-sm" value="{{ request.GET.data_fim|default:'' }}">
+            </div>
+            {% endif %}
+            <div class="col-12 col-md d-flex gap-2">
+                <button type="submit" class="btn btn-dark btn-sm flex-grow-1 px-3" title="Filtrar"><i class="bi bi-filter"></i> Filtrar</button>
+                <a href="{% url 'chopp_list' %}" class="btn btn-outline-secondary btn-sm" title="Limpar"><i class="bi bi-x-lg"></i></a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Lista -->
+<div class="card overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-applaut w-100 mb-0">
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Recebimento</th>
+                    <th>Vendedor</th>
+                    <th>Data</th>
+                    <th class="text-end">Total</th>
+                    <th class="text-center">Status</th>
+                    <th class="text-center">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in pedidos %}
+                <tr>
+                    <td data-label="Cliente">
+                        <strong class="text-strong">#{{ p.id }} {{ p.cliente_nome_fantasia|default:p.cliente_razao_social }}</strong>
+                        <small class="text-muted d-block">{{ p.cliente_cpf_cnpj }} · {{ p.cliente_codigo }}/{{ p.cliente_loja }}</small>
+                    </td>
+                    <td data-label="Recebimento">
+                        {{ p.get_recebimento_display }}
+                        {% if p.data_entrega %}<small class="text-muted d-block">{{ p.data_entrega|date:"d/m/Y" }}</small>{% endif %}
+                    </td>
+                    <td data-label="Vendedor">{{ p.vendedor.get_full_name|default:p.vendedor.username }}</td>
+                    <td data-label="Data">{{ p.data_solicitacao|date:"d/m/Y H:i" }}</td>
+                    <td data-label="Total" class="text-md-end fw-semibold text-nowrap">R$ {{ p.total|floatformat:"2g" }}</td>
+                    <td data-label="Status" class="text-md-center">
+                        {% if p.status == 'PENDENTE' %}<span class="badge badge-pendente">Pendente</span>
+                        {% elif p.status == 'FINALIZADO' %}<span class="badge badge-confirmado">Finalizado</span>
+                        {% else %}<span class="badge badge-reprovado">Cancelado</span>{% endif %}
+                        {% if p.alterado_pelo_faturamento %}<small class="text-muted d-block mt-1">Alterado pelo Faturamento</small>{% endif %}
+                    </td>
+                    <td data-label="Ações" class="text-md-center">
+                        <div class="d-flex justify-content-center gap-1">
+                            <button type="button" class="btn-square-action btn-view" data-bs-toggle="modal" data-bs-target="#modalVer{{ p.id }}" title="Ver detalhes"><i class="bi bi-eye-fill"></i></button>
+                            {% if p.status == 'PENDENTE' %}
+                                {% if eh_faturamento %}
+                                    <a href="{% url 'chopp_processar' p.id %}" class="btn-square-action btn-approve" title="Conferir e finalizar"><i class="bi bi-check2-all"></i></a>
+                                {% elif p.vendedor_id == request.user.id and not p.usuario_faturamento_id %}
+                                    <a href="{% url 'chopp_editar' p.id %}" class="btn-square-action btn-edit" title="Editar"><i class="bi bi-pencil"></i></a>
+                                {% endif %}
+                                {% if eh_faturamento or p.vendedor_id == request.user.id and not p.usuario_faturamento_id %}
+                                    <button type="button" class="btn-square-action btn-delete" data-bs-toggle="modal" data-bs-target="#modalCancelar{{ p.id }}" title="Cancelar pedido"><i class="bi bi-x-lg"></i></button>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center py-5 text-muted">Nenhum pedido de chopp encontrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Paginação -->
+{% if pedidos.has_other_pages %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center flex-wrap">
+        {% if pedidos.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page={{ pedidos.previous_page_number }}{% for k, v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v|urlencode }}{% endif %}{% endfor %}">&laquo;</a></li>
+        {% endif %}
+        {% for i in pedidos.paginator.page_range %}
+            {% if pedidos.number == i %}
+                <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+            {% elif i > pedidos.number|add:'-3' and i < pedidos.number|add:'3' %}
+                <li class="page-item"><a class="page-link" href="?page={{ i }}{% for k, v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v|urlencode }}{% endif %}{% endfor %}">{{ i }}</a></li>
+            {% endif %}
+        {% endfor %}
+        {% if pedidos.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ pedidos.next_page_number }}{% for k, v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v|urlencode }}{% endif %}{% endfor %}">&raquo;</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- Modais por pedido -->
+{% for p in pedidos %}
+<div class="modal fade" id="modalVer{{ p.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content text-start">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-info-circle-fill me-2"></i>Pedido de Chopp #{{ p.id }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row mb-4 bg-light p-3 rounded mx-0 border">
+                    <div class="col-md-6 border-md-end mb-2 mb-md-0">
+                        <label class="text-muted small d-block text-uppercase fw-bold mb-2">Cliente</label>
+                        <span class="fw-bold h6 text-brand">{{ p.cliente_razao_social }}</span><br>
+                        <small class="text-muted">{{ p.cliente_cpf_cnpj }} · Código {{ p.cliente_codigo }} / Loja {{ p.cliente_loja }}</small>
+                    </div>
+                    <div class="col-md-6 ps-md-4">
+                        <label class="text-muted small d-block text-uppercase fw-bold mb-2">Pedido</label>
+                        <p class="mb-1 small"><strong>Vendedor:</strong> {{ p.vendedor.get_full_name|default:p.vendedor.username }}</p>
+                        <p class="mb-1 small"><strong>Lançado em:</strong> {{ p.data_solicitacao|date:"d/m/Y H:i" }}</p>
+                        <p class="mb-1 small"><strong>Status:</strong> {{ p.get_status_display }}</p>
+                        {% if p.pedido_protheus %}<p class="mb-1 small"><strong>Pedido Protheus:</strong> {{ p.pedido_protheus }}</p>{% endif %}
+                        {% if p.usuario_faturamento %}<p class="mb-0 small"><strong>Faturamento:</strong> {{ p.usuario_faturamento.get_full_name|default:p.usuario_faturamento.username }}{% if p.data_finalizacao %} em {{ p.data_finalizacao|date:"d/m/Y H:i" }}{% endif %}</p>{% endif %}
+                    </div>
+                </div>
+                <div class="row mb-4 p-3 mx-0 gap-2 gap-md-0 panel-accent">
+                    <div class="col-12 col-md-4">
+                        <label class="text-muted small d-block fw-bold">Recebimento</label>
+                        <span class="fw-bold">{{ p.get_recebimento_display }}</span>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="text-muted small d-block fw-bold">Data de entrega</label>
+                        <span class="fw-bold">{{ p.data_entrega|date:"d/m/Y"|default:"—" }}</span>
+                    </div>
+                    <div class="col-12 col-md-4 text-md-end">
+                        <label class="text-muted small d-block fw-bold">Prazo de pagamento</label>
+                        <span class="fw-bold">{{ p.get_prazo_pagamento_display }}</span>
+                        {% if p.prazo_foi_alterado %}<small class="d-block text-warning">vendedor: {{ p.get_prazo_pagamento_solicitado_display }}</small>{% endif %}
+                    </div>
+                </div>
+                <h6 class="fw-bold mb-3 text-brand"><i class="bi bi-box-seam me-2"></i>Produtos</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle">
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th class="text-center">Qtd</th>
+                                <th class="text-end">Preço</th>
+                                <th class="text-end">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="small">
+                            {% for it in p.itens.all %}
+                            <tr{% if it.removido %} class="text-muted"{% endif %}>
+                                <td>{% if it.removido %}<s>{{ it.produto_descricao }}</s><small class="d-block text-danger fw-semibold">removido pelo Faturamento</small>{% else %}{{ it.produto_descricao }}{% endif %}<small class="d-block text-muted">{{ it.produto_codigo }}</small></td>
+                                <td class="text-center">
+                                    {{ it.quantidade }}
+                                    {% if it.removido %}<small class="d-block text-warning">pedido: {{ it.qtd_solicitada }}</small>
+                                    {% elif it.qtd_solicitada is None %}<small class="d-block text-warning">incluído pelo Faturamento</small>
+                                    {% elif it.qtd_solicitada != it.quantidade %}<small class="d-block text-warning">pedido: {{ it.qtd_solicitada }}</small>{% endif %}
+                                </td>
+                                <td class="text-end text-nowrap">
+                                    R$ {{ it.preco_unitario|floatformat:"2g" }}
+                                    {% if it.preco_solicitado is not None and it.preco_solicitado != it.preco_unitario %}<small class="d-block text-warning">pedido: R$ {{ it.preco_solicitado|floatformat:"2g" }}</small>{% endif %}
+                                </td>
+                                <td class="text-end text-nowrap fw-semibold">R$ {{ it.valor_total|floatformat:"2g" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr><td colspan="3" class="text-end fw-bold">Total</td><td class="text-end fw-bold text-nowrap">R$ {{ p.total|floatformat:"2g" }}</td></tr>
+                        </tfoot>
+                    </table>
+                </div>
+                {% if p.observacao %}
+                <div class="p-3 bg-light rounded border mb-3">
+                    <label class="text-muted small d-block fw-bold text-uppercase mb-1">Observação do vendedor</label>
+                    <p class="mb-0 small" style="white-space: pre-line;">{{ p.observacao }}</p>
+                </div>
+                {% endif %}
+                {% if p.observacao_faturamento %}
+                <div class="p-3 rounded border mb-3 panel-accent">
+                    <label class="text-muted small d-block fw-bold text-uppercase mb-1">Observação do Faturamento</label>
+                    <p class="mb-0 small" style="white-space: pre-line;">{{ p.observacao_faturamento }}</p>
+                </div>
+                {% endif %}
+                {% if p.status == 'CANCELADO' %}
+                <div class="p-3 rounded border border-danger-subtle bg-danger-subtle">
+                    <label class="small d-block fw-bold text-uppercase mb-1 text-danger">Cancelado</label>
+                    <p class="mb-0 small">{{ p.motivo_cancelamento }}<br><span class="text-muted">por {{ p.cancelado_por.get_full_name|default:p.cancelado_por.username }} em {{ p.data_cancelamento|date:"d/m/Y H:i" }}</span></p>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if p.status == 'PENDENTE' %}
+{% if eh_faturamento or p.vendedor_id == request.user.id %}
+<div class="modal fade" id="modalCancelar{{ p.id }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="POST" action="{% url 'chopp_cancelar' p.id %}" class="modal-content text-start">
+            {% csrf_token %}
+            <div class="modal-header bg-danger">
+                <h6 class="modal-title">Cancelar Pedido #{{ p.id }}</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3">Cancelar o pedido de <strong>{{ p.cliente_nome_fantasia|default:p.cliente_razao_social }}</strong>?</p>
+                <label class="form-label">Motivo</label>
+                <textarea name="motivo" class="form-control" rows="2" required></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Voltar</button>
+                <button type="submit" class="btn btn-danger">Cancelar pedido</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+{% endfor %}
+
+{% if eh_gestor %}
+<div class="modal fade" id="modalExportar" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="GET" action="{% url 'chopp_exportar' %}" class="modal-content text-start">
+            <div class="modal-header">
+                <h6 class="modal-title"><i class="bi bi-file-earmark-excel me-2"></i>Exportar pedidos de chopp</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-6"><label class="form-label">De</label><input type="date" name="data_ini" class="form-control" value="{{ request.GET.data_ini|default:'' }}"></div>
+                    <div class="col-6"><label class="form-label">Até</label><input type="date" name="data_fim" class="form-control" value="{{ request.GET.data_fim|default:'' }}"></div>
+                    <div class="col-6">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-select">
+                            <option value="">Todos</option>
+                            {% for valor, rotulo in status_choices %}<option value="{{ valor }}">{{ rotulo }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Vendedor</label>
+                        <select name="vendedor" class="form-select">
+                            <option value="">Todos</option>
+                            {% for v in vendedores %}<option value="{{ v.id }}">{{ v.get_full_name|default:v.username }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <small class="text-muted d-block mt-3">Uma linha por produto, com a quantidade e o preço que o vendedor lançou e os finais.</small>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="submit" class="btn btn-success"><i class="bi bi-download me-1"></i> Gerar Excel</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

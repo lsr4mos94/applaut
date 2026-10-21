@@ -6,10 +6,11 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.auth import views as auth_views
 from django.views.static import serve
+from app.views_media import media_protegida
 
 @login_required
 def home(request):
-    return render(request, 'base.html')
+    return render(request, 'home.html')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -39,7 +40,8 @@ urlpatterns = [
     ), name='password_reset_complete'),
 
     re_path(r'^static/(?P<path>.*)$', serve, {'document_root': settings.STATIC_ROOT}),
-    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+    # Anexos (contratos, documentos, notas) só para usuários logados
+    re_path(r'^media/(?P<path>.*)$', media_protegida),
 
     path('webhook_plantao/', include('integracoes.urls')),
 

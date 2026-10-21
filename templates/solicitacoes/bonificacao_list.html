@@ -2,56 +2,7 @@
 
 {% block content %}
 
-<style>
-    /* AJUSTE MOBILE: Transforma a tabela em Cards */
-    @media (max-width: 767.98px) {
-        .table-responsive { border: none !important; }
-        #tabelaBonificacoes thead { display: none; }
-        
-        #tabelaBonificacoes tbody tr { 
-            display: block; 
-            margin-bottom: 1rem; 
-            border: 1px solid #e9ecef; 
-            border-radius: 12px; 
-            box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.05); 
-            background-color: #fff;
-            overflow: hidden;
-        }
-        
-        #tabelaBonificacoes tbody td { 
-            display: block; 
-            position: relative;
-            padding: 0.5rem 1rem 0.5rem 40% !important; 
-            text-align: right !important; 
-            border-bottom: 1px solid #f8f9fa;
-            word-wrap: break-word; 
-        }
-        
-        #tabelaBonificacoes tbody td:last-child { border-bottom: none; }
-        
-        #tabelaBonificacoes tbody td::before { 
-            content: attr(data-label); 
-            position: absolute;
-            left: 1rem;
-            top: 0.6rem;
-            width: 35%; 
-            font-weight: 700; 
-            color: #6c757d; 
-            text-transform: uppercase; 
-            font-size: 0.75rem; 
-            text-align: left; 
-        }
-        
-        #tabelaBonificacoes tbody td .text-muted { display: block; margin-top: 2px; }
-        
-        #tabelaBonificacoes tbody td[data-label="Ações"] .d-flex {
-            justify-content: flex-end !important;
-            margin-top: 0 !important;
-        }
-        
-        .modal-body .border-end { border-right: none !important; border-bottom: 1px solid #e9ecef; margin-bottom: 1rem; padding-bottom: 1rem; }
-    }
-</style>
+
 
 <div class="container-fluid mt-4 text-start">
     <!-- CABEÇALHO RESPONSIVO -->
@@ -63,7 +14,7 @@
                     <i class="bi bi-file-earmark-excel me-2"></i> Exportar
                 </button>
             {% endif %}
-            <a href="{% url 'criar_bonificacao' %}" class="btn text-white shadow-sm d-flex justify-content-center align-items-center" style="background-color: #bca464;">
+            <a href="{% url 'criar_bonificacao' %}" class="btn text-white shadow-sm d-flex justify-content-center align-items-center bg-brand">
                 <i class="bi bi-plus-circle me-2"></i><strong>Nova Solicitação</strong>
             </a>
         </div>
@@ -152,7 +103,7 @@
                     {% for b in bonificacoes %}
                     <tr class="border-bottom">
                         <td class="px-3 text-start" data-label="Cliente">
-                            <strong style="color: #5e4d26;">#{{b.id }} {{ b.cliente_nome_fantasia }}</strong><br>
+                            <strong class="text-strong">#{{b.id }} {{ b.cliente_nome_fantasia }}</strong><br>
                             <div class="d-flex align-items-center justify-content-end justify-content-md-start gap-2 mt-1">
                                 <small class="text-muted">
                                     {% if b.cliente_cpf_cnpj|length == 14 %}
@@ -178,7 +129,7 @@
                                 {{ b.get_status_display }}
                             </span>
                         </td>
-                        <td class="text-md-center" data-label="AÇÕES" style="white-space: nowrap;">
+                        <td class="text-md-center" data-label="Ações" style="white-space: nowrap;">
                             <div class="d-flex justify-content-center gap-1">
                                 <button class="btn-square-action btn-view" data-bs-toggle="modal" data-bs-target="#modalVer{{ b.id }}" title="Ver Detalhes">
                                     <i class="bi bi-eye-fill"></i>
@@ -186,9 +137,12 @@
                                 
                                 {% if 'Gestão Comercial' in request.user.groups.all|stringformat:"s" %}
                                     {% if b.status == 'PENDENTE' %}
-                                        <a href="{% url 'gerenciar_solicitacao' b.id 'aprovar' %}" class="btn-square-action btn-approve" title="Aprovar">
-                                            <i class="bi bi-check-lg"></i>
-                                        </a>
+                                        <form action="{% url 'gerenciar_solicitacao' b.id 'aprovar' %}" method="POST" class="d-inline m-0">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn-square-action btn-approve" title="Aprovar">
+                                                <i class="bi bi-check-lg"></i>
+                                            </button>
+                                        </form>
                                         <button class="btn-square-action btn-reject" data-bs-toggle="modal" data-bs-target="#modalReprovar{{ b.id }}" title="Reprovar">
                                             <i class="bi bi-x-lg"></i>
                                         </button>
@@ -198,7 +152,7 @@
                                     </button>
                                 {% endif %}
 
-                                {% if 'Faturamento' in request.user.groups.all|stringformat:"s" %}
+                                {% if 'Faturamento' in request.user.groups.all|stringformat:"s" and b.status == 'APROVADO' %}
                                     <button type="button" class="btn-square-action btn-confirm" data-bs-toggle="modal" data-bs-target="#modalConfirmar{{ b.id }}" title="Finalizar Pedido">
                                         <i class="bi bi-check-all fs-4"></i>
                                     </button>
@@ -219,7 +173,7 @@
         <div class="modal fade" id="modalVer{{ b.id }}" tabindex="-1">
             <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
                 <div class="modal-content border-0 shadow-lg text-start">
-                    <div class="modal-header text-white" style="background-color: #bca464;">
+                    <div class="modal-header">
                         <h5 class="modal-title small fw-bold text-uppercase mt-1"><i class="bi bi-info-circle-fill me-2"></i>Detalhes da Bonificação #{{ b.id }}</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
@@ -262,7 +216,7 @@
                             {% if b.fotos.all %}
                             <br>
                             <div class="col-12 mb-4">
-                                <h6 class="fw-bold mb-3" style="color: #bca464;"><i class="bi bi-box-seam me-2"></i>Evidências de SAC</h6>
+                                <h6 class="fw-bold mb-3 text-brand"><i class="bi bi-box-seam me-2"></i>Evidências de SAC</h6>
                                 <div class="row g-2">
                                     {% for foto in b.fotos.all %}
                                     <div class="col-12 col-md-4">
@@ -286,7 +240,7 @@
                                 </p>
                             {% endif %}
                         </div>
-                        <h6 class="fw-bold mb-3" style="color: #bca464;"><i class="bi bi-box-seam me-2"></i>Produtos Solicitados</h6>
+                        <h6 class="fw-bold mb-3 text-brand"><i class="bi bi-box-seam me-2"></i>Produtos Solicitados</h6>
                         <div class="table-responsive">
                             <table class="table table-sm table-bordered align-middle">
                                 <thead class="bg-light small">
@@ -308,7 +262,7 @@
                                 <tfoot class="table-light fw-bold">
                                     <tr>
                                         <td colspan="2" class="text-end text-uppercase small py-2">Total Geral:</td>
-                                        <td class="text-end pe-3 py-2 text-nowrap" style="color: #5e4d26; font-size: 0.95rem;">R$ {{ b.get_total|floatformat:2 }}</td>
+                                        <td class="text-end pe-3 py-2 text-nowrap" style="font-size: 0.95rem;">R$ {{ b.get_total|floatformat:2 }}</td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -340,7 +294,7 @@
                             </div>
                             <div class="modal-footer border-0 p-2 d-flex flex-column flex-sm-row">
                                 <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none w-100 w-sm-auto order-2 order-sm-1" data-bs-dismiss="modal">Cancelar</button>
-                                <button type="submit" class="btn btn-danger btn-sm px-4 fw-bold w-100 w-sm-auto order-1 order-sm-2 mb-2 mb-sm-0">REPROVAR AGORA</button>
+                                <button type="submit" class="btn btn-danger btn-sm px-4 fw-bold w-100 w-sm-auto order-1 order-sm-2 mb-2 mb-sm-0">Reprovar agora</button>
                             </div>
                         </form>
                     </div>
@@ -353,7 +307,7 @@
             <div class="modal fade" id="modalConfirmar{{ b.id }}" tabindex="-1">
                 <div class="modal-dialog modal-dialog-centered modal-sm">
                     <div class="modal-content border-0 shadow-lg">
-                        <div class="modal-header text-white border-0" style="background-color: #bca464;">
+                        <div class="modal-header border-0">
                             <h6 class="modal-title fw-bold small"><i class="bi bi-check-all me-2"></i>Confirmar ERP</h6>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                         </div>
@@ -365,7 +319,7 @@
                             </div>
                             <div class="modal-footer border-0 p-2 d-flex flex-column flex-sm-row">
                                 <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none w-100 w-sm-auto order-2 order-sm-1" data-bs-dismiss="modal">Cancelar</button>
-                                <button type="submit" class="btn btn-dark btn-sm px-4 fw-bold w-100 w-sm-auto order-1 order-sm-2 mb-2 mb-sm-0">CONCLUIR E SALVAR</button>
+                                <button type="submit" class="btn btn-dark btn-sm px-4 fw-bold w-100 w-sm-auto order-1 order-sm-2 mb-2 mb-sm-0">Concluir e salvar</button>
                             </div>
                         </form>
                     </div>
@@ -379,7 +333,7 @@
                 <div class="modal-dialog modal-sm modal-dialog-centered">
                     <div class="modal-content border-0 shadow">
                         <div class="modal-header border-0 bg-danger text-white">
-                            <h5 class="modal-title small fw-bold"><i class="bi bi-exclamation-triangle me-2"></i> EXCLUIR SOLICITAÇÃO</h5>
+                            <h5 class="modal-title small fw-bold"><i class="bi bi-exclamation-triangle me-2"></i> Excluir solicitação</h5>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body text-center p-4">
@@ -422,7 +376,7 @@
                     </div>
                     <div class="modal-footer border-0 bg-light p-2 d-flex flex-column flex-sm-row">
                         <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none w-100 w-sm-auto order-2 order-sm-1" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-success btn-sm px-4 fw-bold w-100 w-sm-auto order-1 order-sm-2 mb-2 mb-sm-0" onclick="fecharModalExportar()">GERAR RELATÓRIO</button>
+                        <button type="submit" class="btn btn-success btn-sm px-4 fw-bold w-100 w-sm-auto order-1 order-sm-2 mb-2 mb-sm-0" onclick="fecharModalExportar()">Gerar relatório</button>
                     </div>
                 </form>
             </div>
@@ -441,7 +395,7 @@
 
                 {% for i in bonificacoes.paginator.page_range %}
                     {% if bonificacoes.number == i %}
-                        <li class="page-item active"><span class="page-link rounded" style="background-color: #bca464; border-color: #bca464;">{{ i }}</span></li>
+                        <li class="page-item active"><span class="page-link rounded">{{ i }}</span></li>
                     {% elif i > bonificacoes.number|add:'-3' and i < bonificacoes.number|add:'3' %}
                         <li class="page-item"><a class="page-link text-dark rounded" href="?page={{ i }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ i }}</a></li>
                     {% endif %}
@@ -459,14 +413,11 @@
 </div> <!-- Fim da container-fluid -->
 
 <!-- SCRIPTS E INICIALIZAÇÃO DATATABLES -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
 
 <script>
     $(document).ready(function() {
         if (!$.fn.DataTable.isDataTable('#tabelaBonificacoes')) {
-            $('#tabelaBonificacoes').DataTable({
+            if (!document.querySelector('#tabelaBonificacoes tbody td[colspan]')) $('#tabelaBonificacoes').DataTable({
                 "dom": 't',
                 "paging": false,
                 "ordering": true,
@@ -481,9 +432,9 @@
                 },
                 "initComplete": function(settings, json) {
                     $('#tabelaBonificacoes thead th').css({
-                        'background-color': '#bca464',
-                        'color': '#ffffff',
-                        'border-bottom': 'none'
+                        'background-color': '',
+                        'color': '',
+                        'border-bottom': ''
                     });
                 }
             });

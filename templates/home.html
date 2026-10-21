@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    .home-hero { margin-bottom: 1.75rem; }
+    .home-hero .data { color: var(--muted); font-size: .8rem; font-weight: 500; }
+    .atalho {
+        display: flex; gap: .9rem; align-items: center;
+        height: 100%; padding: 1.1rem;
+        background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+        box-shadow: var(--shadow-sm); color: var(--text); text-decoration: none;
+        transition: border-color .15s, box-shadow .15s, transform .15s;
+    }
+    .atalho:hover { border-color: var(--accent); box-shadow: var(--shadow); color: var(--text); transform: translateY(-1px); }
+    .atalho .icone {
+        flex: 0 0 40px; width: 40px; height: 40px; border-radius: 10px;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: var(--accent-soft); color: var(--accent-strong); font-size: 1.15rem;
+    }
+    .atalho .titulo { font-weight: 600; }
+    .atalho .desc { color: var(--muted); font-size: .8rem; line-height: 1.4; }
+    .atalho .seta { margin-left: auto; color: #9ca3af; align-self: center; }
+    .home-secao { font-size: .75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin: 1.5rem 0 .75rem; }
+</style>
+
+{% with user_groups=request.user.groups.all|stringformat:"s" %}
+<div class="home-hero">
+    <div class="data">{% now "l, d \d\e F \d\e Y" %}</div>
+    <h3 class="text-gold-title mt-1">Olá, {{ user.first_name|default:user.username }}</h3>
+    <p class="page-subtitle">O que você quer fazer hoje?</p>
+</div>
+
+{% if "Vendedores" in user_groups or "Cadastro" in user_groups or "Contas a Receber" in user_groups or "Gestão Comercial" in user_groups %}
+<div class="home-secao">Cadastros</div>
+<div class="row g-3">
+    {% if "Vendedores" in user_groups or "Cadastro" in user_groups or "Contas a Receber" in user_groups %}
+    <div class="col-12 col-md-6 col-xl-4">
+        <a class="atalho" href="{% url 'lista_cadastros' %}">
+            <span class="icone"><i class="bi bi-people"></i></span>
+            <span class="titulo">Clientes</span>
+            <i class="bi bi-chevron-right seta"></i>
+        </a>
+    </div>
+    {% endif %}
+    {% if "Vendedores" in user_groups or "Gestão Comercial" in user_groups %}
+    <div class="col-12 col-md-6 col-xl-4">
+        <a class="atalho" href="{% url 'acordos_comerciais' %}">
+            <span class="icone"><i class="bi bi-briefcase"></i></span>
+            <span class="titulo">Acordos Comerciais</span>
+            <i class="bi bi-chevron-right seta"></i>
+        </a>
+    </div>
+    <div class="col-12 col-md-6 col-xl-4">
+        <a class="atalho" href="{% url 'verbas_mensais' %}">
+            <span class="icone"><i class="bi bi-wallet2"></i></span>
+            <span class="titulo">Verbas Mensais</span>
+            <i class="bi bi-chevron-right seta"></i>
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if "Vendedores" in user_groups or "Gestão Comercial" in user_groups or "Contas a Receber" in user_groups or "Faturamento" in user_groups or "Gestão Financeira" in user_groups or "Plantao" in user_groups %}
+<div class="home-secao">Solicitações</div>
+<div class="row g-3">
+    {% if "Vendedores" in user_groups or "Faturamento" in user_groups or "Gestão Comercial" in user_groups %}
+    <div class="col-12 col-md-6 col-xl-4">
+        <a class="atalho" href="{% url 'chopp_list' %}">
+            <span class="icone"><i class="bi bi-cup-straw"></i></span>
+            <span class="titulo">Chopp</span>
+            <i class="bi bi-chevron-right seta"></i>
+        </a>
+    </div>
+    {% endif %}
+    {% if "Vendedores" in user_groups or "Faturamento" in user_groups or "Gestão Comercial" in user_groups %}
+    <div class="col-12 col-md-6 col-xl-4">
+        <a class="atalho" href="{% url 'bonificacao_list' %}">
+            <span class="icone"><i class="bi bi-gift"></i></span>
+            <span class="titulo">Bonificações</span>
+            <i class="bi bi-chevron-right seta"></i>
+        </a>
+    </div>
+    {% endif %}
+    {% if "Vendedores" in user_groups or "Gestão Comercial" in user_groups or "Contas a Receber" in user_groups or "Faturamento" in user_groups %}
+    <div class="col-12 col-md-6 col-xl-4">
+        <a class="atalho" href="{% url 'buscar_boleto' %}">
+            <span class="icone"><i class="bi bi-upc-scan"></i></span>
+            <span class="titulo">Boletos</span>
+            <i class="bi bi-chevron-right seta"></i>
+        </a>
+    </div>
+    {% endif %}
+    {% if "Vendedores" in user_groups or "Gestão Financeira" in user_groups or "Contas a Receber" in user_groups or "Plantao" in user_groups %}
+    <div class="col-12 col-md-6 col-xl-4">
+        <a class="atalho" href="{% url 'plantao_list' %}">
+            <span class="icone"><i class="bi bi-tools"></i></span>
+            <span class="titulo">Plantão</span>
+            <i class="bi bi-chevron-right seta"></i>
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if "Solicitantes" in user_groups or "Gestão Financeira" in user_groups or "Contas a Pagar" in user_groups %}
+<div class="home-secao">Administrativo</div>
+<div class="row g-3">
+    <div class="col-12 col-md-6 col-xl-4">
+        <a class="atalho" href="{% url 'listar_solicitacoes_verba' %}">
+            <span class="icone"><i class="bi bi-cash-coin"></i></span>
+            <span class="titulo">Verbas</span>
+            <i class="bi bi-chevron-right seta"></i>
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endwith %}
+{% endblock %}

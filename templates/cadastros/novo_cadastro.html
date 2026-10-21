@@ -3,9 +3,8 @@
 {% block content %}
 <div class="container py-4">
     <div class="text-center mb-5">
-        <h3 style="color: #bca464; font-weight: 600; font-family: 'Montserrat', sans-serif;">Novo Cadastro de Cliente</h3>
+        <h3 class="text-gold-title">Novo Cadastro de Cliente</h3>
         <p class="text-muted small">Preencha os dados para solicitação de cadastro.</p>
-        <div style="height: 2px; width: 40px; background-color: #d4a017; margin: 10px auto;"></div>
     </div>
 
     <div class="row mb-5 justify-content-center">
@@ -32,7 +31,7 @@
                 {% csrf_token %}
                 
                 <div class="step-content" id="step-1">
-                    <h5 class="mb-4" style="color: #bca464;"><i class="bi bi-person-vcard me-2"></i>Informações Principais</h5>
+                    <h5 class="mb-4 text-brand"><i class="bi bi-person-vcard me-2"></i>Informações Principais</h5>
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label small fw-bold">Plataforma</label>
@@ -122,12 +121,12 @@
                         </div>
                     </div>
                     <div class="d-flex justify-content-end mt-4">
-                        <button type="button" class="btn text-white px-5 fw-bold" style="background-color: #bca464;" onclick="validarAvancar(1, 2)">Próximo <i class="bi bi-arrow-right ms-2"></i></button>
+                        <button type="button" class="btn text-white px-5 fw-bold bg-brand" onclick="validarAvancar(1, 2)">Próximo <i class="bi bi-arrow-right ms-2"></i></button>
                     </div>
                 </div>
 
                 <div class="step-content d-none" id="step-2">
-                    <h5 class="mb-4" style="color: #bca464;"><i class="bi bi-truck me-2"></i>Logística e Pagamento</h5>
+                    <h5 class="mb-4 text-brand"><i class="bi bi-truck me-2"></i>Logística e Pagamento</h5>
                     <div class="row g-3">
                         <div class="col-md-12 text-end">
                             <div class="form-check form-switch d-inline-block">
@@ -222,12 +221,12 @@
                     </div>
                     <div class="d-flex justify-content-between mt-4">
                         <button type="button" class="btn btn-outline-secondary px-4 fw-bold" onclick="changeStep(1)">Anterior</button>
-                        <button type="button" class="btn text-white px-5 fw-bold" style="background-color: #bca464;" onclick="validarAvancar(2, 3)">Próximo <i class="bi bi-arrow-right ms-2"></i></button>
+                        <button type="button" class="btn text-white px-5 fw-bold bg-brand" onclick="validarAvancar(2, 3)">Próximo <i class="bi bi-arrow-right ms-2"></i></button>
                     </div>
                 </div>
 
                 <div class="step-content d-none" id="step-3">
-                    <h5 class="mb-4" style="color: #bca464;"><i class="bi bi-people-fill me-2"></i>Dados dos Sócios e Responsáveis</h5>
+                    <h5 class="mb-4 text-brand"><i class="bi bi-people-fill me-2"></i>Dados dos Sócios e Responsáveis</h5>
                     
                     <div id="container-responsaveis">
                         <div class="row g-3 mb-4 p-3 border rounded">
@@ -299,12 +298,12 @@
 
                     <div class="d-flex justify-content-between mt-4">
                         <button type="button" class="btn btn-outline-secondary px-4 fw-bold" onclick="changeStep(2)">Anterior</button>
-                        <button type="button" class="btn text-white px-5 fw-bold" style="background-color: #bca464;" onclick="validarAvancar(3, 4)">Próximo <i class="bi bi-arrow-right ms-2"></i></button>
+                        <button type="button" class="btn text-white px-5 fw-bold bg-brand" onclick="validarAvancar(3, 4)">Próximo <i class="bi bi-arrow-right ms-2"></i></button>
                     </div>
                 </div>
 
                 <div class="step-content d-none" id="step-4">
-                    <h5 class="mb-4" style="color: #bca464;"><i class="bi bi-cloud-arrow-up-fill me-2"></i>Documentação</h5>
+                    <h5 class="mb-4 text-brand"><i class="bi bi-cloud-arrow-up-fill me-2"></i>Documentação</h5>
                     <p class="text-muted small mb-4">Envie documentos em PDF ou Imagem para agilizar a análise.</p>
                     
                     <div class="row g-4">
@@ -389,9 +388,8 @@
 </div>
 
 <style>
-    .form-check-input:checked { background-color: #bca464 !important; border-color: #bca464 !important; }
     .step-item { width: 40px; height: 40px; border-radius: 50%; background: #e9ecef; display: flex; align-items: center; justify-content: center; z-index: 2; position: relative; font-weight: bold; color: #6c757d; transition: all 0.3s ease; }
-    .step-item.active { background: #bca464; color: white; box-shadow: 0 0 0 4px rgba(188, 164, 100, 0.2); }
+    .step-item.active { background: var(--ink); color: #fff; box-shadow: 0 0 0 4px var(--accent-ring); }
     .progress-line { position: absolute; top: 20px; left: 0; width: 100%; height: 2px; background: #e9ecef; z-index: 1; }
     .is-invalid { border-color: #dc3545 !important; }
     .bg-disabled { background-color: #f8f9fa !important; cursor: not-allowed; opacity: 0.7; }

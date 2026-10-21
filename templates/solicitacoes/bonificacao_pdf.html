@@ -2,201 +2,224 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <title>Bonificação #{{ b.id }}</title>
     <style>
         @page {
             size: A4;
-            margin: 1cm;
+            margin: 1.6cm 1.6cm 2.2cm 1.6cm;
+            @frame rodape {
+                -pdf-frame-content: rodape;
+                left: 1.6cm; right: 1.6cm; bottom: 0.8cm; height: 1cm;
+            }
         }
-        body {
-            font-family: 'Helvetica', 'Arial', sans-serif;
-            color: #000;
-            line-height: 1.4;
-            margin: 0;
-            padding: 0;
-        }
-        
-        .header {
-            border-bottom: 4px solid #bca464;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-        }
-        .title {
-            color: #bca464;
-            text-transform: uppercase;
-            font-size: 26px;
-            font-weight: bold;
-            margin: 0;
-        }
-        .header-meta {
-            font-size: 12px;
-            font-weight: bold;
-            text-align: right;
-        }
+        body { font-family: "IBM Plex Sans", Helvetica, Arial, sans-serif; font-size: 9.5pt; color: #111827; line-height: 1.35; }
+        table { width: 100%; border-collapse: collapse; }
+        td, th { vertical-align: top; }
 
-        .info-table {
-            width: 100%;
-            margin-bottom: 15px;
-            border: 2px solid #eee;
-        }
-        .info-td {
-            padding: 12px;
-            vertical-align: top;
-            background-color: #fff;
-        }
-        .label {
-            font-weight: bold;
-            color: #bca464;
-            text-transform: uppercase;
-            font-size: 11px;
-            display: block;
-            margin-bottom: 5px;
-        }
-        .data-value {
-            font-size: 13px;
-            font-weight: bold;
-            color: #000;
-        }
+        /* Cabeçalho */
+        .doc-tipo-esq { font-size: 8pt; color: #8c7234; font-weight: bold; text-transform: uppercase; }
+        .titulo { font-size: 17pt; font-weight: bold; color: #111827; }
+        .doc-tipo { font-size: 8pt; color: #6b7280; text-transform: uppercase; text-align: right; }
+        .doc-num { font-size: 20pt; font-weight: bold; color: #111827; text-align: right; }
+        .doc-data { font-size: 8.5pt; color: #6b7280; text-align: right; }
+        .linha-dourada { border-bottom: 2px solid #bca464; height: 1px; margin: 12px 0 16px 0; }
 
-        .items-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-        .items-table th {
-            background-color: #bca464;
-            color: #fff;
-            text-align: left;
-            padding: 10px;
-            font-size: 12px;
-            text-transform: uppercase;
-            border: 1px solid #bca464;
-        }
-        .items-table td {
-            border: 1px solid #ddd;
-            padding: 10px;
-            font-size: 13px;
-            color: #000;
-        }
-        .col-qtd { text-align: center; width: 60px; font-weight: bold; }
-        .col-valor { text-align: right; width: 120px; font-weight: bold; }
+        /* Selos */
+        .selo { font-size: 8pt; font-weight: bold; padding: 3px 8px; }
+        .selo-pendente  { color: #b45309; background-color: #fffbeb; border: 1px solid #fde68a; }
+        .selo-aprovado  { color: #15803d; background-color: #ecfdf3; border: 1px solid #bbf7d0; }
+        .selo-reprovado { color: #b91c1c; background-color: #fef2f2; border: 1px solid #fecaca; }
+        .selo-concluido { color: #0369a1; background-color: #f0f9ff; border: 1px solid #bae6fd; }
+        .selo-tipo      { color: #374151; background-color: #f3f4f6; border: 1px solid #e5e7eb; }
 
-        .total-banner {
-            margin-top: 15px;
-            background-color: #f8f5ee;
-            border: 2px solid #bca464;
-            padding: 15px;
-            text-align: right;
-        }
-        .total-label {
-            font-size: 14px;
-            font-weight: bold;
-            text-transform: uppercase;
-            color: #5e4d26;
-        }
-        .total-amount {
-            font-size: 24px;
-            font-weight: bold;
-            color: #000;
-            margin-left: 20px;
-        }
+        /* Blocos de informação */
+        .bloco { border: 1px solid #e5e7eb; padding: 10px 12px 4px 12px; }
+        .bloco-titulo { font-size: 7.5pt; font-weight: bold; color: #8c7234; text-transform: uppercase; letter-spacing: 1px; padding-bottom: 6px; }
+        .rotulo { font-size: 7.5pt; color: #6b7280; padding-top: 3px; }
+        .valor { font-size: 9.5pt; color: #111827; padding-bottom: 6px; }
+        .valor-forte { font-size: 10.5pt; font-weight: bold; color: #111827; padding-bottom: 6px; }
 
-        .obs-box {
-            margin-top: 15px;
-            padding: 10px;
-            border: 1px dashed #bca464;
-            background-color: #fff;
-        }
+        .justificativa { background-color: #f9fafb; border: 1px solid #e5e7eb; padding: 10px 12px; margin-top: 12px; }
 
-        .footer {
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            text-align: center;
-            font-size: 11px;
-            border-top: 1px solid #000;
-            padding-top: 5px;
-            font-weight: bold;
+        /* Itens */
+        .secao { font-size: 7.5pt; font-weight: bold; color: #8c7234; text-transform: uppercase; letter-spacing: 1px; margin: 18px 0 6px 0; }
+        .itens th {
+            background-color: #f3f4f6; color: #6b7280;
+            font-size: 7.5pt; font-weight: bold; text-transform: uppercase;
+            padding: 7px 8px 5px 8px; text-align: left;
+            border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb;
         }
+        .itens th.num { text-align: right; }
+        .itens th.centro { text-align: center; }
+        .itens td { padding: 8px 8px 6px 8px; border-bottom: 1px solid #e5e7eb; font-size: 9pt; }
+        .codigo { color: #6b7280; }
+        .num { text-align: right; }
+        .centro { text-align: center; }
+
+        /* Total */
+        .total-caixa { border-top: 2px solid #111827; padding: 8px 8px 0 8px; }
+        .total-rotulo { font-size: 9pt; color: #6b7280; }
+        .total-valor { font-size: 15pt; font-weight: bold; color: #111827; text-align: right; }
+
+        .reprovacao { border: 1px solid #fecaca; background-color: #fef2f2; padding: 10px 12px; margin-top: 14px; }
+        .reprovacao-titulo { font-size: 7.5pt; font-weight: bold; color: #b91c1c; text-transform: uppercase; letter-spacing: 1px; padding-bottom: 4px; }
+
+        #rodape { font-size: 7.5pt; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 6px; }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <table width="100%">
-            <tr>
-                <td><h1 class="title">SOLICITAÇÃO DE BONIFICAÇÃO</h1></td>
-                <td class="header-meta">
-                    Nº #{{ b.id }}<br>
-                    EMISSÃO: {{ data|date:"d/m/Y H:i" }}
-                </td>
-            </tr>
-        </table>
-    </div>
-
-    <table class="info-table" cellspacing="0">
+    <!-- Cabeçalho -->
+    <table>
         <tr>
-            <td class="info-td" style="border-right: 2px solid #eee; width: 50%;">
-                <span class="label">DADOS DO CLIENTE</span>
-                <div class="data-value">{{ b.cliente_razao_social }}</div>
-                <div class="data-value">FANTASIA: {{ b.cliente_nome_fantasia }}</div>
-                <div class="data-value">CNPJ/CPF: {{ b.cliente_cpf_cnpj }}</div>
-                <div class="data-value">CÓD/LOJA: {{ b.cliente_codigo }} / {{ b.cliente_loja }}</div>
+            <td style="width: 65%;">
+                <span class="doc-tipo-esq">Läut · Bonificação</span><br>
+                <span class="titulo">Solicitação de bonificação</span>
             </td>
-            <td class="info-td">
-                <span class="label">INFORMAÇÕES DE VENDA</span>
-                <div class="data-value">VENDEDOR: {{ b.vendedor.get_full_name|upper }}</div>
-                <div class="data-value">TIPO: {{ b.get_tipo_display|upper }}</div>
-                <div class="data-value">PLATAFORMA: {{ b.plataforma|upper }}</div>
-                <div class="data-value">ENTREGA: {{ b.metodo_entrega|upper }}</div>
+            <td style="width: 35%; text-align: right;">
+                <span class="doc-num">Nº {{ b.id }}</span><br>
+                <span class="doc-data">Emitido em {{ data|date:"d/m/Y \à\s H:i" }}</span>
+            </td>
+        </tr>
+    </table>
+    <div class="linha-dourada"></div>
+
+    <!-- Status e tipo -->
+    <table>
+        <tr>
+            <td>
+                <span class="selo selo-{{ b.status|lower }}">{{ b.get_status_display }}</span>
+                &nbsp;
+                <span class="selo selo-tipo">{{ b.get_tipo_display }}</span>
+            </td>
+            <td class="num" style="font-size: 8.5pt; color: #6b7280;">
+                Solicitado em {{ b.data_solicitacao|date:"d/m/Y" }}
+                {% if b.pedido_protheus %}&nbsp;·&nbsp; Pedido Protheus <b style="color: #111827;">{{ b.pedido_protheus }}</b>{% endif %}
             </td>
         </tr>
     </table>
 
-    <div class="obs-box">
-        <span class="label">JUSTIFICATIVA</span>
-        <div class="data-value" style="font-weight: normal; font-style: italic;">
-            {{ b.justificativa|default:"Nenhuma observação informada." }}
-        </div>
+    <!-- Cliente e venda -->
+    <table style="margin-top: 14px;">
+        <tr>
+            <td style="width: 50%; padding-right: 6px;">
+                <div class="bloco">
+                    <div class="bloco-titulo">Cliente</div>
+                    <div class="valor-forte">{{ b.cliente_razao_social }}</div>
+                    <table>
+                        <tr>
+                            <td style="width: 50%;">
+                                <div class="rotulo">Nome fantasia</div>
+                                <div class="valor">{{ b.cliente_nome_fantasia|default:"—" }}</div>
+                            </td>
+                            <td style="width: 50%;">
+                                <div class="rotulo">CNPJ / CPF</div>
+                                <div class="valor">{{ b.cliente_cpf_cnpj|default:"—" }}</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="rotulo">Código / Loja</div>
+                                <div class="valor">{{ b.cliente_codigo }} / {{ b.cliente_loja }}</div>
+                            </td>
+                            <td>
+                                <div class="rotulo">Grupo</div>
+                                <div class="valor">{{ b.cliente_grupo|default:"—" }}</div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </td>
+            <td style="width: 50%; padding-left: 6px;">
+                <div class="bloco">
+                    <div class="bloco-titulo">Solicitação</div>
+                    <div class="valor-forte">{{ b.vendedor.get_full_name|default:b.vendedor.username }}</div>
+                    <table>
+                        <tr>
+                            <td style="width: 50%;">
+                                <div class="rotulo">Plataforma</div>
+                                <div class="valor">{{ b.plataforma|default:"—" }}</div>
+                            </td>
+                            <td style="width: 50%;">
+                                <div class="rotulo">Recebimento</div>
+                                <div class="valor">{{ b.get_metodo_entrega_display|default:"—" }}</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="rotulo">Data prevista</div>
+                                <div class="valor">{{ b.data_entrega_retirada|date:"d/m/Y"|default:"—" }}</div>
+                            </td>
+                            <td>
+                                <div class="rotulo">Aprovado por</div>
+                                <div class="valor">{% if b.usuario_aprovador %}{{ b.usuario_aprovador.get_full_name|default:b.usuario_aprovador.username }}{% else %}—{% endif %}</div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Justificativa -->
+    <div class="justificativa">
+        <div class="rotulo" style="padding-top: 0;">Justificativa</div>
+        <div class="valor" style="padding-bottom: 0;">{{ b.justificativa|default:"Nenhuma observação informada."|linebreaksbr }}</div>
     </div>
 
-    <table class="items-table">
+    <!-- Itens -->
+    <div class="secao">Itens</div>
+    <table class="itens">
         <thead>
             <tr>
-                <th>CÓDIGO</th>
-                <th>DESCRIÇÃO DO PRODUTO</th>
-                <th class="col-qtd">QTD</th>
-                <th class="col-valor">TOTAL ITEM</th>
+                <th style="width: 14%;">Código</th>
+                <th style="width: 44%;">Produto</th>
+                <th class="centro" style="width: 10%;">Qtd</th>
+                <th class="num" style="width: 16%;">Preço unit.</th>
+                <th class="num" style="width: 16%;">Total</th>
             </tr>
         </thead>
         <tbody>
             {% for item in b.itens.all %}
             <tr>
-                <td style="width: 100px;">{{ item.produto_codigo }}</td>
-                <td><strong>{{ item.produto_descricao }}</strong></td>
-                <td class="col-qtd">{{ item.quantidade }}</td>
-                <td class="col-valor">R$ {{ item.valor_total|floatformat:2 }}</td>
+                <td class="codigo">{{ item.produto_codigo }}</td>
+                <td>{{ item.produto_descricao }}</td>
+                <td class="centro">{{ item.quantidade }}</td>
+                <td class="num">R$ {{ item.preco_tabela|floatformat:"2g" }}</td>
+                <td class="num"><b>R$ {{ item.valor_total|floatformat:"2g" }}</b></td>
             </tr>
+            {% empty %}
+            <tr><td colspan="5" class="centro codigo">Nenhum item informado.</td></tr>
             {% endfor %}
         </tbody>
     </table>
 
-    <div class="total-banner">
-        <span class="total-label">VALOR TOTAL DA SOLICITAÇÃO:</span>
-        <span class="total-amount">R$ {{ b.get_total|floatformat:2 }}</span>
-    </div>
+    <!-- Total -->
+    <table style="margin-top: 12px;">
+        <tr>
+            <td style="width: 55%;"></td>
+            <td style="width: 45%;">
+                <div class="total-caixa">
+                    <table>
+                        <tr>
+                            <td class="total-rotulo" style="vertical-align: middle;">Valor total</td>
+                            <td class="total-valor">R$ {{ b.get_total|floatformat:"2g" }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </td>
+        </tr>
+    </table>
 
     {% if b.status == 'REPROVADO' %}
-    <div style="margin-top: 15px; border: 2px solid #d9534f; padding: 10px;">
-        <span class="label" style="color: #d9534f;">MOTIVO DA REPROVAÇÃO</span>
-        <div class="data-value">{{ b.observacao_reprovacao }}</div>
+    <div class="reprovacao">
+        <div class="reprovacao-titulo">Motivo da reprovação</div>
+        <div class="valor" style="padding-bottom: 0;">{{ b.observacao_reprovacao|default:"—"|linebreaksbr }}</div>
     </div>
     {% endif %}
 
-    <div class="footer">
-        STATUS: {{ b.get_status_display|upper }} 
-        {% if b.pedido_protheus %} | PEDIDO PROTHEUS: {{ b.pedido_protheus }}{% endif %}
-        | SISTEMA LÄUT
-    </div>
+    <!-- Rodapé em todas as páginas -->
+    <div id="rodape">Läut Workflow &nbsp;·&nbsp; Bonificação nº {{ b.id }} &nbsp;·&nbsp; Página <pdf:pagenumber> de <pdf:pagecount></div>
 
 </body>
 </html>

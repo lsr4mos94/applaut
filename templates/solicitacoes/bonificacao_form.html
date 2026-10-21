@@ -1,15 +1,8 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <style>
-    .form-check-input:checked { background-color: #bca464 !important; border-color: #bca464 !important; box-shadow: 0 0 0 0.25rem rgba(188, 164, 100, 0.25) !important; }
-    .section-title { color: #bca464; font-weight: 600; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 1px; }
-    .form-label-custom { font-size: 0.75rem; font-weight: 700; color: #6c757d; text-transform: uppercase; margin-bottom: 5px; }
-    .bg-busca { background-color: #fcfbf7; border: 1px solid #bca464 !important; }
-    .list-group-item-action:hover { background-color: #fcfaf5; color: #bca464; }
-    .box-selecao { background-color: #fcfbf7; border: 1px solid #f1ece0; }
     
     /* Regras específicas para Telemóvel (Mobile) */
     @media (max-width: 767.98px) {
@@ -67,7 +60,7 @@
 
 <div class="container-fluid text-start">
     <div class="mb-4">
-        <h3 style="color: #bca464; font-weight: 600;">Nova Solicitação de Bonificação</h3>
+        <h3 class="text-brand fw-semibold">Nova Solicitação de Bonificação</h3>
     </div>
 
     <div class="card border-0 shadow-sm">
@@ -122,8 +115,8 @@
                         <!-- Grupo responsivo ajustado via CSS -->
                         <div class="input-group busca-cliente-group shadow-sm">
                             <input type="text" id="input_busca_cliente" class="form-control bg-busca" placeholder="Digite para localizar o cliente...">
-                            <button class="btn text-white px-4 fw-bold" type="button" id="btn_buscar_cliente" style="background-color: #bca464;">
-                                <i class="bi bi-search me-1"></i> BUSCAR
+                            <button class="btn text-white px-4 fw-bold bg-brand" type="button" id="btn_buscar_cliente">
+                                <i class="bi bi-search me-1"></i> Buscar
                             </button>
                         </div>
                     </div>
@@ -158,7 +151,7 @@
                     </div>
                 </div>
 
-                <div id="wrapper_acordo_selecionado" class="mb-4 p-3 rounded border border-warning shadow-sm" style="display: none; background-color: #fdfdf9;">
+                <div id="wrapper_acordo_selecionado" class="mb-4 p-3 rounded border border-warning shadow-sm panel-soft" style="display: none;">
                     <label class="form-label-custom text-warning"><i class="bi bi-file-earmark-text-fill me-1"></i> Acordo Comercial Vinculado</label>
                     <div id="texto_acordo_selecionado" class="fw-bold text-dark fs-6"></div>
                 </div>
@@ -208,15 +201,15 @@
                     <div class="col-12 col-md-5 ms-auto">
                         <div class="p-3 bg-light border rounded d-flex justify-content-between align-items-center shadow-sm">
                             <span class="text-muted fw-bold small text-uppercase">Total Geral:</span>
-                            <span id="totalGeral" class="fw-bold fs-5" style="color: #bca464;">R$ 0,00</span>
+                            <span id="totalGeral" class="fw-bold fs-5 text-brand">R$ 0,00</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="d-flex flex-column flex-md-row justify-content-md-end gap-2 border-top pt-4">
-                    <a href="{% url 'bonificacao_list' %}" class="btn btn-light border px-4 btn-mobile-full order-mobile-2 text-center fw-bold text-muted">CANCELAR</a>
-                    <button type="submit" class="btn text-white px-5 btn-mobile-full order-mobile-1 shadow-sm" style="background-color: #bca464;">
-                        <strong><i class="bi bi-send me-2"></i>ENVIAR SOLICITAÇÃO</strong>
+                    <a href="{% url 'bonificacao_list' %}" class="btn btn-light border px-4 btn-mobile-full order-mobile-2 text-center fw-bold text-muted">Cancelar</a>
+                    <button type="submit" class="btn text-white px-5 btn-mobile-full order-mobile-1 shadow-sm bg-brand">
+                        <strong><i class="bi bi-send me-2"></i>Enviar solicitação</strong>
                     </button>
                 </div>
             </form>
@@ -228,7 +221,7 @@
 <div class="modal fade" id="modalCliente" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
-            <div class="modal-header text-white" style="background-color: #bca464;">
+            <div class="modal-header">
                 <h6 class="modal-title fw-bold">Selecionar Cliente</h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -259,7 +252,7 @@
 <div class="modal fade" id="modalAcordo" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
-            <div class="modal-header text-white" style="background-color: #bca464;">
+            <div class="modal-header">
                 <h6 class="modal-title fw-bold"><i class="bi bi-briefcase-fill me-2"></i>Selecione o Acordo Vigente</h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="resetarTipoSeNaoEscolheu()"></button>
             </div>
@@ -286,7 +279,7 @@
             if(termo.length < 3) return alert('Digite ao menos 3 caracteres.');
 
             fetch("{% url 'api_busca_clientes' %}?q=" + encodeURIComponent(termo))
-                .then(res => res.json())
+                .then(lerJson)
                 .then(data => {
                     const lista = document.getElementById('lista_clientes');
                     lista.innerHTML = '';
@@ -332,7 +325,7 @@
             }
             lista.innerHTML = '<div class="p-4 text-center"><span class="spinner-border spinner-border-sm text-primary"></span> Consultando Protheus...</div>';
             fetch("{% url 'api_busca_produtos' %}?q=" + encodeURIComponent(termo))
-                .then(res => res.json())
+                .then(lerJson)
                 .then(data => {
                     lista.innerHTML = '';
                     if(data.length === 0) {
@@ -360,7 +353,8 @@
                         };
                         lista.appendChild(b);
                     });
-                });
+                })
+                .catch(e => { lista.innerHTML = `<div class="p-4 text-center text-danger">${e.message}</div>`; });
         };
 
         addLinha(); 
@@ -400,7 +394,7 @@
         if (tipoSelecionado === 'ACORDO_COMERCIAL') {
             if (!infoBox) {
                 const alerta = `
-                    <div id="info-acordo" class="alert alert-warning mt-2 py-2 shadow-sm" style="border-left: 5px solid #bca464; font-size: 0.85rem;">
+                    <div id="info-acordo" class="alert alert-warning mt-2 py-2 shadow-sm" style="font-size: 0.85rem;">
                         <i class="bi bi-shield-check me-2"></i>
                         <strong>Validação Automática:</strong> O sistema consultará o saldo do acordo vigente no Protheus.
                     </div>`;
@@ -442,7 +436,7 @@
                     <label class="form-label-custom">Preço Unitário</label>
                     <div class="input-group">
                         <span class="input-group-text text-muted">R$</span>
-                        <input type="number" step="0.01" name="item_preco_${contadorItens}" id="preco_${contadorItens}" class="form-control text-center" value="0.00" oninput="calc(${contadorItens})">
+                        <input type="number" step="0.01" name="item_preco_${contadorItens}" id="preco_${contadorItens}" class="form-control text-center" value="0.00" readonly title="Preço da tabela do Protheus">
                     </div>
                 </div>
 
@@ -741,7 +735,7 @@
                 </div>
                 <div class="text-start text-md-end">
                     <span class="small text-muted d-block" style="font-size: 0.75rem; font-weight: normal;">SALDO DISPONÍVEL</span>
-                    <span class="fw-bold" style="font-size: 1.1rem; color: #bca464;">${textoSaldo}</span>
+                    <span class="fw-bold text-brand" style="font-size: 1.1rem;">${textoSaldo}</span>
                 </div>
             </div>
         `;

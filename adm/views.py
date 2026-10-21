@@ -12,6 +12,8 @@ from django.utils.html import strip_tags
 from django.db import connections
 from django.db.models import Q
 from .forms import SolicitacaoVerbaForm
+from app.protheus import consultar, linhas, ProtheusIndisponivel
+from app.permissoes import grupo_requerido, no_grupo, GESTAO_FINANCEIRA, CONTAS_A_PAGAR, pode_ver_solicitacao_verba
 from .models import SolicitacaoVerba
 from django.core.paginator import Paginator
 from django.conf import settings
@@ -62,6 +64,8 @@ def listar_solicitacoes_verba(request):
 @login_required
 def detalhes_solicitacao_verba(request, pk):
     solicitacao = get_object_or_404(SolicitacaoVerba, pk=pk)
+    if not pode_ver_solicitacao_verba(request.user, solicitacao):
+        return JsonResponse({'erro': 'Sem permissão.'}, status=403)
     
     data = {
         'id': solicitacao.id,
@@ -109,7 +113,7 @@ def decidir_verba(request, pk):
 
             subject = f"Solicitação de Verba Aprovada: #{solicitacao.id}"
             template = 'emails/solicitacao_aprovada.html'
-            destinatarios = ['contasapagar@lautbeer.com.br', 'alexsandra@lautbeer.com.br', 'keylla.oliveira@lautbeer.com.br']
+            destinatarios = settings.EMAILS_VERBA_APROVADA
             contexto = {
                 'verba': solicitacao,
                 'site_url': settings.SITE_URL,
@@ -149,13 +153,21 @@ def decidir_verba(request, pk):
 
     return redirect('listar_solicitacoes_verba')
 
-@login_required
+@grupo_requerido(*CONTAS_A_PAGAR, destino='listar_solicitacoes_verba')
 def concluir_verba(request, pk):
     if request.method == 'POST':
         solicitacao = get_object_or_404(SolicitacaoVerba, pk=pk)
-        num_titulo = request.POST.get('num_titulo')
+        if solicitacao.status != 'APROVADO':
+            messages.error(request, "Só é possível concluir solicitações aprovadas.")
+            return redirect('listar_solicitacoes_verba')
+        num_titulo = (request.POST.get('num_titulo') or '').strip()
+        if len(num_titulo) > 9:
+            messages.error(request, "O número do título tem no máximo 9 caracteres.")
+            return redirect('listar_solicitacoes_verba')
         
         solicitacao.status = 'CONCLUIDO'
+        if num_titulo:
+            solicitacao.num_titulo = num_titulo
         solicitacao.save()
 
         try:
@@ -219,7 +231,7 @@ def nova_solicitacao_verba(request):
                     subject, 
                     strip_tags(html_content), 
                     settings.DEFAULT_FROM_EMAIL, 
-                    ['controladoria@lautbeer.com.br', 'alexsandra@lautbeer.com.br', 'financeiro@lautbeer.com.br']
+                    settings.EMAILS_VERBA_NOVA
                 )
                 email.attach_alternative(html_content, "text/html")
                 email.send()
@@ -269,12 +281,12 @@ def editar_solicitacao_verba(request, pk):
 
             try:
                 subject = f"Solicitação Atualizada: #{obj.id} - {obj.fornecedor_nome_razao}"
-                html_content = render_to_string('emails/solicitacao_verba.html', {'verba': obj})
+                html_content = render_to_string('emails/solicitacao_verba.html', {'verba': obj, 'site_url': settings.SITE_URL})
                 email = EmailMultiAlternatives(
                     subject, 
                     strip_tags(html_content), 
                     settings.DEFAULT_FROM_EMAIL, 
-                    ['lorrane.ramos@lautbeer.com.br']
+                    settings.EMAILS_VERBA_NOVA
                 )
                 email.attach_alternative(html_content, "text/html")
                 email.send()
@@ -299,9 +311,12 @@ def editar_solicitacao_verba(request, pk):
 def excluir_solicitacao_verba(request, pk):
     if request.method == 'POST':
         solicitacao = get_object_or_404(SolicitacaoVerba, pk=pk)
-        if solicitacao.status == 'PENDENTE' or request.user.is_superuser:
+        eh_dono_pendente = solicitacao.usuario_solicitante_id == request.user.id and solicitacao.status == 'PENDENTE'
+        if eh_dono_pendente or no_grupo(request.user, *GESTAO_FINANCEIRA):
             solicitacao.delete()
             messages.success(request, "Excluído com sucesso.")
+        else:
+            messages.error(request, "Você não tem permissão para excluir esta solicitação.")
     return redirect('listar_solicitacoes_verba')
 
 @login_required
@@ -312,27 +327,24 @@ def busca_fornecedor_protheus(request):
     config_busca = {'protheus_ciec': ['SA2010', 'SA2020'], 'protheus_wrp': ['SA2010']}
     query = "SELECT TOP 15 RTRIM(A2_COD), RTRIM(A2_LOJA), RTRIM(A2_NOME), RTRIM(A2_CGC) FROM {tabela} WHERE D_E_L_E_T_ <> '*' AND (A2_NOME LIKE %s OR A2_CGC LIKE %s OR A2_COD LIKE %s)"
     params = [f'%{termo}%', f'%{termo}%', f'%{termo}%']
-    resultados = {}
+    try:
+        resultados_protheus = consultar(config_busca, query, params)
+    except ProtheusIndisponivel:
+        return JsonResponse({'erro': 'Não foi possível consultar o Protheus agora. Tente novamente em instantes.'}, status=503)
 
-    for db, tabelas in config_busca.items():
-        if db not in connections: continue
-        for tabela in tabelas:
-            try:
-                with connections[db].cursor() as cursor:
-                    cursor.execute(query.format(tabela=tabela), params)
-                    for row in cursor.fetchall():
-                        chave = f"{row[3]}_{row[0]}_{row[1]}"
-                        if chave not in resultados:
-                            resultados[chave] = {'codigo': row[0], 'loja': row[1], 'nome': row[2], 'cnpj': row[3]}
-            except Exception as e: 
-                logger.error(f"Erro SQL: {e}")
+    resultados = {}
+    for row in linhas(resultados_protheus):
+        chave = f"{row[3]}_{row[0]}_{row[1]}"
+        if chave not in resultados:
+            resultados[chave] = {'codigo': row[0], 'loja': row[1], 'nome': row[2], 'cnpj': row[3]}
     return JsonResponse(list(resultados.values()), safe=False)
 
+@grupo_requerido(*GESTAO_FINANCEIRA, destino='listar_solicitacoes_verba')
 def exportar_solicitacoes_excel(request):
     data_inicio = request.GET.get('data_inicio')
     data_fim = request.GET.get('data_fim')
 
-    queryset = SolicitacaoVerba.objects.all()
+    queryset = SolicitacaoVerba.objects.select_related('usuario_solicitante')
     
     if data_inicio:
         queryset = queryset.filter(data_solicitacao__date__gte=data_inicio)

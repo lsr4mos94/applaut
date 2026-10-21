@@ -2,59 +2,7 @@
 
 {% block content %}
 
-<style>
-    /* AJUSTE MOBILE: Transforma a tabela em Cards para Acordos */
-    @media (max-width: 767.98px) {
-        .table-responsive { border: none !important; }
-        #tabelaAcordos thead { display: none; }
-        
-        #tabelaAcordos tbody tr { 
-            display: block; 
-            margin-bottom: 1rem; 
-            border: 1px solid #e9ecef; 
-            border-radius: 12px; 
-            box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.05); 
-            background-color: #fff;
-            overflow: hidden;
-        }
-        
-        #tabelaAcordos tbody td { 
-            display: block; 
-            position: relative;
-            /* Reduzido o padding de 1rem para 0.5rem (cima/baixo) e mantido 40% na esquerda */
-            padding: 0.5rem 1rem 0.5rem 40% !important; 
-            text-align: right !important; 
-            border-bottom: 1px solid #f8f9fa;
-            /* Removido o min-height que forçava a altura */
-            word-wrap: break-word; 
-        }
-        
-        #tabelaAcordos tbody td:last-child { border-bottom: none; }
-        
-        /* Cria o título da célula baseado no atributo data-label */
-        #tabelaAcordos tbody td::before { 
-            content: attr(data-label); 
-            position: absolute;
-            left: 1rem;
-            top: 0.6rem; /* Ajustado para alinhar com o novo padding reduzido */
-            width: 35%; 
-            font-weight: 700; 
-            color: #6c757d; 
-            text-transform: uppercase; 
-            font-size: 0.75rem; 
-            text-align: left; 
-        }
-        
-        /* Ajustes internos das células no mobile */
-        #tabelaAcordos tbody td .text-muted { display: block; margin-top: 2px; }
-        
-        /* Força os botões de ação a irem para a direita no mobile */
-        #tabelaAcordos tbody td[data-label="Ações"] .d-flex {
-            justify-content: flex-end !important;
-            margin-top: 0 !important;
-        }
-    }
-</style>
+
 
 <!-- CABEÇALHO RESPONSIVO -->
 <div class="d-md-flex justify-content-between align-items-center mb-4">
@@ -97,7 +45,7 @@
                 </select>
             </div>
             <div class="col-6 col-md-2 d-flex flex-column flex-md-row align-items-stretch align-items-md-end gap-2">
-                <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">FILTRAR</button>
+                <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">Filtrar</button>
                 <a href="{% url request.resolver_match.url_name %}" class="btn btn-link btn-sm text-muted text-decoration-none border-0 p-0 text-center text-md-start">Limpar</a>
             </div>
         </form>
@@ -120,9 +68,9 @@
             </thead>
             <tbody>
                 {% for acordo in acordos %}
-                <tr class="border-bottom" {% if acordo.status_vigencia == 'ENCERRADO' %}style="opacity: 0.75; background-color: #fdfdfd;"{% endif %}>
+                <tr class="border-bottom" {% if acordo.status_vigencia == 'Encerrado' %}style="opacity: 0.7;"{% endif %}>
                     <td class="px-3 text-start" data-label="Cliente">
-                        <strong style="color: #5e4d26;">#{{ acordo.id }} {{ acordo.cliente_nome }}</strong><br>
+                        <strong class="text-strong">#{{ acordo.id }} {{ acordo.cliente_nome }}</strong><br>
                         <small class="text-muted">{{ acordo.cliente_codigo }}/{{ acordo.cliente_loja }}</small>
                     </td>
                     <td class="text-md-center" data-label="Data Acordo">{{ acordo.data_acordo|date:"d/m/Y" }}</td>
@@ -132,7 +80,7 @@
                         <small class="fw-bold">{{ acordo.vigencia_fim|date:"d/m/y" }}</small>
                     </td>
                     <td class="text-md-center" data-label="Tipo">
-                        <span class="badge bg-light text-dark border px-2" style="border-color: #bca464 !important;">
+                        <span class="badge bg-light text-dark border px-2">
                             {{ acordo.get_tipo_acordo_display }}
                         </span>
                     </td>
@@ -172,7 +120,7 @@
             <div class="modal fade" id="modalVisualizar{{ acordo.id }}" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
                     <div class="modal-content border-0 shadow-lg text-start">
-                        <div class="modal-header text-white border-0" style="background-color: #bca464;">
+                        <div class="modal-header border-0">
                             <h5 class="modal-title fw-bold"><i class="bi bi-info-circle-fill me-2"></i>Detalhes do Acordo #{{ acordo.id }}</h5>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                         </div>
@@ -180,17 +128,17 @@
                             <div class="row mb-4 bg-light p-3 rounded mx-0 border">
                                 <div class="col-md-7 border-md-end text-start mb-2 mb-md-0">
                                     <label class="text-muted small d-block text-uppercase fw-bold">Dados do Cliente</label>
-                                    <span class="fw-bold h6" style="color: #bca464;">{{ acordo.cliente_nome }}</span><br>
+                                    <span class="fw-bold h6 text-brand">{{ acordo.cliente_nome }}</span><br>
                                     <small class="text-muted">Código: {{ acordo.cliente_codigo }} | Loja: {{ acordo.cliente_loja }}</small>
                                 </div>
                                 <div class="col-md-5 ps-md-4 text-start text-md-end border-top border-md-top-0 pt-2 pt-md-0">
                                     <label class="text-muted small d-block text-uppercase fw-bold">Tipo de Acordo</label>
-                                    <span class="badge" style="background-color: #1a1a1a; color: #bca464;">
+                                    <span class="badge bg-dark">
                                         {{ acordo.get_tipo_acordo_display|upper }}
                                     </span>
                                 </div>
                             </div>
-                            <div class="row mb-4 p-3 rounded mx-0 gap-2 gap-md-0" style="background-color: #fcfaf5; border-left: 4px solid #bca464;">
+                            <div class="row mb-4 p-3 rounded mx-0 gap-2 gap-md-0 panel-accent">
                                 <div class="col-12 col-md-4">
                                     <label class="text-muted small d-block fw-bold">Vigência</label>
                                     <span class="fw-bold text-dark">{{ acordo.vigencia_inicio|date:"d/m/Y" }} a {{ acordo.vigencia_fim|date:"d/m/Y" }}</span>
@@ -215,7 +163,7 @@
                             {% endif %}
 
                             {% if acordo.tipo_acordo == 'produto' %}
-                            <h6 class="fw-bold mb-3" style="color: #bca464;"><i class="bi bi-box-seam me-2"></i>Produtos Acordados</h6>
+                            <h6 class="fw-bold mb-3 text-brand"><i class="bi bi-box-seam me-2"></i>Produtos Acordados</h6>
                             <div class="table-responsive">
                                 <table class="table table-sm table-bordered align-middle">
                                     <thead class="bg-light small">
@@ -284,7 +232,7 @@
 
             {% for i in acordos.paginator.page_range %}
                 {% if acordos.number == i %}
-                    <li class="page-item active"><span class="page-link rounded" style="background-color: #bca464; border-color: #bca464;">{{ i }}</span></li>
+                    <li class="page-item active"><span class="page-link rounded">{{ i }}</span></li>
                 {% elif i > acordos.number|add:'-3' and i < acordos.number|add:'3' %}
                     <li class="page-item"><a class="page-link text-dark rounded" href="?page={{ i }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ i }}</a></li>
                 {% endif %}
@@ -307,18 +255,18 @@
         <form id="formNovoAcordo" method="POST" action="{% url 'salvar_acordo' %}" class="modal-content border-0 shadow-lg">
             {% csrf_token %}
             
-            <div class="modal-header border-0" style="background-color: #bca464; color: white;">
+            <div class="modal-header border-0">
                 <h5 class="modal-title fw-bold">Novo Acordo Comercial</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             
             <div class="modal-body p-3 p-md-4 text-start">
-                <div class="row g-3 mb-3 p-3 rounded border mx-0" style="background-color: #fcfaf5; border-color: #bca464 !important;">
+                <div class="row g-3 mb-3 p-3 rounded border mx-0 panel-soft">
                     <div class="col-md-12">
-                        <label class="form-label small fw-bold" style="color: #bca464;">Pesquisar Cliente</label>
+                        <label class="form-label small fw-bold text-brand">Pesquisar Cliente</label>
                         <div class="input-group flex-nowrap">
-                            <input type="text" id="input_busca_cliente" class="form-control" placeholder="Razão Social ou CNPJ..." style="border-color: #bca464;">
-                            <button class="btn text-white fw-bold px-3 px-md-4" type="button" id="btn_buscar_cliente" style="background-color: #bca464;"><i class="bi bi-search d-inline d-md-none"></i><span class="d-none d-md-inline">BUSCAR</span></button>
+                            <input type="text" id="input_busca_cliente" class="form-control" placeholder="Razão Social ou CNPJ...">
+                            <button class="btn text-white fw-bold px-3 px-md-4 bg-brand" type="button" id="btn_buscar_cliente"><i class="bi bi-search d-inline d-md-none"></i><span class="d-none d-md-inline">Buscar</span></button>
                         </div>
                     </div>
                 </div>
@@ -333,23 +281,23 @@
                 <div class="row g-3 mb-4 mx-0">
                     <div class="col-6 col-md-6">
                         <label class="small fw-bold">Início Vigência</label>
-                        <input type="date" name="vigencia_inicio" class="form-control" required style="border-color: #bca464;">
+                        <input type="date" name="vigencia_inicio" class="form-control" required>
                     </div>
                     <div class="col-6 col-md-6">
                         <label class="small fw-bold">Fim Vigência</label>
-                        <input type="date" name="vigencia_fim" class="form-control" required style="border-color: #bca464;">
+                        <input type="date" name="vigencia_fim" class="form-control" required>
                     </div>
                 </div>
                 <div class="row g-3 mb-4 mx-0">
                     <div class="col-12">
                         <label class="small fw-bold">Justificativa</label>
-                        <textarea name="justificativa" class="form-control" rows="2" placeholder="Insira a justificativa ou observações do acordo..." style="border-color: #bca464;"></textarea>
+                        <textarea name="justificativa" class="form-control" rows="2" placeholder="Insira a justificativa ou observações do acordo..."></textarea>
                     </div>
                 </div>
                 <div class="row g-3 mb-4 mx-0">
                     <div class="col-md-12">
                         <label class="small fw-bold">Tipo de Acordo</label>
-                        <select name="tipo_acordo" id="select_tipo" class="form-select" required style="border-color: #bca464;">
+                        <select name="tipo_acordo" id="select_tipo" class="form-select" required>
                             <option value="">Selecione...</option>
                             <option value="valor">Por Valor (R$)</option>
                             <option value="produto">Por Produto (Quantidade)</option>
@@ -358,25 +306,22 @@
                 </div>
                 <div class="row g-3 mb-4 d-none mx-0" id="div_valor">
                     <div class="col-12 col-md-6">
-                        <label class="small fw-bold" style="color: #bca464;">Valor Total do Acordo (R$)</label>
-                        <input type="number" step="0.01" name="valor_acordo" class="form-control" style="border-color: #bca464;">
+                        <label class="small fw-bold text-brand">Valor Total do Acordo (R$)</label>
+                        <input type="number" step="0.01" name="valor_acordo" class="form-control">
                     </div>
                 </div>
                 <div id="section_produtos" class="d-none mx-0">
-                    <div class="p-3 mb-3 rounded border" style="background-color: #fcfaf5; border-color: #bca464 !important;">
-                        <label class="small fw-bold" style="color: #bca464;">Adicionar Produtos ao Acordo</label>
-                        <div class="input-group flex-nowrap">
-                            <input type="text" id="input_busca_produto" class="form-control" placeholder="Nome do produto..." style="border-color: #bca464;">
-                            <button class="btn text-white fw-bold px-3" type="button" id="btn_buscar_produto" style="background-color: #bca464;"><i class="bi bi-search"></i></button>
-                        </div>
-                    </div>
+                    <label class="small fw-bold d-block mb-2">Produtos do Acordo</label>
                     <div id="lista_produtos"></div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm mt-1" id="btn_buscar_produto">
+                        <i class="bi bi-plus-circle me-1"></i> Adicionar Produto
+                    </button>
                 </div>
             </div>
             
             <div class="modal-footer border-0 bg-light d-flex flex-column flex-sm-row">
                 <button type="button" class="btn btn-link text-muted text-decoration-none w-100 w-sm-auto order-2 order-sm-1" data-bs-dismiss="modal">Cancelar</button>
-                <button type="submit" class="btn px-5 text-white fw-bold shadow-sm w-100 w-sm-auto order-1 order-sm-2 mb-2 mb-sm-0" style="background-color: #bca464;">SALVAR ACORDO</button>
+                <button type="submit" class="btn px-5 text-white fw-bold shadow-sm w-100 w-sm-auto order-1 order-sm-2 mb-2 mb-sm-0 bg-brand">Salvar acordo</button>
             </div>
         </form>
     </div>
@@ -386,7 +331,7 @@
 <div class="modal fade" id="modalHistorico" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header text-white" style="background-color: #bca464;">
+            <div class="modal-header">
                 <h5 class="modal-title fw-bold fs-6" id="tituloHistorico">
                     <i class="bi bi-clock-history me-2"></i>Acompanhamento do Acordo
                 </h5>
@@ -432,28 +377,34 @@
 <div class="modal fade" id="modalResultadosBusca" tabindex="-1" style="z-index: 2060;">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header text-white" style="background-color: #bca464;"><h6 class="modal-title">Clientes encontrados</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header"><h6 class="modal-title">Clientes encontrados</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
             <div class="modal-body p-0"><div id="lista_resultados_cliente" class="list-group list-group-flush"></div></div>
         </div>
     </div>
 </div>
 
+<!-- Busca de produto: mesmo modal da tela de bonificação -->
 <div class="modal fade" id="modalResProdutos" tabindex="-1" style="z-index: 2070;">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header text-white" style="background-color: #bca464;"><h6 class="modal-title">Produtos encontrados</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body p-0"><div id="lista_res_prod" class="list-group list-group-flush"></div></div>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-dark text-white">
+                <h6 class="modal-title fw-bold">Buscar no Protheus</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="p-3 border-bottom bg-light">
+                <input type="text" id="input_busca_produto" class="form-control shadow-sm" placeholder="Digite nome ou código (min. 3 letras)..." autocomplete="off">
+            </div>
+            <div class="modal-body p-0" style="max-height: 60vh; overflow-y: auto;">
+                <div id="lista_res_prod" class="list-group list-group-flush"></div>
+            </div>
         </div>
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
 
 <script>
 $(document).ready(function() {
-    $('#tabelaAcordos').DataTable({
+    if (!document.querySelector('#tabelaAcordos tbody td[colspan]')) $('#tabelaAcordos').DataTable({
         "dom": 't',
         "paging": false,
         "ordering": true,
@@ -476,14 +427,14 @@ $(document).ready(function() {
             const t = document.getElementById('input_busca_cliente').value;
             if(t.length < 3) return alert('Mínimo 3 caracteres');
             fetch("{% url 'api_busca_clientes' %}?q=" + encodeURIComponent(t))
-                .then(res => res.json())
+                .then(lerJson)
                 .then(data => {
                     const l = document.getElementById('lista_resultados_cliente');
                     l.innerHTML = '';
                     data.forEach(c => {
                         const b = document.createElement('button');
                         b.type = 'button'; b.className = 'list-group-item list-group-item-action p-3 text-start';
-                        b.innerHTML = `<strong style="color: #bca464;">${c.nome}</strong><br><small>CNPJ: ${c.cnpj} | Cód: ${c.codigo}</small>`;
+                        b.innerHTML = `<strong class="text-brand">${c.nome}</strong><br><small>CNPJ: ${c.cnpj} | Cód: ${c.codigo}</small>`;
                         b.onclick = () => {
                             document.getElementById('id_cliente_nome').value = c.fantasia;
                             document.getElementById('id_cliente_codigo').value = c.codigo;
@@ -497,23 +448,56 @@ $(document).ready(function() {
                 });
         };
 
+        // Abre o modal de busca (igual ao da bonificação)
         document.getElementById('btn_buscar_produto').onclick = function() {
-            const t = document.getElementById('input_busca_produto').value;
-            if(t.length < 3) return alert('Mínimo 3 caracteres');
-            fetch("{% url 'api_busca_produtos' %}?q=" + encodeURIComponent(t))
-                .then(res => res.json())
-                .then(data => {
-                    const l = document.getElementById('lista_res_prod');
-                    l.innerHTML = '';
-                    data.forEach(p => {
-                        const b = document.createElement('button');
-                        b.type = 'button'; b.className = 'list-group-item list-group-item-action p-3 text-start';
-                        b.innerHTML = `<strong style="color: #bca464;">${p.descricao}</strong><br><small>${p.codigo} - ${p.grupo_familia}</small>`;
-                        b.onclick = () => { addProdutoRow(p); modalResProd.hide(); };
-                        l.appendChild(b);
+            document.getElementById('input_busca_produto').value = '';
+            document.getElementById('lista_res_prod').innerHTML = '';
+            modalResProd.show();
+            setTimeout(() => document.getElementById('input_busca_produto').focus(), 500);
+        };
+
+        // Busca enquanto digita (a partir de 3 letras)
+        let buscaProdTimer = null, buscaProdSeq = 0;
+        document.getElementById('input_busca_produto').onkeyup = function() {
+            const termo = this.value.trim();
+            const lista = document.getElementById('lista_res_prod');
+            clearTimeout(buscaProdTimer);
+            if (termo.length < 3) {
+                lista.innerHTML = '<div class="p-3 text-center text-muted small">Continue digitando...</div>';
+                return;
+            }
+            lista.innerHTML = '<div class="p-4 text-center"><span class="spinner-border spinner-border-sm text-primary"></span> Consultando Protheus...</div>';
+            buscaProdTimer = setTimeout(() => {
+                const seq = ++buscaProdSeq;
+                fetch("{% url 'api_busca_produtos' %}?q=" + encodeURIComponent(termo))
+                    .then(lerJson)
+                    .then(data => {
+                        if (seq !== buscaProdSeq) return;  // ignora respostas de buscas antigas
+                        lista.innerHTML = '';
+                        if (data.length === 0) {
+                            lista.innerHTML = '<div class="p-4 text-center text-muted">Nenhum produto encontrado.</div>';
+                            return;
+                        }
+                        data.forEach(p => {
+                            const b = document.createElement('button');
+                            b.className = 'list-group-item list-group-item-action py-3';
+                            b.type = 'button';
+                            b.innerHTML = `
+                                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                                    <div>
+                                        <strong>${p.descricao}</strong><br>
+                                        <small class="text-muted">Cód: ${p.codigo} | ${p.grupo_familia}</small>
+                                    </div>
+                                    <span class="badge bg-success align-self-start align-self-md-center" style="font-size:0.85rem;">R$ ${parseFloat(p.preco).toLocaleString('pt-br', {minimumFractionDigits: 2})}</span>
+                                </div>`;
+                            b.onclick = () => { addProdutoRow(p); modalResProd.hide(); };
+                            lista.appendChild(b);
+                        });
+                    })
+                    .catch(() => {
+                        if (seq === buscaProdSeq) lista.innerHTML = '<div class="p-4 text-center text-danger">Erro ao consultar o Protheus.</div>';
                     });
-                    modalResProd.show();
-                });
+            }, 300);
         };
 
         selectTipo.onchange = function() {
@@ -525,13 +509,19 @@ $(document).ready(function() {
 
         window.addProdutoRow = function(p) {
             const container = document.getElementById('lista_produtos');
+            // Produto já incluído: só destaca a quantidade dele
+            const existente = container.querySelector(`input[name="prod_codigo[]"][value="${p.codigo}"]`);
+            if (existente) {
+                existente.closest('.row').querySelector('input[name="prod_qtd[]"]').focus();
+                return;
+            }
             const div = document.createElement('div');
             div.className = 'row g-2 mb-2 align-items-center border-bottom pb-2 bg-white p-2 rounded shadow-sm mx-0';
             div.innerHTML = `
                 <div class="col-12 col-md-7 text-start">
                     <input type="hidden" name="prod_codigo[]" value="${p.codigo}">
                     <input type="hidden" name="prod_desc[]" value="${p.descricao}">
-                    <span class="small fw-bold" style="color: #bca464;">${p.descricao}</span><br>
+                    <span class="small fw-bold text-brand">${p.descricao}</span><br>
                     <small class="text-muted">${p.codigo}</small>
                 </div>
                 <div class="col-8 col-md-4">
@@ -541,7 +531,7 @@ $(document).ready(function() {
                     <button type="button" class="btn btn-sm text-danger border-0 w-100" onclick="this.closest('.row').remove()"><i class="bi bi-trash-fill"></i></button>
                 </div>`;
             container.appendChild(div);
-            document.getElementById('input_busca_produto').value = '';
+            div.querySelector('input[name="prod_qtd[]"]').focus();
         };
 
         window.abrirHistorico = function(acordoId) {
@@ -559,7 +549,7 @@ $(document).ready(function() {
             modalHist.show();
 
             fetch(`/cadastros/api/historico/${acordoId}/`)
-                .then(res => res.json())
+                .then(lerJson)
                 .then(data => {
                     const pct = data.porcentagem;     
                     

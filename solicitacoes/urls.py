@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import chopp
 
 urlpatterns = [
     path('boletos/', views.buscar_boleto, name='buscar_boleto'),
@@ -22,4 +23,13 @@ urlpatterns = [
     path('api/busca-produtos/', views.buscar_produto_protheus_unificado, name='api_busca_produtos'),
 
     path('bonificacoes/exportar/excel/', views.exportar_bonificacoes_excel, name='exportar_bonificacoes_excel'),
+
+    # Solicitação de Chopp
+    path('chopp/', chopp.chopp_list, name='chopp_list'),
+    path('chopp/novo/', chopp.chopp_novo, name='chopp_novo'),
+    path('chopp/<int:pk>/editar/', chopp.chopp_editar, name='chopp_editar'),
+    path('chopp/<int:pk>/processar/', chopp.chopp_processar, name='chopp_processar'),
+    path('chopp/<int:pk>/cancelar/', chopp.chopp_cancelar, name='chopp_cancelar'),
+    path('chopp/exportar/excel/', chopp.chopp_exportar, name='chopp_exportar'),
+    path('api/busca-produtos-chopp/', chopp.api_busca_produtos_chopp, name='api_busca_produtos_chopp'),
 ]

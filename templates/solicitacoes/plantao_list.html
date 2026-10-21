@@ -1,60 +1,13 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<style>
-    /* AJUSTE MOBILE: Alinha o tamanho e estilo das fontes dos rótulos exatamente igual à tela de Clientes */
-    @media (max-width: 767.98px) {
-        .table-responsive { border: none !important; }
-        #tabelaPlantoes thead { display: none; }
-        
-        #tabelaPlantoes tbody tr { 
-            display: block; 
-            margin-bottom: 1rem; 
-            border: 1px solid #e9ecef; 
-            border-radius: 12px; 
-            box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.05); 
-            background-color: #fff;
-            overflow: hidden;
-        }
-        
-        #tabelaPlantoes tbody td { 
-            display: block; 
-            position: relative;
-            padding: 0.5rem 1rem 0.5rem 40% !important; 
-            text-align: right !important; 
-            border-bottom: 1px solid #f8f9fa;
-            word-wrap: break-word; 
-        }
-        
-        #tabelaPlantoes tbody td:last-child { border-bottom: none; }
-        
-        #tabelaPlantoes tbody td::before { 
-            content: attr(data-label); 
-            position: absolute;
-            left: 1rem;
-            top: 0.6rem;
-            width: 35%; 
-            font-weight: 700; 
-            color: #6c757d; 
-            text-transform: uppercase; 
-            font-size: 0.75rem !important; /* Força o tamanho igual ao de clientes */
-            text-align: left; 
-        }
-        
-        #tabelaPlantoes tbody td .text-muted { display: block; margin-top: 2px; }
-        
-        #tabelaPlantoes tbody td[data-label="Ações"] .d-flex {
-            justify-content: flex-end !important;
-            margin-top: 0 !important;
-        }
-    }
-</style>
+
 
 <!-- CABEÇALHO RESPONSIVO -->
 <div class="d-md-flex justify-content-between align-items-center mb-4 text-start">
-    <h3 class="text-gold-title mb-3 mb-md-0" style="color: #bca464; font-weight: 600;">Solicitação de Plantão</h3>
+    <h3 class="text-gold-title mb-3 mb-md-0 text-brand fw-semibold">Solicitação de Plantão</h3>
     <div class="d-grid d-md-flex gap-2">
-        <a href="{% url 'novo_plantao' %}" class="btn text-white shadow-sm d-flex justify-content-center align-items-center fw-bold px-4 py-2" style="background-color: #bca464;">
+        <a href="{% url 'novo_plantao' %}" class="btn text-white shadow-sm d-flex justify-content-center align-items-center fw-bold px-4 py-2 bg-brand">
             <i class="bi bi-plus-circle me-2"></i> Nova Solicitação
         </a>
     </div>
@@ -62,7 +15,7 @@
 
 <!-- FILTROS RESPONSIVOS -->
 <div class="card border-0 shadow-sm mb-4 text-start">
-        <div class="card-body card-filter" style="background-color: #fcfbf7; border: 1px solid #f1ece0;">
+        <div class="card-body card-filter panel-soft">
             <form method="GET" class="row g-3 align-items-end">
                 <div class="col-12 col-md-3">
                     <label class="small fw-bold text-muted">Cliente / Documento</label>
@@ -101,7 +54,7 @@
                 </div>
 
                 <div class="col-6 col-md-2 d-flex flex-column flex-md-row align-items-stretch align-items-md-end gap-2">
-                    <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold shadow-sm">FILTRAR</button>
+                    <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold shadow-sm">Filtrar</button>
                     <a href="{% url request.resolver_match.url_name %}" class="btn btn-link btn-sm text-muted text-decoration-none border-0 p-0 text-center text-md-start align-self-center" style="font-size: 0.85rem;">Limpar</a>
                 </div>
             </form>
@@ -127,7 +80,7 @@
                 {% for p in plantoes %}
                 <tr class="border-bottom">
                     <td class="px-3 text-start" data-label="Cliente">
-                        <strong style="color: #5e4d26;">
+                        <strong class="text-strong">
                             #{{ p.id }} {{ p.nome_cliente }}
                         </strong><br>
                         <small class="text-muted">{{ p.codigo_cliente }} / {{ p.loja_cliente }}</small>
@@ -147,6 +100,8 @@
                     <td class="text-md-center" data-label="Status">
                         {% if p.status == 'PENDENTE' %}
                             <span class="badge rounded-pill bg-warning text-dark">Pendente</span>
+                        {% elif p.status == 'RECUSADO' %}
+                            <span class="badge rounded-pill bg-danger">Recusado</span>
                         {% else %}
                             <span class="badge rounded-pill bg-success text-white">Confirmado</span>
                         {% endif %}
@@ -157,12 +112,16 @@
                                 <i class="bi bi-eye-fill fs-6"></i>
                             </button>
                             {% if p.status == 'PENDENTE' %}
-                                <button class="btn-square-action btn-approve" data-bs-toggle="modal" data-bs-target="#modalConfirmar{{ p.id }}" title="Aprovar">
+                                {% if pode_confirmar_plantao %}
+                                <button class="btn-square-action btn-approve" data-bs-toggle="modal" data-bs-target="#modalConfirmar{{ p.id }}" title="Confirmar">
                                     <i class="bi bi-check-lg fs-5"></i>
                                 </button>
+                                {% endif %}
+                                {% if pode_confirmar_plantao or p.vendedor_id == request.user.id %}
                                 <button class="btn-square-action btn-delete" data-bs-toggle="modal" data-bs-target="#modalExcluir{{ p.id }}" title="Excluir">
                                     <i class="bi bi-trash3-fill fs-6"></i>
                                 </button>
+                                {% endif %}
                             {% endif %}
                         </div>
                     </td>
@@ -187,7 +146,7 @@
 
             {% for i in plantoes.paginator.page_range %}
                 {% if plantoes.number == i %}
-                    <li class="page-item active"><span class="page-link rounded" style="background-color: #bca464; border-color: #bca464;">{{ i }}</span></li>
+                    <li class="page-item active"><span class="page-link rounded">{{ i }}</span></li>
                 {% elif i > plantoes.number|add:'-3' and i < plantoes.number|add:'3' %}
                     <li class="page-item"><a class="page-link text-dark rounded" href="?page={{ i }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ i }}</a></li>
                 {% endif %}
@@ -202,26 +161,73 @@
     </nav>
 {% endif %}
 
+{% for p in plantoes %}
+    {% if p.status == 'PENDENTE' %}
+    <!-- MODAL CONFIRMAR -->
+    <div class="modal fade" id="modalConfirmar{{ p.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form method="POST" action="{% url 'plantao_list' %}" class="modal-content border-0 shadow-lg text-start">
+                {% csrf_token %}
+                <input type="hidden" name="plantao_id" value="{{ p.id }}">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-check-circle-fill me-2"></i>Confirmar Plantão #{{ p.id }}</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="mb-3">Confirmar o atendimento de <strong>{{ p.nome_cliente }}</strong>?</p>
+                    <label class="form-label">Observação (opcional)</label>
+                    <textarea name="obs_confirmacao" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Confirmar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL EXCLUIR -->
+    <div class="modal fade" id="modalExcluir{{ p.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <form method="POST" action="{% url 'excluir_plantao' p.id %}" class="modal-content border-0 shadow">
+                {% csrf_token %}
+                <div class="modal-header bg-danger">
+                    <h6 class="modal-title fw-bold">Excluir Plantão</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    Deseja realmente excluir o plantão de<br><strong>{{ p.nome_cliente }}</strong>?
+                </div>
+                <div class="modal-footer border-0 bg-light d-flex flex-column flex-sm-row gap-2">
+                    <button type="button" class="btn btn-sm btn-secondary w-100" data-bs-dismiss="modal">Não</button>
+                    <button type="submit" class="btn btn-sm btn-danger w-100">Sim, excluir</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+{% endfor %}
+
 <div class="modal fade" id="modalVer" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 rounded-4 shadow-lg text-start">
-            <div class="modal-header text-white" style="background-color: #bca464;">
-                <h5 class="modal-title fw-bold">Detalhes do Plantão</h5>
+        <div class="modal-content border-0 shadow-lg text-start">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="tituloVisualizar"><i class="bi bi-info-circle-fill me-2"></i>Detalhes do Plantão</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4" id="conteudoVisualizar"></div>
+            <div class="modal-body p-4 text-dark" id="conteudoVisualizar"></div>
+            <div class="modal-footer bg-light border-0">
+                <button type="button" class="btn btn-secondary px-4 shadow-sm w-100 w-sm-auto" data-bs-dismiss="modal">Fechar</button>
+            </div>
         </div>
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
 
 <script>
 $(document).ready(function() {
     if (!$.fn.DataTable.isDataTable('#tabelaPlantoes')) {
-        $('#tabelaPlantoes').DataTable({
+        if (!document.querySelector('#tabelaPlantoes tbody td[colspan]')) $('#tabelaPlantoes').DataTable({
             "dom": 't',
             "paging": false,
             "ordering": true,
@@ -254,9 +260,9 @@ $(document).ready(function() {
             },
             "initComplete": function(settings, json) {
                 $('#tabelaPlantoes thead th').css({
-                    'background-color': '#bca464',
-                    'color': '#ffffff',
-                    'border-bottom': 'none'
+                    'background-color': '',
+                    'color': '',
+                    'border-bottom': ''
                 });
             }
         });
@@ -264,21 +270,51 @@ $(document).ready(function() {
 });
 
 function visualizarPlantao(id) {
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const tipos = { 'TECNICO': 'Plantão técnico', 'REPOSICAO': 'Plantão de reposição' };
+    const selos = { 'Pendente': 'badge-pendente', 'Confirmado': 'badge-confirmado', 'Recusado': 'badge-reprovado' };
+
     fetch(`/solicitacoes/plantoes/detalhes/${id}/`)
     .then(r => r.json())
     .then(data => {
+        const endereco = String(data.endereco || '').replace(' ()', '');
+        document.getElementById('tituloVisualizar').innerHTML =
+            `<i class="bi bi-info-circle-fill me-2"></i>Detalhes do Plantão #${esc(id)}`;
         document.getElementById('conteudoVisualizar').innerHTML = `
-            <div class="row g-3">
-                <div class="col-md-6"><label class="fw-bold small text-muted text-uppercase">Ocorrência</label><p class="fw-bold text-dark">${data.ocorrencia}</p></div>
-                <div class="col-md-6"><label class="fw-bold small text-muted text-uppercase">Status</label><p>${data.status}</p></div>
-                <div class="col-md-6"><label class="fw-bold small text-muted text-uppercase">Cliente</label><p>${data.cliente} (${data.codigo})</p></div>
-                <div class="col-md-6"><label class="fw-bold small text-muted text-uppercase">Vendedor</label><p>${data.vendedor || '-'}</p></div>
-                <div class="col-md-4"><label class="fw-bold small text-muted text-uppercase">Data</label><p>${data.data_solicitacao}</p></div>
-                <div class="col-md-4"><label class="fw-bold small text-muted text-uppercase">Horário</label><p>${data.horario}</p></div>
-                <div class="col-md-4"><label class="fw-bold small text-muted text-uppercase">Taxa</label><p>${data.taxa}</p></div>
-                <div class="col-12"><label class="fw-bold small text-muted text-uppercase">Observações</label><div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${data.obs || 'Nenhuma observação'}</div></div>
+            <div class="row mb-4 bg-light p-3 rounded mx-0 border">
+                <div class="col-md-6 border-end text-start mb-2 mb-md-0">
+                    <label class="text-muted small d-block text-uppercase fw-bold mb-2">Dados do Cliente</label>
+                    <span class="fw-bold h6 text-brand">${esc(data.cliente)}</span><br>
+                    <small class="text-muted">Código: ${esc(data.codigo)} | Loja: ${esc(data.loja)}</small>
+                    <p class="mb-0 mt-2 small">${esc(endereco)}</p>
+                </div>
+                <div class="col-md-6 ps-md-4 text-start">
+                    <label class="text-muted small d-block text-uppercase fw-bold mb-2">Atendimento</label>
+                    <p class="mb-1 small"><strong>Tipo:</strong> ${esc(tipos[data.tipo] || data.tipo)}</p>
+                    <p class="mb-1 small"><strong>Ocorrência:</strong> ${esc(String(data.ocorrencia || '').replace(/_/g, ' '))}</p>
+                    <p class="mb-1 small"><strong>Vendedor:</strong> ${esc(data.vendedor || '-')}</p>
+                    <p class="mb-0 small"><strong>Status:</strong> <span class="badge ${selos[data.status] || 'bg-secondary'}">${esc(data.status)}</span></p>
+                </div>
+            </div>
+            <div class="row mb-4 p-3 mx-0 gap-2 gap-md-0 panel-accent">
+                <div class="col-12 col-md-4">
+                    <label class="text-muted small d-block fw-bold">Data da Solicitação</label>
+                    <span class="fw-bold text-dark">${esc(data.data_solicitacao)}</span>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label class="text-muted small d-block fw-bold">Horário</label>
+                    <span class="fw-bold text-dark">${esc(data.horario)}</span>
+                </div>
+                <div class="col-12 col-md-4 text-start text-md-end">
+                    <label class="text-muted small d-block fw-bold">Taxa</label>
+                    <span class="fw-bold ${data.taxa === 'Isento' ? 'text-muted' : 'text-success'}">${esc(data.taxa)}</span>
+                </div>
+            </div>
+            <div class="p-3 bg-light rounded border">
+                <label class="text-muted small d-block fw-bold text-uppercase mb-1">Observações</label>
+                <p class="mb-0 text-secondary small" style="white-space: pre-line;">${esc(data.obs || 'Nenhuma observação')}</p>
             </div>`;
-        new bootstrap.Modal(document.getElementById('modalVer')).show();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalVer')).show();
     })
     .catch(err => alert("Erro ao carregar detalhes"));
 }

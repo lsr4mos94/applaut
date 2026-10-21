@@ -2,56 +2,7 @@
 
 {% block content %}
 
-<style>
-    /* AJUSTE MOBILE: Transforma a tabela em Cards */
-    @media (max-width: 767.98px) {
-        .table-responsive { border: none !important; }
-        #tabelaClientes thead { display: none; }
-        
-        #tabelaClientes tbody tr { 
-            display: block; 
-            margin-bottom: 1rem; 
-            border: 1px solid #e9ecef; 
-            border-radius: 12px; 
-            box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.05); 
-            background-color: #fff;
-            overflow: hidden;
-        }
-        
-        #tabelaClientes tbody td { 
-            display: block; 
-            position: relative;
-            padding: 0.5rem 1rem 0.5rem 40% !important; 
-            text-align: right !important; 
-            border-bottom: 1px solid #f8f9fa;
-            word-wrap: break-word; 
-        }
-        
-        #tabelaClientes tbody td:last-child { border-bottom: none; }
-        
-        #tabelaClientes tbody td::before { 
-            content: attr(data-label); 
-            position: absolute;
-            left: 1rem;
-            top: 0.6rem;
-            width: 35%; 
-            font-weight: 700; 
-            color: #6c757d; 
-            text-transform: uppercase; 
-            font-size: 0.75rem; 
-            text-align: left; 
-        }
-        
-        #tabelaClientes tbody td .text-muted { display: block; margin-top: 2px; }
-        
-        #tabelaClientes tbody td[data-label="Ações"] .d-flex {
-            justify-content: flex-end !important;
-            margin-top: 0 !important;
-        }
-        
-        .modal-body .border-end { border-right: none !important; border-bottom: 1px solid #e9ecef; margin-bottom: 1rem; padding-bottom: 1rem; }
-    }
-</style>
+
 
 <!-- CABEÇALHO RESPONSIVO -->
 <div class="d-md-flex justify-content-between align-items-center mb-4">
@@ -62,7 +13,7 @@
                 <i class="bi bi-file-earmark-excel me-2"></i> Exportar
             </button>
         {% endif %}
-        <a href="{% url 'criar_cadastro' %}" class="btn text-white shadow-sm d-flex justify-content-center align-items-center" style="background-color: #bca464;">
+        <a href="{% url 'criar_cadastro' %}" class="btn text-white shadow-sm d-flex justify-content-center align-items-center bg-brand">
             <i class="bi bi-plus-circle me-2"></i><strong> Novo Cadastro</strong>
         </a>
     </div>
@@ -102,7 +53,7 @@
                 </select>
             </div>
             <div class="col-6 col-md-2 d-flex flex-column flex-md-row align-items-stretch align-items-md-end gap-2">
-                <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">FILTRAR</button>
+                <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">Filtrar</button>
                 <a href="{% url request.resolver_match.url_name %}" class="btn btn-link btn-sm text-muted text-decoration-none border-0 p-0 text-center text-md-start">Limpar</a>
             </div>
         </form>
@@ -127,7 +78,7 @@
                 {% for cliente in cadastros %}
                 <tr class="border-bottom">
                     <td class="px-3 text-start" data-label="Razão Social">
-                        <strong style="color: #5e4d26;">
+                        <strong class="text-strong">
                             #{{ cliente.id }} {{ cliente.razao_social }}
                         </strong><br>
                         <small class="text-muted">{{ cliente.nome_fantasia|default:"" }}</small>
@@ -186,14 +137,14 @@
                 <div class="modal fade" id="modalVer{{ cliente.id }}" tabindex="-1" aria-hidden="true">
                     <div class="modal-dialog modal-xl modal-dialog-scrollable">
                         <div class="modal-content border-0 shadow-lg">
-                            <div class="modal-header text-white" style="background-color: #bca464;">
+                            <div class="modal-header">
                                 <h5 class="modal-title"><i class="bi bi-person-vcard me-2"></i>Cadastro: {{ cliente.razao_social }}</h5>
                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                             <div class="modal-body p-4">
                                 <div class="row">
                                     <div class="col-md-3 border-end">
-                                        <h6 class="fw-bold mb-3" style="color: #bca464;"><i class="bi bi-geo-alt"></i> Identificação e Fiscal</h6>
+                                        <h6 class="fw-bold mb-3 text-brand"><i class="bi bi-geo-alt"></i> Identificação e Fiscal</h6>
                                         <p class="mb-1 small"><strong>Plataforma:</strong><br><span class="badge bg-secondary">{{ cliente.plataforma|default:"Não informada" }}</span></p>
                                         <hr class="my-2">
                                         <p class="mb-1 small"><strong>Razão Social:</strong><br>{{ cliente.razao_social }}</p>
@@ -210,7 +161,7 @@
                                     </div>
 
                                     <div class="col-md-3 border-end">
-                                        <h6 class="fw-bold mb-3" style="color: #bca464;"><i class="bi bi-people"></i> Dados do Sócio</h6>
+                                        <h6 class="fw-bold mb-3 text-brand"><i class="bi bi-people"></i> Dados do Sócio</h6>
                                         <p class="mb-1 small"><strong>Nome:</strong><br>{{ cliente.socio_nome|default:"-" }}</p>
                                         <p class="mb-1 small"><strong>CPF Sócio:</strong><br>{{ cliente.socio_cpf|default:"-" }}</p>
                                         <p class="mb-1 small"><strong>Endereço do Sócio:</strong><br>
@@ -221,7 +172,7 @@
                                             {{ cliente.socio_cidade|default:"" }}/{{ cliente.socio_estado|default:"" }}
                                         </p>
                                         <hr class="my-3">
-                                        <h6 class="fw-bold mb-3" style="color: #bca464;"><i class="bi bi-cash-stack"></i> Financeiro</h6>
+                                        <h6 class="fw-bold mb-3 text-brand"><i class="bi bi-cash-stack"></i> Financeiro</h6>
                                         <p class="mb-1 small"><strong>Resp. Financeiro:</strong><br>{{ cliente.finan_nome|default:"-" }}</p>
                                         <p class="mb-1 small"><strong>CPF:</strong><br>{{ cliente.finan_cpf|default:"-" }}</p>
                                         <p class="mb-1 small"><strong>Comprador:</strong><br>{{ cliente.compra_nome|default:"-" }}</p>
@@ -229,7 +180,7 @@
                                     </div>
 
                                     <div class="col-md-3 border-end">
-                                        <h6 class="fw-bold mb-3" style="color: #bca464;"><i class="bi bi-truck"></i> Logística e Entrega</h6>
+                                        <h6 class="fw-bold mb-3 text-brand"><i class="bi bi-truck"></i> Logística e Entrega</h6>
                                         <p class="mb-1 small"><strong>Local de Entrega:</strong><br>
                                             {{ cliente.entrega_endereco|default:"Mesmo endereço fiscal" }}, 
                                             {{ cliente.entrega_numero|default:"" }} - 
@@ -244,7 +195,7 @@
                                     </div>
 
                                     <div class="col-md-3">
-                                        <h6 class="fw-bold mb-3" style="color: #bca464;"><i class="bi bi-paperclip"></i> Documentos</h6>
+                                        <h6 class="fw-bold mb-3 text-brand"><i class="bi bi-paperclip"></i> Documentos</h6>
                                         <div class="d-grid gap-2 mb-4">
                                             {% for anexo in cliente.anexos.all %}
                                             <a href="{{ anexo.arquivo.url }}" target="_blank" class="btn btn-sm btn-outline-secondary text-start text-truncate">
@@ -289,7 +240,7 @@
                                         {% if cliente.situacao == 'PENDENTE' %}
                                             Sua aprovação enviará este cadastro para o <strong>Setor Financeiro</strong>.
                                         {% elif cliente.situacao == 'CADASTRADO' %}
-                                            Sua aprovação irá <strong>LIBERAR</strong> este cliente para faturamento.
+                                            Sua aprovação irá <strong>Liberar</strong> este cliente para faturamento.
                                         {% endif %}
                                     </div>
 
@@ -361,7 +312,7 @@
                 </div>
                 <div class="modal-footer border-0 bg-light p-2 d-flex flex-column flex-sm-row">
                     <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none w-100 w-sm-auto order-2 order-sm-1" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-success btn-sm px-4 fw-bold w-100 w-sm-auto order-1 order-sm-2 mb-2 mb-sm-0" onclick="fecharModalExportar()">GERAR</button>
+                    <button type="submit" class="btn btn-success btn-sm px-4 fw-bold w-100 w-sm-auto order-1 order-sm-2 mb-2 mb-sm-0" onclick="fecharModalExportar()">Gerar</button>
                 </div>
             </form>
         </div>
@@ -380,7 +331,7 @@
 
             {% for i in cadastros.paginator.page_range %}
                 {% if cadastros.number == i %}
-                    <li class="page-item active"><span class="page-link rounded" style="background-color: #bca464; border-color: #bca464;">{{ i }}</span></li>
+                    <li class="page-item active"><span class="page-link rounded">{{ i }}</span></li>
                 {% elif i > cadastros.number|add:'-3' and i < cadastros.number|add:'3' %}
                     <li class="page-item"><a class="page-link text-dark rounded" href="?page={{ i }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ i }}</a></li>
                 {% endif %}
@@ -398,9 +349,6 @@
 </div> <!-- Fim da div principal -->
 
 <!-- 1. Forçamos o carregamento das bibliotecas ANTES do script iniciar -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
 
 <!-- 2. Inicializamos o DataTables -->
 <script>
@@ -408,7 +356,7 @@
     $(document).ready(function() {
         // Verifica se a tabela já é um DataTable para evitar erros de reinicialização
         if (!$.fn.DataTable.isDataTable('#tabelaClientes')) {
-            $('#tabelaClientes').DataTable({
+            if (!document.querySelector('#tabelaClientes tbody td[colspan]')) $('#tabelaClientes').DataTable({
                 "dom": 't',
                 "paging": false,
                 "ordering": true, /* Ativa o clique no cabeçalho para ordenar */
@@ -422,9 +370,9 @@
                 // Força a cor dourada no cabeçalho assim que o plugin for criado
                 "initComplete": function(settings, json) {
                     $('#tabelaClientes thead th').css({
-                        'background-color': '#bca464',
-                        'color': '#ffffff',
-                        'border-bottom': 'none'
+                        'background-color': '',
+                        'color': '',
+                        'border-bottom': ''
                     });
                 }
             });

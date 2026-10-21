@@ -1,0 +1,422 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    .item-chopp { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: .9rem 1rem; margin-bottom: .6rem; }
+    .item-chopp .orig { font-size: .75rem; color: var(--muted); }
+    .item-chopp .orig.mudou { color: var(--warn); font-weight: 600; }
+    .opcao-recebimento { flex: 1 1 0; min-width: 160px; }
+    .opcao-recebimento .form-check-input { margin-top: .2rem; }
+    .opcao-recebimento label { cursor: pointer; }
+    .caixa-faturamento { background: var(--accent-soft); border: 1px solid #ece3cf; border-radius: var(--radius); }
+    .item-chopp.removido { background: #fafafa; border-style: dashed; }
+    .item-chopp.removido .nome-item, .item-chopp.removido .subtotal { text-decoration: line-through; color: var(--muted); }
+    .item-chopp.removido input.qtd, .item-chopp.removido input.preco { opacity: .5; }
+    .tag-removido { display: inline-block; font-size: .7rem; font-weight: 600; color: #b42318; background: #fef3f2; border-radius: 4px; padding: .1rem .4rem; margin-top: .25rem; }
+    .obs-vendedor { background: #f9fafb; border: 1px solid var(--border); border-radius: var(--radius); padding: .6rem .8rem; white-space: pre-wrap; min-height: 2.5rem; }
+    .nota-vendedor { font-size: .75rem; color: var(--muted); margin-top: .25rem; }
+    .nota-vendedor.mudou { color: var(--warn); font-weight: 600; }
+</style>
+
+<div class="d-md-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="text-gold-title">{{ titulo }}</h3>
+        {% if modo == 'processar' %}
+            <p class="page-subtitle">Lançado por {{ pedido.vendedor.get_full_name|default:pedido.vendedor.username }} em {{ pedido.data_solicitacao|date:"d/m/Y H:i" }}. O Faturamento pode alterar apenas o prazo de pagamento e os produtos.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-3 p-md-4">
+        <form method="POST" id="formChopp" novalidate>
+            {% csrf_token %}
+
+            <!-- Cliente -->
+            <h6 class="section-title"><i class="bi bi-person-bounding-box"></i>Cliente</h6>
+            <div class="row g-3 mb-4">
+                {% if modo != 'processar' %}
+                <div class="col-12">
+                    <label class="form-label-custom">Localizar cliente (razão social ou CNPJ)</label>
+                    <div class="input-group">
+                        <input type="text" id="input_busca_cliente" class="form-control" placeholder="Digite ao menos 3 letras...">
+                        <button class="btn btn-dark px-4" type="button" id="btn_buscar_cliente"><i class="bi bi-search me-1"></i> Buscar</button>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="col-12 col-md-6">
+                    <label class="form-label-custom">Razão social</label>
+                    <input type="text" name="cliente_razao_social" id="res_razao" class="form-control" readonly>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label class="form-label-custom">Nome fantasia</label>
+                    <input type="text" name="cliente_nome_fantasia" id="res_fantasia" class="form-control" readonly>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label class="form-label-custom">CPF / CNPJ</label>
+                    <input type="text" name="cliente_cpf_cnpj" id="res_cnpj" class="form-control" readonly>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label-custom">Código</label>
+                    <input type="text" name="cliente_codigo" id="res_codigo" class="form-control" readonly>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label-custom">Loja</label>
+                    <input type="text" name="cliente_loja" id="res_loja" class="form-control" readonly>
+                </div>
+            </div>
+
+            <!-- Recebimento -->
+            <h6 class="section-title"><i class="bi bi-truck"></i>Recebimento e pagamento</h6>
+            <div class="mb-3">
+                <label class="form-label-custom d-block mb-2">Como o cliente recebe</label>
+                <div class="d-flex flex-column flex-md-row gap-2">
+                    {% for valor, rotulo in recebimento_choices %}
+                    <div class="opcao-recebimento box-selecao p-3">
+                        <div class="form-check m-0">
+                            <input class="form-check-input" type="radio" name="recebimento" id="rec_{{ valor }}" value="{{ valor }}"{% if modo == 'processar' %} disabled{% endif %}>
+                            <label class="form-check-label fw-medium" for="rec_{{ valor }}">{{ rotulo }}</label>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="row g-3 mb-4">
+                <div class="col-12 col-md-4" id="campo_data_entrega" style="display: none;">
+                    <label class="form-label-custom">Data de entrega</label>
+                    <input type="date" name="data_entrega" id="data_entrega" class="form-control"{% if modo == 'processar' %} disabled{% endif %}>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label class="form-label-custom">Prazo de pagamento</label>
+                    <select name="prazo_pagamento" id="prazo_pagamento" class="form-select">
+                        <option value="">Selecione...</option>
+                        {% for valor, rotulo in prazo_choices %}<option value="{{ valor }}">{{ rotulo }}</option>{% endfor %}
+                    </select>
+                    {% if modo == 'processar' %}<div class="nota-vendedor" id="nota_prazo"></div>{% endif %}
+                </div>
+            </div>
+
+            <!-- Produtos -->
+            <h6 class="section-title"><i class="bi bi-box-seam"></i>Produtos</h6>
+            <div id="lista_itens"></div>
+            <button type="button" class="btn btn-outline-secondary btn-sm mb-4" id="btn_add_produto">
+                <i class="bi bi-plus-circle me-1"></i> Adicionar Produto
+            </button>
+
+            <div class="row mb-4">
+                <div class="col-12 col-md-5 ms-auto">
+                    <div class="p-3 bg-light border rounded d-flex justify-content-between align-items-center">
+                        <span class="text-muted fw-bold small">Total do pedido</span>
+                        <span id="total_geral" class="fw-bold fs-5">R$ 0,00</span>
+                    </div>
+                </div>
+            </div>
+
+            {% if modo == 'processar' %}
+            <div class="mb-4">
+                <label class="form-label-custom">Observação do vendedor</label>
+                <div class="obs-vendedor" id="obs_vendedor"></div>
+            </div>
+            <div class="caixa-faturamento p-3 mb-4">
+                <label class="form-label-custom">Observação do Faturamento</label>
+                <textarea name="observacao_faturamento" id="observacao_faturamento" class="form-control mb-1" rows="2" placeholder="Explique o que foi alterado e por quê"></textarea>
+                <small class="text-muted d-block mb-3" id="aviso_obs_fat">Obrigatória quando o prazo ou os produtos forem alterados.</small>
+                <label class="form-label-custom">Número do pedido no Protheus</label>
+                <input type="text" name="pedido_protheus" id="pedido_protheus" class="form-control" maxlength="6" style="max-width: 160px;">
+                <small class="text-muted d-block mt-1">Obrigatório para finalizar (até 6 caracteres).</small>
+            </div>
+            {% else %}
+            <div class="mb-4">
+                <label class="form-label-custom">Observação <span class="text-muted fw-normal">(opcional)</span></label>
+                <textarea name="observacao" id="observacao" class="form-control" rows="2"></textarea>
+            </div>
+            {% endif %}
+
+            <div class="d-flex flex-column flex-md-row justify-content-md-end gap-2 border-top pt-4">
+                <a href="{% url 'chopp_list' %}" class="btn btn-light border px-4">Voltar</a>
+                {% if modo == 'processar' %}
+                    <button type="submit" name="acao" value="salvar" class="btn btn-secondary px-4">Salvar alterações</button>
+                    <button type="submit" name="acao" value="finalizar" class="btn btn-success px-4"><i class="bi bi-check2-all me-1"></i> Finalizar pedido</button>
+                {% elif modo == 'editar' %}
+                    <button type="submit" class="btn btn-dark px-5"><i class="bi bi-save me-1"></i> Salvar alterações</button>
+                {% else %}
+                    <button type="submit" class="btn btn-dark px-5"><i class="bi bi-send me-1"></i> Enviar pedido</button>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Clientes encontrados -->
+<div class="modal fade" id="modalCliente" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold">Selecionar Cliente</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0" style="max-height: 60vh; overflow-y: auto;">
+                <div id="lista_clientes" class="list-group list-group-flush"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Busca de produto (grupos de chopp) -->
+<div class="modal fade" id="modalProduto" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold">Buscar no Protheus</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="p-3 border-bottom bg-light">
+                <input type="text" id="filtro_produto" class="form-control" placeholder="Digite nome ou código (min. 3 letras)..." autocomplete="off">
+            </div>
+            <div class="modal-body p-0" style="max-height: 60vh; overflow-y: auto;">
+                <div id="lista_produtos" class="list-group list-group-flush"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ estado|json_script:"estado-inicial" }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const MODO = "{{ modo }}";
+    const estado = JSON.parse(document.getElementById('estado-inicial').textContent);
+    const mCli = new bootstrap.Modal(document.getElementById('modalCliente'));
+    const mProd = new bootstrap.Modal(document.getElementById('modalProduto'));
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const brl = v => 'R$ ' + (Number(v) || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    let contador = 0;
+
+    // ---------------- cliente
+    function preencherCliente(c) {
+        document.getElementById('res_razao').value = c.nome || '';
+        document.getElementById('res_fantasia').value = c.fantasia || c.nome || '';
+        document.getElementById('res_cnpj').value = c.cnpj || '';
+        document.getElementById('res_codigo').value = c.codigo || '';
+        document.getElementById('res_loja').value = c.loja || '';
+    }
+    const btnBuscarCliente = document.getElementById('btn_buscar_cliente');
+    if (btnBuscarCliente) btnBuscarCliente.onclick = function () {
+        const termo = document.getElementById('input_busca_cliente').value.trim();
+        if (termo.length < 3) return alert('Digite ao menos 3 caracteres.');
+        const lista = document.getElementById('lista_clientes');
+        lista.innerHTML = '<div class="p-4 text-center"><span class="spinner-border spinner-border-sm"></span> Consultando Protheus...</div>';
+        mCli.show();
+        fetch("{% url 'api_busca_clientes' %}?q=" + encodeURIComponent(termo))
+            .then(lerJson)
+            .then(data => {
+                lista.innerHTML = data.length ? '' : '<div class="p-4 text-center text-muted">Nenhum cliente encontrado.</div>';
+                data.forEach(c => {
+                    const b = document.createElement('button');
+                    b.type = 'button'; b.className = 'list-group-item list-group-item-action py-3';
+                    b.innerHTML = `<strong>${esc(c.nome)}</strong><br><small class="text-muted">${esc(c.cnpj)} | Cód: ${esc(c.codigo)} / ${esc(c.loja)}</small>`;
+                    b.onclick = () => { preencherCliente(c); mCli.hide(); };
+                    lista.appendChild(b);
+                });
+            })
+            .catch(e => { lista.innerHTML = `<div class="p-4 text-center text-danger">${esc(e.message)}</div>`; });
+    };
+    const inputBuscaCliente = document.getElementById('input_busca_cliente');
+    if (inputBuscaCliente) inputBuscaCliente.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); btnBuscarCliente.click(); }
+    });
+
+    // ---------------- recebimento
+    function atualizarRecebimento() {
+        const marcado = document.querySelector('input[name="recebimento"]:checked');
+        const entrega = marcado && marcado.value === 'ENTREGA';
+        document.getElementById('campo_data_entrega').style.display = entrega ? '' : 'none';
+        if (!entrega && MODO !== 'processar') document.getElementById('data_entrega').value = '';
+    }
+    document.querySelectorAll('input[name="recebimento"]').forEach(r => r.addEventListener('change', atualizarRecebimento));
+    if (MODO !== 'processar') document.getElementById('data_entrega').min = new Date().toISOString().split('T')[0];
+
+    // ---------------- itens
+    const estaRemovido = div => div.classList.contains('removido');
+    function totalGeral() {
+        let t = 0;
+        document.querySelectorAll('.item-chopp').forEach(div => {
+            const q = parseFloat(div.querySelector('.qtd').value) || 0;
+            const p = parseFloat(div.querySelector('.preco').value) || 0;
+            const sub = q * p;
+            div.querySelector('.subtotal').textContent = brl(sub);
+            const orig = div.querySelector('.orig');
+            if (orig && orig.dataset.qtd) {
+                const mudou = estaRemovido(div) || String(q) !== orig.dataset.qtd || (parseFloat(orig.dataset.preco) || 0) !== p;
+                orig.classList.toggle('mudou', mudou);
+            }
+            if (!estaRemovido(div)) t += sub;
+        });
+        document.getElementById('total_geral').textContent = brl(t);
+        atualizarAvisoFaturamento();
+    }
+
+    // Faturamento: algo mudou em relação ao que o vendedor lançou?
+    function houveAlteracao() {
+        if (MODO !== 'processar') return false;
+        if ((estado.prazo_pagamento_solicitado || '') !== document.getElementById('prazo_pagamento').value) return true;
+        return [...document.querySelectorAll('.item-chopp')].some(div => {
+            const orig = div.querySelector('.orig');
+            if (!orig || !orig.dataset.qtd) return !estaRemovido(div);   // incluído pelo Faturamento
+            return orig.classList.contains('mudou');
+        });
+    }
+    function atualizarAvisoFaturamento() {
+        if (MODO !== 'processar') return;
+        const prazo = document.getElementById('prazo_pagamento').value;
+        const nota = document.getElementById('nota_prazo');
+        const sol = estado.prazo_pagamento_solicitado || '';
+        const rotulo = (document.querySelector(`#prazo_pagamento option[value="${CSS.escape(sol)}"]`) || {}).textContent || sol || '—';
+        nota.textContent = 'Vendedor escolheu: ' + rotulo;
+        nota.classList.toggle('mudou', sol !== prazo);
+        document.getElementById('aviso_obs_fat').classList.toggle('text-danger', houveAlteracao());
+    }
+
+    function marcarRemovido(div, removido) {
+        div.classList.toggle('removido', removido);
+        div.querySelector('.flag-removido').value = removido ? '1' : '';
+        div.querySelectorAll('.qtd, .preco').forEach(i => i.readOnly = removido);
+        div.querySelector('.tag-removido').style.display = removido ? '' : 'none';
+        const b = div.querySelector('.remover');
+        b.title = removido ? 'Desfazer remoção' : 'Remover';
+        b.className = 'btn-square-action remover ' + (removido ? 'btn-edit' : 'btn-delete');
+        b.innerHTML = removido ? '<i class="bi bi-arrow-counterclockwise"></i>' : '<i class="bi bi-trash3-fill"></i>';
+        totalGeral();
+    }
+
+    function addItem(it) {
+        const ja = [...document.querySelectorAll('.item-chopp input.codigo')].find(i => i.value === it.codigo);
+        if (ja) {
+            const d = ja.closest('.item-chopp');
+            if (estaRemovido(d)) marcarRemovido(d, false);
+            d.querySelector('.qtd').focus(); return;
+        }
+        contador++;
+        const n = contador;
+        const div = document.createElement('div');
+        div.className = 'item-chopp';
+        const doVendedor = MODO === 'processar' && it.qtd_solicitada != null;
+        const original = doVendedor
+            ? `<div class="orig" data-qtd="${esc(it.qtd_solicitada)}" data-preco="${esc(it.preco_solicitado)}">Vendedor lançou: ${esc(it.qtd_solicitada)} un × ${brl(it.preco_solicitado)}</div>`
+            : (MODO === 'processar' ? '<div class="orig mudou">Incluído pelo Faturamento</div>' : '');
+        div.innerHTML = `
+            <input type="hidden" name="item_id_${n}" value="${esc(it.id || '')}">
+            <input type="hidden" name="item_codigo_${n}" class="codigo" value="${esc(it.codigo)}">
+            <input type="hidden" name="item_nome_${n}" value="${esc(it.nome)}">
+            <input type="hidden" name="item_removido_${n}" class="flag-removido" value="">
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-md-5">
+                    <div class="fw-semibold nome-item">${esc(it.nome)}</div>
+                    <small class="text-muted">Cód: ${esc(it.codigo)}${it.grupo ? ' | ' + esc(it.grupo) : ''}</small>
+                    ${original}
+                    <span class="tag-removido" style="display:none">Removido pelo Faturamento</span>
+                </div>
+                <div class="col-4 col-md-2">
+                    <label class="form-label-custom">Quantidade</label>
+                    <input type="number" name="item_qtd_${n}" class="form-control qtd text-center" min="1" step="1" value="${esc(it.qtd || 1)}">
+                </div>
+                <div class="col-5 col-md-2">
+                    <label class="form-label-custom">Preço unitário</label>
+                    <input type="number" name="item_preco_${n}" class="form-control preco text-end" min="0.01" step="0.01" placeholder="0,00" value="${esc(it.preco || '')}">
+                </div>
+                <div class="col-3 col-md-2 text-end">
+                    <label class="form-label-custom d-block">Subtotal</label>
+                    <span class="subtotal fw-semibold">R$ 0,00</span>
+                </div>
+                <div class="col-12 col-md-1 text-end">
+                    <button type="button" class="btn-square-action btn-delete remover" title="Remover"><i class="bi bi-trash3-fill"></i></button>
+                </div>
+            </div>`;
+        div.querySelectorAll('.qtd, .preco').forEach(i => i.addEventListener('input', totalGeral));
+        // item que o vendedor lançou não some: fica marcado como removido (dá para desfazer)
+        div.querySelector('.remover').onclick = () => {
+            if (doVendedor) marcarRemovido(div, !estaRemovido(div));
+            else { div.remove(); totalGeral(); }
+        };
+        document.getElementById('lista_itens').appendChild(div);
+        if (doVendedor && it.removido) marcarRemovido(div, true);
+        totalGeral();
+        return div;
+    }
+
+    // busca de produto enquanto digita
+    let timer = null, seq = 0;
+    document.getElementById('btn_add_produto').onclick = () => {
+        document.getElementById('filtro_produto').value = '';
+        document.getElementById('lista_produtos').innerHTML = '';
+        mProd.show();
+        setTimeout(() => document.getElementById('filtro_produto').focus(), 500);
+    };
+    document.getElementById('filtro_produto').addEventListener('keyup', function () {
+        const termo = this.value.trim();
+        const lista = document.getElementById('lista_produtos');
+        clearTimeout(timer);
+        if (termo.length < 3) { lista.innerHTML = '<div class="p-3 text-center text-muted small">Continue digitando...</div>'; return; }
+        lista.innerHTML = '<div class="p-4 text-center"><span class="spinner-border spinner-border-sm"></span> Consultando Protheus...</div>';
+        timer = setTimeout(() => {
+            const minha = ++seq;
+            fetch("{% url 'api_busca_produtos_chopp' %}?q=" + encodeURIComponent(termo))
+                .then(lerJson)
+                .then(data => {
+                    if (minha !== seq) return;
+                    lista.innerHTML = data.length ? '' : '<div class="p-4 text-center text-muted">Nenhum produto encontrado.</div>';
+                    data.forEach(p => {
+                        const b = document.createElement('button');
+                        b.type = 'button'; b.className = 'list-group-item list-group-item-action py-3';
+                        b.innerHTML = `<strong>${esc(p.descricao)}</strong><br><small class="text-muted">Cód: ${esc(p.codigo)} | ${esc(p.grupo_familia)}</small>`;
+                        b.onclick = () => {
+                            mProd.hide();
+                            const div = addItem({codigo: p.codigo, nome: p.descricao, grupo: p.grupo_familia, qtd: 1});
+                            if (div) setTimeout(() => div.querySelector('.preco').focus(), 400);
+                        };
+                        lista.appendChild(b);
+                    });
+                })
+                .catch(e => { if (minha === seq) lista.innerHTML = `<div class="p-4 text-center text-danger">${esc(e.message)}</div>`; });
+        }, 300);
+    });
+
+    // ---------------- estado inicial (editar, processar ou voltar com erro)
+    preencherCliente({nome: estado.cliente_razao_social, fantasia: estado.cliente_nome_fantasia, cnpj: estado.cliente_cpf_cnpj, codigo: estado.cliente_codigo, loja: estado.cliente_loja});
+    if (estado.recebimento) { const r = document.getElementById('rec_' + estado.recebimento); if (r) r.checked = true; }
+    document.getElementById('data_entrega').value = estado.data_entrega || '';
+    document.getElementById('prazo_pagamento').value = estado.prazo_pagamento || '';
+    const campoObs = document.getElementById('observacao');
+    if (campoObs) campoObs.value = estado.observacao || '';
+    const obsVendedor = document.getElementById('obs_vendedor');
+    if (obsVendedor) obsVendedor.textContent = estado.observacao || 'Sem observação.';
+    const campoObsFat = document.getElementById('observacao_faturamento');
+    if (campoObsFat) campoObsFat.value = estado.observacao_faturamento || '';
+    document.getElementById('prazo_pagamento').addEventListener('change', totalGeral);
+    const campoPedido = document.getElementById('pedido_protheus');
+    if (campoPedido) campoPedido.value = estado.pedido_protheus || '';
+    (estado.itens || []).forEach(addItem);
+    atualizarRecebimento();
+    totalGeral();
+
+    // ---------------- conferência antes de enviar
+    document.getElementById('formChopp').addEventListener('submit', function (e) {
+        const faltas = [];
+        if (!document.getElementById('res_codigo').value) faltas.push('Selecione o cliente.');
+        const rec = document.querySelector('input[name="recebimento"]:checked');
+        if (!rec) faltas.push('Informe como o cliente recebe.');
+        if (rec && rec.value === 'ENTREGA' && !document.getElementById('data_entrega').value) faltas.push('Informe a data de entrega.');
+        if (!document.getElementById('prazo_pagamento').value.trim()) faltas.push('Selecione o prazo de pagamento.');
+        const itens = [...document.querySelectorAll('.item-chopp')].filter(d => !estaRemovido(d));
+        if (!itens.length) faltas.push('O pedido precisa ter pelo menos um produto.');
+        itens.forEach(div => {
+            if (!(parseFloat(div.querySelector('.preco').value) > 0)) faltas.push('Informe o preço de todos os produtos.');
+            if (!(parseInt(div.querySelector('.qtd').value) > 0)) faltas.push('Informe a quantidade de todos os produtos.');
+        });
+        if (houveAlteracao() && campoObsFat && !campoObsFat.value.trim()) faltas.push('Explique na observação do Faturamento o que foi alterado e por quê.');
+        if (campoPedido && campoPedido.value.trim().length > 6) faltas.push('O número do pedido do Protheus tem no máximo 6 caracteres.');
+        if (e.submitter && e.submitter.value === 'finalizar' && campoPedido && !campoPedido.value.trim()) faltas.push('Informe o número do pedido no Protheus para finalizar.');
+        if (faltas.length) { e.preventDefault(); alert([...new Set(faltas)].join('\n')); }
+    });
+});
+</script>
+{% endblock %}

@@ -1,18 +1,25 @@
-from django.db import connections
+from app.protheus import consultar, linhas, linhas_como_dict, ProtheusIndisponivel  # noqa: F401
 
-def buscar_cliente_protheus_unificado(termo_busca, cod_vendedor_protheus):
-    if not termo_busca or len(termo_busca) < 3:
+
+def _txt(valor, padrao=""):
+    return str(valor).strip() if valor is not None else padrao
+
+
+def buscar_cliente_protheus_unificado(termo_busca, cod_vendedor_protheus=None):
+    """
+    Clientes do Protheus (CIEC e WRP) por nome, nome fantasia ou CNPJ.
+    O código do vendedor não filtra a busca: todo vendedor encontra qualquer cliente.
+    Levanta ProtheusIndisponivel se nenhuma base puder ser consultada.
+    """
+    if not termo_busca or len(termo_busca.strip()) < 3:
         return []
-
     termo_busca = termo_busca.upper().strip()
-    
-    config_busca = {
-        'protheus_ciec': ['SA1010', 'SA1020'],
-        'protheus_wrp': ['SA1010']
-    }
 
-    # 1. Adicionamos as colunas de endereço do Protheus no SELECT
-    query_template = """
+    bases = {
+        'protheus_ciec': ['SA1010', 'SA1020'],
+        'protheus_wrp': ['SA1010'],
+    }
+    query = """
         SELECT 
             SA1.A1_COD, SA1.A1_LOJA, SA1.A1_NOME, SA1.A1_NREDUZ, SA1.A1_CGC, 
             SA1.A1_CEP, SA1.A1_EST, SA1.A1_MUN, SA1.A1_BAIRRO, SA1.A1_END, SA1.A1_COMPLEM,
@@ -25,80 +32,94 @@ def buscar_cliente_protheus_unificado(termo_busca, cod_vendedor_protheus):
         AND SA1.A1_MSBLQL <> '1'
         AND (SA1.A1_NOME LIKE %s OR SA1.A1_CGC LIKE %s OR SA1.A1_NREDUZ LIKE %s)
     """
-    
-    params = [f'%{termo_busca}%', f'%{termo_busca}%', f'%{termo_busca}%']
-    clientes_dict = {}
+    params = [f'%{termo_busca}%'] * 3
 
-    for db, tabelas in config_busca.items():
-        if db not in connections:
+    clientes = {}
+    for row in linhas_como_dict(consultar(bases, query, params)):
+        nome = _txt(row.get('A1_NOME'), "SEM RAZAO SOCIAL")
+        cnpj, codigo, loja = _txt(row.get('A1_CGC')), _txt(row.get('A1_COD')), _txt(row.get('A1_LOJA'))
+        chave = f"{cnpj}_{codigo}_{loja}"
+        if chave in clientes:
             continue
-            
-        for tabela in tabelas:
-            empresa_sufixo = tabela[-3:]
-            
-            try:
-                query = query_template.format(tabela=tabela, empresa=empresa_sufixo)
-                
-                with connections[db].cursor() as cursor:
-                    cursor.execute(query, params)
-                    desc = cursor.description
-                    
-                    column_names = [str(col[0]).strip() if col[0] else f"coluna_{i}" for i, col in enumerate(desc)]
-                    
-                    for row in cursor.fetchall():
-                        row_dict = dict(zip(column_names, row))
-                        
-                        cnpj_raw = row_dict.get('A1_CGC')
-                        cod_raw = row_dict.get('A1_COD')
-                        loja_raw = row_dict.get('A1_LOJA')
-                        nome_raw = row_dict.get('A1_NOME')
-                        fantasia_raw = row_dict.get('A1_NREDUZ')
-                        grupo_raw = row_dict.get('GRUPO_DESCRI')
-                        
-                        # 2. Capturando os novos campos da query
-                        cep_raw = row_dict.get('A1_CEP')
-                        est_raw = row_dict.get('A1_EST')
-                        mun_raw = row_dict.get('A1_MUN')
-                        bairro_raw = row_dict.get('A1_BAIRRO')
-                        end_raw = row_dict.get('A1_END')
-                        complem_raw = row_dict.get('A1_COMPLEM')
+        clientes[chave] = {
+            'nome': nome,
+            'fantasia': _txt(row.get('A1_NREDUZ'), nome),
+            'codigo': codigo,
+            'loja': loja,
+            'cnpj': cnpj,
+            'grupo': _txt(row.get('GRUPO_DESCRI'), "GERAL"),
+            'cep': _txt(row.get('A1_CEP')),
+            'estado': _txt(row.get('A1_EST')),
+            'cidade': _txt(row.get('A1_MUN')),
+            'bairro': _txt(row.get('A1_BAIRRO')),
+            'endereco': _txt(row.get('A1_END')),
+            'complemento': _txt(row.get('A1_COMPLEM')),
+            'numero': '',  # O Protheus padrão geralmente embute o número no A1_END
+        }
+    return list(clientes.values())
 
-                        cnpj_limpo = str(cnpj_raw).strip() if cnpj_raw is not None else ""
-                        cod_limpo = str(cod_raw).strip() if cod_raw is not None else ""
-                        loja_limpa = str(loja_raw).strip() if loja_raw is not None else ""
-                        nome_limpo = str(nome_raw).strip() if nome_raw is not None else "SEM RAZAO SOCIAL"
-                        fantasia_limpa = str(fantasia_raw).strip() if fantasia_raw is not None else nome_limpo
-                        grupo_limpo = str(grupo_raw).strip() if grupo_raw is not None else "GERAL"
-                        
-                        # 3. Tratando os dados de endereço
-                        cep_limpo = str(cep_raw).strip() if cep_raw is not None else ""
-                        est_limpo = str(est_raw).strip() if est_raw is not None else ""
-                        mun_limpo = str(mun_raw).strip() if mun_raw is not None else ""
-                        bairro_limpo = str(bairro_raw).strip() if bairro_raw is not None else ""
-                        end_limpo = str(end_raw).strip() if end_raw is not None else ""
-                        complem_limpo = str(complem_raw).strip() if complem_raw is not None else ""
-                        
-                        chave_unica = f"{cnpj_limpo}_{cod_limpo}_{loja_limpa}"
-                        
-                        if chave_unica not in clientes_dict:
-                            clientes_dict[chave_unica] = {
-                                'nome': nome_limpo,
-                                'fantasia': fantasia_limpa,
-                                'codigo': cod_limpo,
-                                'loja': loja_limpa,
-                                'cnpj': cnpj_limpo,
-                                'grupo': grupo_limpo,
-                                # 4. Inserindo no retorno da API
-                                'cep': cep_limpo,
-                                'estado': est_limpo,
-                                'cidade': mun_limpo,
-                                'bairro': bairro_limpo,
-                                'endereco': end_limpo,
-                                'complemento': complem_limpo,
-                                'numero': '' # O Protheus padrão geralmente embute o número no A1_END
-                            }
-            except Exception as e:
-                print(f"ERRO SQL [{db} - {tabela}]: {e}")
-                continue
 
-    return list(clientes_dict.values())
+def buscar_produtos_protheus(termo):
+    """Produtos ativos com preço na tabela 214. Levanta ProtheusIndisponivel se o Protheus estiver fora."""
+    termo = (termo or '').upper().strip()
+    if len(termo) < 3:
+        return []
+    bases = {
+        'protheus_ciec': ['SB1010', 'SB1020'],
+        'protheus_wrp': ['SB1010'],
+    }
+    query = """
+        SELECT 
+            SB1.B1_COD, 
+            SB1.B1_DESC, 
+            ISNULL(SBM.BM_DESC, 'SEM GRUPO') as BM_DESC, 
+            DA1.DA1_PRCVEN
+        FROM {tabela} AS SB1
+        LEFT JOIN SBM{empresa} AS SBM ON 
+            RTRIM(SBM.BM_GRUPO) = RTRIM(SB1.B1_GRUPO) AND SBM.D_E_L_E_T_ <> '*'
+        INNER JOIN DA1{empresa} AS DA1 ON 
+            DA1.DA1_CODTAB = '214' 
+            AND RTRIM(DA1.DA1_CODPRO) = RTRIM(SB1.B1_COD) 
+            AND DA1.D_E_L_E_T_ <> '*'
+        WHERE SB1.D_E_L_E_T_ <> '*' 
+        AND SB1.B1_MSBLQL <> '1' 
+        AND (SB1.B1_DESC LIKE %s OR SB1.B1_COD LIKE %s)
+    """
+    produtos = {}
+    for row in linhas(consultar(bases, query, [f'%{termo}%', f'%{termo}%'])):
+        codigo = _txt(row[0])
+        if codigo not in produtos:
+            produtos[codigo] = {
+                'codigo': codigo,
+                'descricao': _txt(row[1]),
+                'grupo_familia': _txt(row[2]),
+                'preco': float(row[3]) if row[3] is not None else 0.0,
+            }
+    return list(produtos.values())
+
+
+def buscar_precos_protheus(codigos):
+    """
+    Preço de venda (tabela 214) de cada código de produto, consultado no Protheus.
+    Retorna {codigo: preco}. Códigos sem preço ficam fora do dicionário.
+    Levanta ProtheusIndisponivel se nenhuma base do Protheus puder ser consultada.
+    """
+    codigos = sorted({str(c).strip() for c in codigos if c})
+    if not codigos:
+        return {}
+    bases = {
+        'protheus_ciec': ['DA1010', 'DA1020'],
+        'protheus_wrp': ['DA1010'],
+    }
+    marcadores = ', '.join(['%s'] * len(codigos))
+    query = (
+        "SELECT RTRIM(DA1_CODPRO), DA1_PRCVEN FROM {tabela} "
+        "WHERE D_E_L_E_T_ <> '*' AND DA1_CODTAB = '214' "
+        f"AND RTRIM(DA1_CODPRO) IN ({marcadores})"
+    )
+    precos = {}
+    for cod, preco in linhas(consultar(bases, query, codigos)):
+        cod = _txt(cod)
+        if cod not in precos and preco is not None:
+            precos[cod] = preco
+    return precos

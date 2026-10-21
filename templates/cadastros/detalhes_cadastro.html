@@ -3,7 +3,7 @@
 {% block content %}
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 style="color: #bca464; font-weight: 600;">Detalhes do Cliente: {{ cadastro.razao_social }}</h3>
+        <h3 class="text-brand fw-semibold">Detalhes do Cliente: {{ cadastro.razao_social }}</h3>
         <div>
             <a href="{% url 'lista_cadastros' %}" class="btn btn-secondary btn-sm">Voltar</a>
             <button onclick="window.print()" class="btn btn-dark btn-sm">Imprimir</button>
@@ -13,7 +13,7 @@
     <div class="row">
         <div class="col-md-8">
             <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-white fw-bold" style="color: #bca464;">Dados Básicos e Endereço</div>
+                <div class="card-header bg-white fw-bold text-brand">Dados Básicos e Endereço</div>
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-6"><label class="text-muted small">Razão Social</label><br><strong>{{ cadastro.razao_social }}</strong></div>
@@ -32,7 +32,7 @@
             </div>
 
             <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-white fw-bold" style="color: #bca464;">Dados do Sócio e Contatos</div>
+                <div class="card-header bg-white fw-bold text-brand">Dados do Sócio e Contatos</div>
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-6"><label class="text-muted small">Nome do Sócio</label><br>{{ cadastro.socio_nome }}</div>

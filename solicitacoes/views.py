@@ -20,27 +20,43 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth.models import User
 from .models import Plantao, Bonificacao, BonificacaoItem, FotoBonificacao
-from .services import buscar_cliente_protheus_unificado
-from cadastros.models import VerbaMensal, AcordoComercial
+from .services import buscar_cliente_protheus_unificado, buscar_precos_protheus, buscar_produtos_protheus
+from app.protheus import ProtheusIndisponivel
+from django.core.cache import cache
+from django.conf import settings
+from cadastros.models import VerbaMensal, AcordoComercial, STATUS_QUE_CONSOMEM_VERBA
+from app.permissoes import (
+    grupo_requerido, no_grupo, GESTAO_COMERCIAL, FATURAMENTO, PLANTAO_ACESSO, PLANTAO_EQUIPE,
+    eh_somente_vendedor, pode_ver_bonificacao,
+)
+
+# Copo brinde: vai junto com o chopp e não tem custo na bonificação
+CODIGO_COPO_BRINDE = '000072'
+
+# Pasta raiz dos boletos no servidor de arquivos (o download só aceita arquivos dentro dela)
+PASTA_BOLETOS = r'\\SRV-FILESERVER\Faturamento\DOCUMENTOS FISCAIS'
 
 logger = logging.getLogger(__name__)
 
 def disparar_plantao_whatsapp(solicitacao):
     url = "https://api.zenvia.com/v2/channels/whatsapp/messages"
+    if not settings.ZENVIA_API_TOKEN:
+        logger.error("ZENVIA_API_TOKEN não configurado no .env; WhatsApp do plantão não enviado.")
+        return {"sucesso": False, "erro": "Integração com WhatsApp não configurada."}
     headers = {
-        "X-API-TOKEN": "Kn3XB8ntqaeCASe7_wFT-vqHW-IvdwMsbwLR",
+        "X-API-TOKEN": settings.ZENVIA_API_TOKEN,
         "Content-Type": "application/json"
     }
     
     endereco_completo = f"{solicitacao.endereco}, {solicitacao.numero}, {solicitacao.complemento}, {solicitacao.bairro} - {solicitacao.cidade}"
 
     payload = {
-        "from": "553190004411",
-        "to": "5531998357400",
+        "from": settings.ZENVIA_REMETENTE,
+        "to": settings.ZENVIA_DESTINO_PLANTAO,
         "contents": [
             {
                 "type": "template",
-                "templateId": "358e7517-8beb-4161-af5f-8086fe7c6c91",
+                "templateId": settings.ZENVIA_TEMPLATE_PLANTAO,
                 "fields": {
                     "1": str(solicitacao.id),
                     "2": solicitacao.get_tipo_display(),
@@ -55,10 +71,9 @@ def disparar_plantao_whatsapp(solicitacao):
     }
     
     try:
-        response = requests.post(url, json=payload, headers=headers)
+        response = requests.post(url, json=payload, headers=headers, timeout=15)
         response_data = response.json()
-        
-        print(f"DEBUG ZENVIA: {response_data}") 
+        logger.info(f"Zenvia plantão #{solicitacao.id}: HTTP {response.status_code}")
 
         if response.status_code in [200, 201]:
             zenvia_id = response_data.get('id')
@@ -79,70 +94,67 @@ def disparar_plantao_whatsapp(solicitacao):
 def api_busca_clientes(request):
     termo = request.GET.get('q', '')
     
-    vendedor_cod = request.user.perfil.codigo_vendedor
-    
-    if vendedor_cod:
+    # O vendedor encontra qualquer cliente; o código dele não filtra a busca
+    perfil = getattr(request.user, 'perfil', None)
+    vendedor_cod = perfil.codigo_vendedor if perfil else None
+    try:
         resultados = buscar_cliente_protheus_unificado(termo, vendedor_cod)
-    else:
-        resultados = []
+    except ProtheusIndisponivel:
+        return JsonResponse({'erro': 'Não foi possível consultar o Protheus agora. Tente novamente em instantes.'}, status=503)
         
     return JsonResponse(resultados, safe=False)
 
+@login_required
 def buscar_produto_protheus_unificado(request):
-    termo = request.GET.get('q', '').upper().strip()
-    if not termo or len(termo) < 3:
-        return JsonResponse([], safe=False)
+    try:
+        produtos = buscar_produtos_protheus(request.GET.get('q', ''))
+    except ProtheusIndisponivel:
+        return JsonResponse({'erro': 'Não foi possível consultar o Protheus agora. Tente novamente em instantes.'}, status=503)
+    return JsonResponse(produtos, safe=False)
 
-    config_busca = {
-        'protheus_ciec': ['SB1010', 'SB1020'],
-        'protheus_wrp': ['SB1010']
-    }
-
-    query_template = """
-        SELECT 
-            SB1.B1_COD, 
-            SB1.B1_DESC, 
-            ISNULL(SBM.BM_DESC, 'SEM GRUPO') as BM_DESC, 
-            DA1.DA1_PRCVEN
-        FROM {tabela} AS SB1
-        LEFT JOIN SBM{empresa} AS SBM ON 
-            RTRIM(SBM.BM_GRUPO) = RTRIM(SB1.B1_GRUPO) AND SBM.D_E_L_E_T_ <> '*'
-        INNER JOIN DA1{empresa} AS DA1 ON 
-            DA1.DA1_CODTAB = '214' 
-            AND RTRIM(DA1.DA1_CODPRO) = RTRIM(SB1.B1_COD) 
-            AND DA1.D_E_L_E_T_ <> '*'
-        WHERE SB1.D_E_L_E_T_ <> '*' 
-        AND SB1.B1_MSBLQL <> '1' 
-        AND (SB1.B1_DESC LIKE %s OR SB1.B1_COD LIKE %s)
+def _indice_boletos(forcar=False):
     """
-    
-    produtos_dict = {}
-    params = [f'%{termo}%', f'%{termo}%']
+    Lista dos PDFs dos últimos 90 dias nas pastas de boletos (ano atual e, se preciso, o anterior).
+    Ler o servidor de arquivos inteiro é lento, então a lista fica guardada por 10 minutos.
+    """
+    chave = 'indice_boletos'
+    if not forcar:
+        indice = cache.get(chave)
+        if indice is not None:
+            return indice
 
-    for db, tabelas in config_busca.items():
-        if db not in connections: continue
-        
-        for tabela in tabelas:
-            empresa_sufixo = tabela[-3:] 
-            
-            try:
-                with connections[db].cursor() as cursor:
-                    cursor.execute(query_template.format(tabela=tabela, empresa=empresa_sufixo), params)
-                    
-                    for row in cursor.fetchall():
-                        cod_limpo = row[0].strip()
+    inicio_janela = datetime.now() - timedelta(days=90)
+    anos = sorted({inicio_janela.year, datetime.now().year}, reverse=True)
+    pastas = [p for p in (os.path.join(PASTA_BOLETOS, str(a)) for a in anos) if os.path.exists(p)]
+    if not pastas:
+        raise FileNotFoundError(PASTA_BOLETOS)
 
-                        if cod_limpo not in produtos_dict:
-                            produtos_dict[cod_limpo] = {
-                                'codigo': cod_limpo,
-                                'descricao': row[1].strip(),
-                                'grupo_familia': row[2].strip(),
-                                'preco': float(row[3]) if row[3] is not None else 0.0
-                            }
-            except Exception as e:
-                continue
+    limite = inicio_janela.timestamp()
+    indice = []
+    for pasta in pastas:
+        for raiz, _, arquivos in os.walk(pasta):
+            for nome in arquivos:
+                if not nome.upper().endswith('.PDF'):
+                    continue
+                caminho = os.path.join(raiz, nome)
+                try:
+                    modificado = os.path.getmtime(caminho)
+                except OSError:
+                    continue
+                if modificado >= limite:
+                    indice.append((nome.upper(), nome, caminho, modificado))
+    cache.set(chave, indice, 600)
+    return indice
 
-    return JsonResponse(list(produtos_dict.values()), safe=False)
+
+def _filtrar_boletos(indice, numero_nota):
+    termo = numero_nota.upper()
+    return [
+        {'nome': nome, 'caminho': base64.urlsafe_b64encode(caminho.encode()).decode(), 'data': modificado}
+        for nome_upper, nome, caminho, modificado in indice
+        if termo in nome_upper
+    ]
+
 
 @login_required
 def buscar_boleto(request):
@@ -151,41 +163,22 @@ def buscar_boleto(request):
     abrir_modal = False
 
     if request.method == 'POST' and numero_nota:
-        caminho_base = r'\\SRV-FILESERVER\Faturamento\DOCUMENTOS FISCAIS\2026'
-        
-        if not os.path.exists(caminho_base):
-            logger.error(f"ERRO DE ACESSO: O caminho {caminho_base} não foi encontrado.")
+        try:
+            indice = _indice_boletos()
+            lista_boletos = _filtrar_boletos(indice, numero_nota)
+            if not lista_boletos:
+                # Boleto pode ter sido salvo depois da última leitura da pasta: lê de novo uma vez
+                indice = _indice_boletos(forcar=True)
+                lista_boletos = _filtrar_boletos(indice, numero_nota)
+        except FileNotFoundError:
+            logger.error(f"ERRO DE ACESSO: nenhuma pasta de boletos encontrada em {PASTA_BOLETOS}.")
             return render(request, 'solicitacoes/boletos.html', {
-                'mensagem': 'O servidor de arquivos (2026) está inacessível.',
+                'mensagem': 'O servidor de arquivos dos boletos está inacessível.',
                 'tipo_mensagem': 'erro',
                 'numero_nota': numero_nota
             })
 
-        data_limite = (datetime.now() - timedelta(days=90)).timestamp()
-
         try:
-            for raiz, _, arquivos in os.walk(caminho_base):
-                for nome_arquivo in arquivos:
-                    nome_comparar = nome_arquivo.upper()
-                    termo_comparar = numero_nota.upper()
-
-                    if termo_comparar in nome_comparar and nome_comparar.endswith('.PDF'):
-                        caminho_completo = os.path.join(raiz, nome_arquivo)
-
-                        try:
-                            data_modificacao = os.path.getmtime(caminho_completo)
-                            
-                            if data_modificacao >= data_limite:
-                                caminho_encoded = base64.urlsafe_b64encode(caminho_completo.encode()).decode()
-                                
-                                lista_boletos.append({
-                                    'nome': nome_arquivo,
-                                    'caminho': caminho_encoded,
-                                    'data': data_modificacao
-                                })
-                        except Exception as e:
-                            continue
-            
             lista_boletos.sort(key=lambda x: x['data'], reverse=True)
             abrir_modal = True if lista_boletos else False
 
@@ -213,7 +206,18 @@ def buscar_boleto(request):
 def baixar_boleto(request, caminho_b64):
     try:
         caminho_real = base64.urlsafe_b64decode(caminho_b64.encode()).decode()
-        
+
+        # Só entrega PDFs que estejam dentro da pasta de boletos (bloqueia "../" e outros caminhos)
+        raiz = os.path.normcase(os.path.realpath(PASTA_BOLETOS))
+        alvo = os.path.normcase(os.path.realpath(caminho_real))
+        try:
+            dentro_da_pasta = os.path.commonpath([raiz, alvo]) == raiz
+        except ValueError:
+            dentro_da_pasta = False  # no Windows: caminho em outro disco
+        if not dentro_da_pasta or not alvo.endswith('.pdf'):
+            logger.warning(f"Download de boleto bloqueado: {caminho_real} (usuário {request.user})")
+            raise Http404("Arquivo não encontrado.")
+
         if os.path.exists(caminho_real):
             with open(caminho_real, 'rb') as f:
                 response = HttpResponse(f.read(), content_type='application/pdf')
@@ -221,12 +225,23 @@ def baixar_boleto(request, caminho_b64):
                 return response
         else:
             raise Http404("Arquivo não encontrado no servidor.")
+    except Http404:
+        raise
     except Exception as e:
         logger.error(f"Erro no download do boleto: {e}")
         raise Http404("Erro ao processar o arquivo.")
 
+def _pode_alterar_plantao(user, plantao):
+    """Quem criou o plantão ou a equipe de plantão."""
+    return plantao.vendedor_id == user.id or no_grupo(user, *PLANTAO_EQUIPE)
+
+
+@grupo_requerido(*PLANTAO_ACESSO)
 def plantao_list(request):
     if request.method == 'POST' and 'plantao_id' in request.POST:
+        if not no_grupo(request.user, *PLANTAO_EQUIPE):
+            messages.error(request, "Você não tem permissão para confirmar plantões.")
+            return redirect('plantao_list')
         plantao_id = request.POST.get('plantao_id')
         obs = request.POST.get('obs_confirmacao')
         plantao = get_object_or_404(Plantao, id=plantao_id)
@@ -269,19 +284,26 @@ def plantao_list(request):
     context = {
         'plantoes': plantoes_obj,
         'vendedores': vVendedores,
+        'pode_confirmar_plantao': no_grupo(request.user, *PLANTAO_EQUIPE),
     }
 
     return render(request, 'solicitacoes/plantao_list.html', context)
 
+@grupo_requerido(*PLANTAO_ACESSO)
 def excluir_plantao(request, pk):
     plantao = get_object_or_404(Plantao, pk=pk)
-    if plantao.status == 'PENDENTE':
+    if request.method != 'POST':
+        return redirect('plantao_list')
+    if not _pode_alterar_plantao(request.user, plantao):
+        messages.error(request, "Você não tem permissão para excluir este plantão.")
+    elif plantao.status == 'PENDENTE':
         plantao.delete()
         messages.success(request, "Solicitação excluída com sucesso.")
     else:
         messages.error(request, "Não é permitido excluir um plantão confirmado.")
     return redirect('plantao_list')
 
+@grupo_requerido(*PLANTAO_ACESSO, json=True)
 def get_plantao_detalhes(request, pk):
     plantao = get_object_or_404(Plantao, pk=pk)
     data = {
@@ -345,9 +367,15 @@ def novo_plantao(request):
     vendedores = User.objects.all()
     return render(request, 'solicitacoes/novo_plantao.html', {'vendedores': vendedores})
     
+@grupo_requerido(*PLANTAO_ACESSO)
 def editar_plantao(request, pk):
 
     plantao = get_object_or_404(Plantao, pk=pk)
+    if not _pode_alterar_plantao(request.user, plantao):
+        if request.method == 'POST':
+            return JsonResponse({'status': 'erro', 'mensagem': 'Sem permissão.'}, status=403)
+        messages.error(request, "Você não tem permissão para editar este plantão.")
+        return redirect('plantao_list')
     
     if request.method == 'POST':
         plantao.codigo_cliente = request.POST.get('codigo_cliente')
@@ -391,7 +419,7 @@ def bonificacao_list(request):
 
     bonificacoes = Bonificacao.objects.select_related('vendedor').prefetch_related('itens').all().order_by('-data_solicitacao')
 
-    eh_vendedor = request.user.groups.filter(name='Vendedores').exists()
+    eh_vendedor = eh_somente_vendedor(request.user)
 
     if eh_vendedor:
         bonificacoes = bonificacoes.filter(vendedor=request.user)
@@ -441,15 +469,15 @@ def bonificacao_list(request):
 
 def enviar_emails_bonificacao(bonificacao, request):
     if bonificacao.tipo == 'ACORDO_COMERCIAL' and bonificacao.status == 'PENDENTE':
-        destinatario = 'admcomercial@lautbeer.com.br'
+        destinatario = settings.EMAILS_BONIF_ACORDO_PENDENTE
         assunto = f"BONIFICAÇÃO PENDENTE (SEM ACORDO) - {bonificacao.cliente_razao_social}"
         template_name = 'solicitacoes/bonificacao_email_acordo.html'
     elif bonificacao.tipo == 'NEGOCIACAO_ESPECIAL' and bonificacao.status == 'PENDENTE':
-        destinatario = 'wellington@lautbeer.com.br'
+        destinatario = settings.EMAILS_BONIF_NEGOCIACAO
         assunto = f"BONIFICAÇÃO PENDENTE DE APROVAÇÃO - {bonificacao.cliente_razao_social}"
         template_name = 'solicitacoes/bonificacao_email_aprovacao.html'
     elif bonificacao.tipo == 'SAC' and bonificacao.status == 'PENDENTE':
-        destinatario = 'admcomercial@lautbeer.com.br'
+        destinatario = settings.EMAILS_BONIF_SAC
         assunto = f"BONIFICAÇÃO SAC PENDENTE - {bonificacao.cliente_razao_social}"
         template_name = 'solicitacoes/bonificacao_email_aprovacao.html'
     
@@ -458,11 +486,11 @@ def enviar_emails_bonificacao(bonificacao, request):
         template_name = 'solicitacoes/bonificacao_email.html'
         
         if tem_chopp:
-            destinatario = 'adm1@lautbeer.com.br'
+            destinatario = settings.EMAILS_BONIF_CHOPP
             assunto = f"NOVO PEDIDO DE BONIFICAÇÃO - {bonificacao.cliente_razao_social}"
         else:
-            destinatario = 'admcomercial@lautbeer.com.br'
-            assunto = f"NOVO PEDIDO DE BONIFICAÇÃO- {bonificacao.cliente_razao_social}"
+            destinatario = settings.EMAILS_BONIF_GERAL
+            assunto = f"NOVO PEDIDO DE BONIFICAÇÃO - {bonificacao.cliente_razao_social}"
 
     total_geral = sum(item.valor_total for item in bonificacao.itens.all())
 
@@ -478,8 +506,8 @@ def enviar_emails_bonificacao(bonificacao, request):
     email = EmailMultiAlternatives(
         subject=assunto,
         body=text_content,
-        from_email="workflow@lautbeer.cpm.br",
-        to=[destinatario]
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=list(destinatario)
     )
     email.attach_alternative(html_content, "text/html")
     email.send()
@@ -527,32 +555,6 @@ def recalcular_situacao_acordos(acordo_ids):
         acordo.atualizar_situacao()
 
 
-def validar_limite_por_cliente(vendedor, cliente_cnpj, valor_nova_solicitacao):
-    try:
-        verba = VerbaMensal.objects.get(vendedor=vendedor)
-    except VerbaMensal.DoesNotExist:
-        return
-
-    limite_valor = verba.limite_por_cliente
-
-    mes_atual = date.today().month
-    ano_atual = date.today().year
-    
-    total_ja_concedido = Bonificacao.objects.filter(
-        vendedor=vendedor,
-        cliente_cpf_cnpj=cliente_cnpj,
-        data_solicitacao__month=mes_atual,
-        data_solicitacao__year=ano_atual,
-        status__in=['APROVADO', 'PENDENTE']
-    ).aggregate(total=Sum('itens__valor_total'))['total'] or 0
-
-    if (total_ja_concedido + valor_nova_solicitacao) > limite_valor:
-        percentual = verba.percentual_limite_por_cliente
-        raise ValidationError(
-            f"Limite por cliente excedido! Este cliente já possui R$ {total_ja_concedido:.2f} em bonificações este mês. "
-            f"O limite máximo permitido é de {percentual}% da sua verba (R$ {limite_valor:.2f})."
-        )
-
 @login_required
 def criar_bonificacao(request):
     if request.method == 'POST':
@@ -589,7 +591,7 @@ def criar_bonificacao(request):
                     total_item = preco * qtd
                     
                     itens_dados.append({
-                        'codigo': request.POST.get(f'item_codigo_{index}', 'TEMP'),
+                        'codigo': (request.POST.get(f'item_codigo_{index}') or 'TEMP').strip(),
                         'nome': value,
                         'preco': preco,
                         'qtd': qtd,
@@ -600,6 +602,39 @@ def criar_bonificacao(request):
                     total_qtd_solicitacao += qtd
                 except ValueError:
                     continue
+
+        # Quantidade precisa ser positiva e todo item precisa ter código de produto
+        for item in itens_dados:
+            if item['qtd'] <= 0:
+                messages.error(request, f"Quantidade inválida para o produto '{item['nome']}'.")
+                return render(request, 'solicitacoes/bonificacao_form.html', {'dados': request.POST})
+            if not item['codigo'] or item['codigo'] == 'TEMP':
+                messages.error(request, f"Selecione o produto '{item['nome']}' pela busca do Protheus.")
+                return render(request, 'solicitacoes/bonificacao_form.html', {'dados': request.POST})
+
+        # O preço é sempre o da tabela do Protheus (o que vier da tela é ignorado)
+        try:
+            precos = buscar_precos_protheus([i['codigo'] for i in itens_dados if i['codigo'] != CODIGO_COPO_BRINDE])
+        except ProtheusIndisponivel as e:
+            logger.error(f"Bonificação não gravada: {e}")
+            messages.error(request, "Não foi possível consultar os preços no Protheus. Tente novamente em instantes.")
+            return render(request, 'solicitacoes/bonificacao_form.html', {'dados': request.POST})
+        except Exception as e:
+            logger.exception("Erro ao consultar preços no Protheus")
+            messages.error(request, "Não foi possível consultar os preços no Protheus. Tente novamente em instantes.")
+            return render(request, 'solicitacoes/bonificacao_form.html', {'dados': request.POST})
+
+        total_solicitacao = 0
+        for item in itens_dados:
+            if item['codigo'] == CODIGO_COPO_BRINDE:
+                item['preco'] = 0.0
+            elif item['codigo'] in precos:
+                item['preco'] = float(precos[item['codigo']])
+            else:
+                messages.error(request, f"Preço do produto '{item['nome']}' (Cód: {item['codigo']}) não encontrado na tabela do Protheus.")
+                return render(request, 'solicitacoes/bonificacao_form.html', {'dados': request.POST})
+            item['total'] = round(item['preco'] * item['qtd'], 2)
+            total_solicitacao += item['total']
 
         status_final = 'PENDENTE'
         acordo = None
@@ -647,7 +682,7 @@ def criar_bonificacao(request):
                     nome_produto = item.get('nome')
                     
                     # EXCEÇÃO: Se for o Copo Brinde da fábrica, ignora a validação do Acordo Comercial
-                    if cod_produto == '000072':
+                    if cod_produto == CODIGO_COPO_BRINDE:
                         continue
                     
                     if cod_produto not in produtos_permitidos:
@@ -659,7 +694,7 @@ def criar_bonificacao(request):
 
             # 3. Se passou pelas validações, vincula o acordo aos itens (com exceção do copo brinde)
             for item in itens_dados:
-                if item.get('codigo') == '000072':
+                if item.get('codigo') == CODIGO_COPO_BRINDE:
                     item['acordo_id'] = None  # O copo não consome saldo de contrato
                 else:
                     item['acordo_id'] = acordo.id
@@ -677,31 +712,8 @@ def criar_bonificacao(request):
                 messages.error(request, f"Não existe verba cadastrada para o período {hoje.month}/{hoje.year}.")
                 return render(request, 'solicitacoes/bonificacao_form.html', {'dados': request.POST})
 
-            '''
-            limite_valor_cliente = float(verba_configurada.limite_por_cliente)
             
-            ja_gasto_cliente = Bonificacao.objects.filter(
-                vendedor=request.user, 
-                cliente_cpf_cnpj=cliente_cnpj,
-                data_solicitacao__month=hoje.month, 
-                data_solicitacao__year=hoje.year,
-                status__in=['APROVADO', 'PENDENTE', 'CONCLUIDO']
-            ).aggregate(total=Sum('itens__valor_total'))['total'] or 0
-
-            if (float(ja_gasto_cliente) + total_solicitacao) > limite_valor_cliente:
-                messages.error(request, f"Limite por cliente excedido! O máximo para este cliente é R$ {limite_valor_cliente:,.2f}")
-                return render(request, 'solicitacoes/bonificacao_form.html', {'dados': request.POST})
-            '''
-            
-            gastos_totais_mes = Bonificacao.objects.filter(
-                vendedor=request.user, 
-                tipo='VERBA_VENDEDOR',
-                data_solicitacao__month=hoje.month,
-                data_solicitacao__year=hoje.year,
-                status__in=['APROVADO', 'PENDENTE', 'CONCLUIDO']
-            ).aggregate(total=Sum('itens__valor_total'))['total'] or 0
-
-            saldo_disponivel = float(verba_configurada.valor) - float(gastos_totais_mes)
+            saldo_disponivel = float(verba_configurada.valor) - float(verba_configurada.valor_utilizado)
             
             if total_solicitacao > saldo_disponivel:
                 messages.error(request, f"Saldo Insuficiente para o mês {hoje.month}/{hoje.year}! Disponível: R$ {saldo_disponivel:,.2f}")
@@ -717,6 +729,15 @@ def criar_bonificacao(request):
                     # Trava o acordo para duas solicitações simultâneas não consumirem o mesmo saldo
                     acordo = AcordoComercial.objects.select_for_update().get(pk=acordo.pk)
                     validar_saldo_acordo(acordo, itens_dados)
+
+                if tipo == 'VERBA_VENDEDOR':
+                    # Mesma trava para a verba mensal: confere de novo o saldo com a verba bloqueada
+                    verba_travada = VerbaMensal.objects.select_for_update().get(pk=verba_configurada.pk)
+                    saldo_atual = float(verba_travada.valor) - float(verba_travada.valor_utilizado)
+                    if total_solicitacao > saldo_atual:
+                        raise SaldoAcordoInsuficiente(
+                            f"Saldo Insuficiente para o mês {hoje.month}/{hoje.year}! Disponível: R$ {saldo_atual:,.2f}"
+                        )
 
                 nova_bonif = Bonificacao.objects.create(
                     tipo=tipo,
@@ -781,26 +802,26 @@ def criar_bonificacao(request):
 
     return render(request, 'solicitacoes/bonificacao_form.html')
 
-def calcular_realizado_protheus(cliente, loja, inicio, fim):
-    bases = {'protheus_ciec': ['SD2010', 'SD2020'], 'protheus_wrp': ['SD2010']}
-    total_valor = 0.0
-    total_qtd = 0.0
-    d1, d2 = inicio.strftime('%Y%m%d'), fim.strftime('%Y%m%d')
-
-    for db, tabelas in bases.items():
-        for tab in tabelas:
-            emp = tab[-3:]
-            query = f"SELECT SUM(D2_TOTAL), SUM(D2_QUANT) FROM {tab} AS SD2 INNER JOIN SF4{emp} AS SF4 ON SF4.F4_FILIAL = SD2.D2_FILIAL AND SF4.F4_CODIGO = SD2.D2_TES AND SF4.D_E_L_E_T_ <> '*' INNER JOIN SC5{emp} AS SC5 ON SC5.C5_FILIAL = SD2.D2_FILIAL AND SC5.C5_NUM = SD2.D2_PEDIDO AND SC5.D_E_L_E_T_ <> '*' WHERE SD2.D_E_L_E_T_ <> '*' AND D2_CLIENTE = %s AND D2_LOJA = %s AND  D2_EMISSAO BETWEEN %s AND %s AND SF4.F4_BONIF = 'S' AND SC5.C5_ZTPBONI = '1'"
-            with connections[db].cursor() as cursor:
-                cursor.execute(query, [cliente, loja, d1, d2])
-                res = cursor.fetchone()
-                total_valor += float(res[0] or 0)
-                total_qtd += float(res[1] or 0)
-    return {'valor': total_valor, 'qtd': total_qtd}
-
 @login_required
 def gerenciar_solicitacao(request, pk, acao):
     solicitacao = get_object_or_404(Bonificacao, pk=pk)
+
+    # Só por formulário (POST): um link aberto por engano não pode aprovar nada
+    if request.method != 'POST':
+        messages.error(request, "Ação inválida.")
+        return redirect('bonificacao_list')
+
+    if acao in ('aprovar', 'reprovar') and not (
+        no_grupo(request.user, *GESTAO_COMERCIAL) and solicitacao.status == 'PENDENTE'
+    ):
+        messages.error(request, "Você não tem permissão para aprovar ou reprovar esta solicitação.")
+        return redirect('bonificacao_list')
+
+    if acao == 'concluir' and not (
+        no_grupo(request.user, *FATURAMENTO) and solicitacao.status == 'APROVADO'
+    ):
+        messages.error(request, "Você não tem permissão para concluir esta solicitação.")
+        return redirect('bonificacao_list')
 
     if acao == 'aprovar':
         solicitacao.status = 'APROVADO'
@@ -809,13 +830,13 @@ def gerenciar_solicitacao(request, pk, acao):
         solicitacao.save()
 
         try:
-            enviar_emails_bonificacao(request, solicitacao)
+            enviar_emails_bonificacao(solicitacao, request)
             messages.success(request, f"Solicitação {acao} com sucesso e e-mails enviados.")
         except Exception as e:
-            print(f"Erro ao enviar e-mail: {e}") 
+            logger.error(f"Erro ao enviar e-mail de aprovação da bonificação #{solicitacao.id}: {e}")
             messages.warning(request, f"Solicitação {acao}, mas não foi possível enviar o e-mail de notificação (Erro de SMTP).")
 
-    elif acao == 'reprovar' and request.method == 'POST':
+    elif acao == 'reprovar':
         motivo = request.POST.get('motivo')
         if motivo:
             solicitacao.status = 'REPROVADO'
@@ -831,7 +852,7 @@ def gerenciar_solicitacao(request, pk, acao):
         else:
             messages.error(request, "É necessário informar o motivo da reprovação.")
     
-    elif acao == 'concluir' and request.method == 'POST':
+    elif acao == 'concluir':
         numero_pedido = request.POST.get('pedido_erp')
         if numero_pedido:
             solicitacao.pedido_protheus = numero_pedido
@@ -843,6 +864,7 @@ def gerenciar_solicitacao(request, pk, acao):
             
     return redirect('bonificacao_list')
 
+@grupo_requerido(*PLANTAO_EQUIPE, destino='plantao_list')
 def confirmar_plantao(request, pk):
     if request.method == 'POST':
         plantao = get_object_or_404(Plantao, pk=pk)
@@ -858,7 +880,7 @@ def confirmar_plantao(request, pk):
 @login_required
 def excluir_bonificacao(request, pk):
     bonificacao = get_object_or_404(Bonificacao, pk=pk)
-    if not request.user.groups.filter(name='Vendedores').exists() and bonificacao.status != 'CONCLUIDO':
+    if request.method == 'POST' and no_grupo(request.user, *GESTAO_COMERCIAL) and bonificacao.status != 'CONCLUIDO':
         acordo_ids = list(bonificacao.itens.values_list('acordo_vinculado_id', flat=True).distinct())
         bonificacao.delete()
         # A exclusão devolve o saldo: reabre o acordo se ele tinha sido encerrado
@@ -868,15 +890,58 @@ def excluir_bonificacao(request, pk):
         messages.error(request, "Não é permitido excluir esta solicitação.")
     return redirect('bonificacao_list')
 
+_FONTE_PDF_OK = None
+
+
+def _registrar_fonte_pdf():
+    """
+    Registra a IBM Plex Sans direto no ReportLab, a partir de static/fonts.
+    (Registrar pelo @font-face do HTML falha no Windows por causa de arquivo temporário.)
+    Se os arquivos não existirem, o PDF continua saindo em Helvetica.
+    """
+    global _FONTE_PDF_OK
+    if _FONTE_PDF_OK is not None:
+        return _FONTE_PDF_OK
+    try:
+        from django.contrib.staticfiles import finders
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        from reportlab.lib.fonts import addMapping
+        from xhtml2pdf import default as pisa_default
+
+        normal = finders.find('fonts/IBMPlexSans-Regular.ttf')
+        negrito = finders.find('fonts/IBMPlexSans-SemiBold.ttf')
+        if not (normal and negrito):
+            _FONTE_PDF_OK = False
+            return False
+
+        pdfmetrics.registerFont(TTFont('IBMPlexSans', normal))
+        pdfmetrics.registerFont(TTFont('IBMPlexSans-Bold', negrito))
+        for italico in (0, 1):
+            addMapping('IBMPlexSans', 0, italico, 'IBMPlexSans')
+            addMapping('IBMPlexSans', 1, italico, 'IBMPlexSans-Bold')
+        for chave in ('ibm plex sans', 'ibmplexsans'):
+            pisa_default.DEFAULT_FONT[chave] = 'IBMPlexSans'
+        pisa_default.DEFAULT_FONT['ibmplexsans-bold'] = 'IBMPlexSans-Bold'
+        _FONTE_PDF_OK = True
+    except Exception as e:
+        logger.warning("Fonte do PDF não registrada, usando Helvetica: %s", e)
+        _FONTE_PDF_OK = False
+    return _FONTE_PDF_OK
+
+
 @login_required
 def gerar_pdf_bonificacao(request, pk):
     bonificacao = get_object_or_404(Bonificacao, pk=pk)
+    if not pode_ver_bonificacao(request.user, bonificacao):
+        raise Http404("Bonificação não encontrada.")
     
     context = {
         'b': bonificacao,
         'data': timezone.now(),
     }
     
+    _registrar_fonte_pdf()
     html = render_to_string('solicitacoes/bonificacao_pdf.html', context)
     
     response = HttpResponse(content_type='application/pdf')
@@ -889,11 +954,12 @@ def gerar_pdf_bonificacao(request, pk):
     
     return response
 
+@grupo_requerido(*GESTAO_COMERCIAL, destino='bonificacao_list')
 def exportar_bonificacoes_excel(request):
     data_inicio = request.GET.get('data_inicio')
     data_fim = request.GET.get('data_fim')
 
-    queryset = Bonificacao.objects.all()
+    queryset = Bonificacao.objects.select_related('vendedor').prefetch_related('itens')
     
     if data_inicio:
         queryset = queryset.filter(data_solicitacao__date__gte=data_inicio)

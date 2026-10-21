@@ -11,9 +11,14 @@ env/
 .env
 db.sqlite3
 
-# Pasta de arquivos estáticos/media coletados
+# Arquivos enviados pelos usuários e estáticos coletados (collectstatic)
 media/
+staticfiles/
 
 # Logs e arquivos de sistema
 *.log
 .DS_Store
+
+# Editores
+.vscode/
+.idea/

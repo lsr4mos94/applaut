@@ -1,3 +1,4 @@
+import hmac
 import json
 import logging
 from django.http import HttpResponse
@@ -11,10 +12,13 @@ logger = logging.getLogger(__name__)
 
 @csrf_exempt
 def webhook_plantao(request):
-    token_recebido = request.META.get('HTTP_X_API_KEY')
-    token_esperado = "c6da69cd-3432-40ad-9169-d5444646f7be"
+    token_recebido = request.META.get('HTTP_X_API_KEY') or ''
+    token_esperado = settings.WEBHOOK_PLANTAO_TOKEN
 
-    if token_recebido != token_esperado:
+    if not token_esperado:
+        logger.error("WEBHOOK_PLANTAO_TOKEN não configurado no .env; webhook recusado.")
+        return HttpResponse("Não autorizado", status=401)
+    if not hmac.compare_digest(token_recebido.encode(), token_esperado.encode()):
         return HttpResponse("Não autorizado", status=401)
 
     if request.method == 'POST':
@@ -34,14 +38,14 @@ def webhook_plantao(request):
                 if plantao:
                     plantao.status = novo_status
                     plantao.save()
-                    print(f"✅ Plantão #{plantao.id} atualizado para {novo_status}")
+                    logger.info(f"Plantão #{plantao.id} atualizado para {novo_status} pelo webhook")
                 else:
-                    print(f"⚠️ idRef {id_referencia} não encontrado.")
+                    logger.warning(f"Webhook de plantão: idRef {id_referencia} não encontrado")
             
             return HttpResponse(status=200)
 
         except Exception as e:
-            print(f"❌ Erro processando Webhook: {str(e)}")
+            logger.exception("Erro processando webhook de plantão")
             return HttpResponse(status=400)
 
     return HttpResponse(status=405)

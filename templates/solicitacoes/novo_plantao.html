@@ -1,17 +1,9 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <style>
-    .form-check-input:checked { background-color: #bca464 !important; border-color: #bca464 !important; box-shadow: 0 0 0 0.25rem rgba(188, 164, 100, 0.25) !important; }
-    .section-title { color: #bca464; font-weight: 600; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 1px; }
-    .form-label-custom { font-size: 0.75rem; font-weight: 700; color: #6c757d; text-transform: uppercase; margin-bottom: 5px; }
-    .bg-busca { background-color: #fcfbf7; border: 1px solid #bca464 !important; }
-    .list-group-item-action:hover { background-color: #fcfaf5; color: #bca464; }
-    .box-selecao { background-color: #fcfbf7; border: 1px solid #f1ece0; }
     
-    .form-control:focus, .form-select:focus { border-color: #bca464; box-shadow: 0 0 0 0.2rem rgba(188, 164, 100, 0.15); }
 
     /* Regras Responsivas para o Grupo de Busca do Cliente */
     @media (max-width: 767.98px) {
@@ -52,7 +44,7 @@
 </style>
 
 <div class="mb-4 text-start">
-    <h3 style="color: #bca464; font-weight: 600;">{% if editando %}Editar{% else %}Nova Solicitação de{% endif %} Plantão</h3>
+    <h3 class="text-brand fw-semibold">{% if editando %}Editar{% else %}Nova Solicitação de{% endif %} Plantão</h3>
 </div>
 
 <div class="card border-0 shadow-sm text-start">
@@ -63,8 +55,8 @@
                 <label class="form-label-custom">Localizar Cliente (Nome, Código ou CNPJ)</label>
                 <div class="input-group busca-cliente-group shadow-sm">
                     <input type="text" id="input_busca_cliente" class="form-control bg-busca" placeholder="Digite para localizar o cliente...">
-                    <button class="btn text-white px-4 fw-bold" type="button" id="btn_buscar_cliente" style="background-color: #bca464;">
-                        <span id="btn_texto_busca"><i class="bi bi-search me-1"></i> BUSCAR CLIENTE</span>
+                    <button class="btn text-white px-4 fw-bold bg-brand" type="button" id="btn_buscar_cliente">
+                        <span id="btn_texto_busca"><i class="bi bi-search me-1"></i> Buscar cliente</span>
                     </button>
                 </div>
             </div>
@@ -177,9 +169,9 @@
             </div>
 
             <div class="d-flex flex-column flex-md-row justify-content-md-end gap-2 border-top pt-4">
-                <a href="{% url 'plantao_list' %}" class="btn btn-light border px-4 btn-mobile-full text-center fw-bold text-muted">CANCELAR</a>
-                <button type="button" onclick="gerarResumo()" class="btn text-white px-5 btn-mobile-full shadow-sm" style="background-color: #bca464;">
-                    <strong><i class="bi bi-check2-circle me-1"></i> SALVAR E ENVIAR MENSAGEM</strong>
+                <a href="{% url 'plantao_list' %}" class="btn btn-light border px-4 btn-mobile-full text-center fw-bold text-muted">Cancelar</a>
+                <button type="button" onclick="gerarResumo()" class="btn text-white px-5 btn-mobile-full shadow-sm bg-brand">
+                    <strong><i class="bi bi-check2-circle me-1"></i> Salvar e enviar mensagem</strong>
                 </button>
             </div>
         </form>
@@ -189,7 +181,7 @@
 <div class="modal fade" id="modalResultadosBusca" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
-            <div class="modal-header text-white" style="background-color: #bca464;">
+            <div class="modal-header">
                 <h6 class="modal-title fw-bold">Selecionar Cliente</h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -203,14 +195,14 @@
 <div class="modal fade" id="modalZap" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4">
-            <div class="modal-header border-0 p-4" style="background-color: #bca464;">
+            <div class="modal-header border-0 p-4">
                 <h5 class="modal-title fw-bold text-white">Gravado com Sucesso!</h5>
             </div>
             <div class="modal-body p-4">
                 <div class="p-3 bg-light border rounded-3" id="textoWhats" style="white-space: pre-wrap; font-family: monospace; font-size: 0.9rem;"></div>
             </div>
             <div class="modal-footer bg-light border-0">
-                <button type="button" class="btn fw-bold text-white" style="background-color: #bca464;" onclick="copiarTexto()">COPIAR E SAIR</button>
+                <button type="button" class="btn fw-bold text-white bg-brand" onclick="copiarTexto()">Copiar e sair</button>
             </div>
         </div>
     </div>
@@ -245,7 +237,7 @@
             btnBuscar.disabled = true;
 
             fetch("{% url 'api_busca_clientes' %}?q=" + encodeURIComponent(termo))
-                .then(res => res.json())
+                .then(lerJson)
                 .then(data => {
                     const lista = document.getElementById('lista_resultados_cliente');
                     lista.innerHTML = '';
