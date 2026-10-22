@@ -28,11 +28,12 @@ except Exception as e:
 if __name__ == '__main__':
     from waitress import serve
     
-    HOST = '0.0.0.0'
+    # Só aceita conexões do próprio servidor: quem atende a internet (80/443, HTTPS) é o Caddy
+    HOST = '127.0.0.1'
     PORT = 8000
     IP_SISTEMA = '192.168.184.24'
     
-    print(f"\nServidor Online: http://{IP_SISTEMA}:{PORT}")
+    print(f"\nServidor Online: https://app.lautbeer.com.br (Caddy -> {HOST}:{PORT})")
     print(f"Diretório Raiz: {BASE_DIR}")
     print("Apps Ativos: usuarios, cadastros, solicitacoes, app (core)")
     print("Pressione Ctrl+C para encerrar (se rodando manualmente)\n")
@@ -44,5 +45,8 @@ if __name__ == '__main__':
         threads=10,
         channel_timeout=120,
         max_request_body_size=1073741824,
-        url_scheme='http'
+        # Confia no Caddy para informar o IP real e que o acesso original foi HTTPS
+        trusted_proxy='127.0.0.1',
+        trusted_proxy_headers='x-forwarded-for x-forwarded-proto x-forwarded-host',
+        clear_untrusted_proxy_headers=True,
     )

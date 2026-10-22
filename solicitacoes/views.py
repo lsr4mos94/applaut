@@ -783,12 +783,16 @@ def criar_bonificacao(request):
                     f"O saldo do Acordo Comercial #{acordo.id} foi totalmente utilizado e o acordo foi encerrado."
                 )
 
-            try:
-                enviar_emails_bonificacao(nova_bonif, request)
-                if status_final == 'PENDENTE':
-                    messages.info(request, "Solicitação enviada para aprovação.")
-            except Exception:
-                messages.warning(request, "Gravado, mas houve erro no envio do e-mail.")
+            # E-MAILS DE BONIFICAÇÃO DESATIVADOS TEMPORARIAMENTE.
+            # Para reativar, descomente o bloco abaixo e remova o "if" logo após ele.
+            # try:
+            #     enviar_emails_bonificacao(nova_bonif, request)
+            #     if status_final == 'PENDENTE':
+            #         messages.info(request, "Solicitação enviada para aprovação.")
+            # except Exception:
+            #     messages.warning(request, "Gravado, mas houve erro no envio do e-mail.")
+            if status_final == 'PENDENTE':
+                messages.info(request, "Solicitação enviada para aprovação.")
 
             return redirect('bonificacao_list')
 
@@ -829,12 +833,15 @@ def gerenciar_solicitacao(request, pk, acao):
         solicitacao.usuario_aprovador = request.user
         solicitacao.save()
 
-        try:
-            enviar_emails_bonificacao(solicitacao, request)
-            messages.success(request, f"Solicitação {acao} com sucesso e e-mails enviados.")
-        except Exception as e:
-            logger.error(f"Erro ao enviar e-mail de aprovação da bonificação #{solicitacao.id}: {e}")
-            messages.warning(request, f"Solicitação {acao}, mas não foi possível enviar o e-mail de notificação (Erro de SMTP).")
+        # E-MAILS DE BONIFICAÇÃO DESATIVADOS TEMPORARIAMENTE.
+        # Para reativar, descomente o bloco abaixo e remova a mensagem logo após ele.
+        # try:
+        #     enviar_emails_bonificacao(solicitacao, request)
+        #     messages.success(request, f"Solicitação {acao} com sucesso e e-mails enviados.")
+        # except Exception as e:
+        #     logger.error(f"Erro ao enviar e-mail de aprovação da bonificação #{solicitacao.id}: {e}")
+        #     messages.warning(request, f"Solicitação {acao}, mas não foi possível enviar o e-mail de notificação (Erro de SMTP).")
+        messages.success(request, "Solicitação aprovada com sucesso.")
 
     elif acao == 'reprovar':
         motivo = request.POST.get('motivo')
