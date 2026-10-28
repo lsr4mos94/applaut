@@ -110,7 +110,19 @@
                 z-index: 1030;
             }
             .app-main { margin-left: var(--sidebar-w); }
+
+            /* Menu recolhido (telas largas, ex.: Agendamento): o menu vira gaveta, como no celular */
+            body.menu-recolhido .app-sidebar { z-index: 1045; }
+            body.menu-recolhido .app-main { margin-left: 0; }
+            body.menu-recolhido .app-topbar.d-lg-none { display: flex !important; }
+            body.menu-recolhido .btn-sair.d-lg-none { display: inline-flex !important; }
+            body.menu-recolhido .app-content { max-width: 1840px; }
         }
+        /* Tela única (usuário só da Fábrica): sem menu, só a barra de cima com o Sair */
+        body.tela-unica .app-main { margin-left: 0; }
+        .app-topbar .usuario-unico { margin-left: auto; display: flex; align-items: center; gap: .6rem; font-size: .88rem; }
+        .app-topbar .usuario-unico .avatar { margin-left: 0; }
+        .app-topbar .usuario-unico .btn-sair { color: #fff; width: auto; padding: 0 .6rem; gap: .35rem; font-size: .88rem; }
 
         .sidebar-brand {
             display: flex; align-items: center; gap: .75rem;
@@ -595,9 +607,25 @@
         });
     </script>
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}{% if tela_unica %} tela-unica{% endif %}">
 {% with user_groups=request.user.groups.all|stringformat:"s" url_atual=request.resolver_match.url_name %}
 
+  {% if tela_unica %}
+    <!-- Tela única: só logo, usuário e Sair -->
+    <header class="app-topbar">
+        <span class="sidebar-brand">
+            <span class="brand-mark brand-logo"><img src="{% static 'logo.png' %}" alt="Läut" onerror="this.parentNode.classList.add('sem-logo')"><span class="letra">L</span></span>
+        </span>
+        <div class="usuario-unico">
+            <span class="d-none d-sm-inline">{{ user.get_full_name|default:user.username }}</span>
+            <span class="avatar">{{ user.first_name|default:user.username|first|upper }}</span>
+            <form action="{% url 'logout' %}" method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn-sair" title="Sair"><i class="bi bi-box-arrow-right"></i> Sair</button>
+            </form>
+        </div>
+    </header>
+  {% else %}
     <!-- Barra superior: só aparece no celular e tablet -->
     <header class="app-topbar d-lg-none">
         <button class="btn-menu" type="button" data-bs-toggle="offcanvas" data-bs-target="#menuPrincipal" aria-controls="menuPrincipal" aria-label="Abrir menu">
@@ -611,6 +639,12 @@
 
     <!-- Menu lateral: fixo no computador, gaveta no celular -->
     <aside class="offcanvas-lg offcanvas-start app-sidebar" tabindex="-1" id="menuPrincipal" aria-label="Menu principal">
+        <script>
+            // Telas com menu recolhido: o menu é gaveta em qualquer largura (abre pelo botão da barra de cima)
+            if (document.body.classList.contains('menu-recolhido')) {
+                document.currentScript.parentNode.classList.replace('offcanvas-lg', 'offcanvas');
+            }
+        </script>
         <div class="offcanvas-body">
             <div class="d-flex align-items-center justify-content-between pe-2">
                 <a href="/" class="sidebar-brand">
@@ -635,10 +669,16 @@
                     {% endif %}
                 {% endif %}
 
-                {% if "Vendedores" in user_groups or "Gestão Comercial" in user_groups or "Contas a Receber" in user_groups or "Faturamento" in user_groups or "Gestão Financeira" in user_groups or "Plantao" in user_groups %}
+                {% if "Vendedores" in user_groups or "Gestão Comercial" in user_groups or "Contas a Receber" in user_groups or "Faturamento" in user_groups or "Gestão Financeira" in user_groups or "Plantao" in user_groups or "Fábrica" in user_groups and chopp_liberado %}
                     <div class="side-label">Solicitações</div>
-                    {% if "Vendedores" in user_groups or "Faturamento" in user_groups or "Gestão Comercial" in user_groups %}
-                        <a class="side-link {% if url_atual == 'chopp_list' or url_atual == 'chopp_novo' or url_atual == 'chopp_editar' or url_atual == 'chopp_processar' %}active{% endif %}" href="{% url 'chopp_list' %}"><i class="bi bi-cup-straw"></i> Chopp</a>
+                    {% if "Fábrica" in user_groups and chopp_liberado %}
+                        <a class="side-link {% if url_atual == 'fabrica_dia' %}active{% endif %}" href="{% url 'fabrica_dia' %}"><i class="bi bi-box2"></i> Retiradas do dia</a>
+                    {% endif %}
+                    {% if chopp_liberado and "Vendedores" in user_groups or chopp_liberado and "Gestão Comercial" in user_groups %}
+                        <a class="side-link {% if url_atual == 'agendamento_calendario' or url_atual == 'agendamento_novo' or url_atual == 'agendamento_editar' %}active{% endif %}" href="{% url 'agendamento_calendario' %}"><i class="bi bi-calendar-week"></i> Agendamento</a>
+                    {% endif %}
+                    {% if chopp_liberado and "Faturamento" in user_groups or chopp_liberado and "Gestão Comercial" in user_groups or chopp_liberado and "Gestão Financeira" in user_groups %}
+                        <a class="side-link {% if url_atual == 'chopp_list' or url_atual == 'chopp_processar' %}active{% endif %}" href="{% url 'chopp_list' %}"><i class="bi bi-cup-straw"></i> Chopp</a>
                     {% endif %}
                     {% if "Vendedores" in user_groups or "Gestão Comercial" in user_groups or "Contas a Receber" in user_groups or "Faturamento" in user_groups %}
                         <a class="side-link {% if url_atual == 'buscar_boleto' %}active{% endif %}" href="{% url 'buscar_boleto' %}"><i class="bi bi-upc-scan"></i> Boletos</a>
@@ -670,6 +710,7 @@
             </div>
         </div>
     </aside>
+  {% endif %}
 
     <main class="app-main">
         <div class="app-content">

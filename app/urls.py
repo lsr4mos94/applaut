@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include, re_path
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.conf.urls.static import static
@@ -10,6 +10,9 @@ from app.views_media import media_protegida
 
 @login_required
 def home(request):
+    from app.permissoes import chopp_liberado, eh_somente_fabrica
+    if eh_somente_fabrica(request.user) and chopp_liberado(request.user):         # Fábrica cai direto nas retiradas (depois do login também)
+        return redirect('fabrica_dia')
     return render(request, 'home.html')
 
 urlpatterns = [

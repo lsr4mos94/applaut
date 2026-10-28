@@ -6,9 +6,10 @@ aqui a mesma regra passa a valer também no servidor.
 """
 from functools import wraps
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.shortcuts import redirect
 
 # Quem pode o quê
@@ -29,12 +30,46 @@ def no_grupo(user, *grupos):
     return user.groups.filter(name__in=grupos).exists()
 
 
+# Grupos que enxergam as bonificações de todos os vendedores
+VEEM_TODAS_BONIFICACOES = ('Gestão Comercial', 'Faturamento')
+
+
 def eh_somente_vendedor(user):
-    """Vendedor sem nenhum grupo de gestão: só enxerga o que é dele."""
+    """
+    Vendedor sem grupo que veja as bonificações de todos: só enxerga o que é dele.
+    Outros grupos (Solicitantes, Plantao, Cadastro...) não mudam isso.
+    """
     if user.is_superuser:
         return False
     nomes = set(user.groups.values_list('name', flat=True))
-    return 'Vendedores' in nomes and nomes == {'Vendedores'}
+    return 'Vendedores' in nomes and not nomes.intersection(VEEM_TODAS_BONIFICACOES)
+
+
+def chopp_liberado(user):
+    """Agendamento / Chopp / Fábrica: liberados (CHOPP_ATIVO) ou superusuário validando."""
+    return settings.CHOPP_ATIVO or (user.is_authenticated and user.is_superuser)
+
+
+def requer_chopp(view):
+    """Enquanto o módulo de chopp estiver oculto, as telas e APIs dele não existem para os usuários."""
+    @wraps(view)
+    def _view(request, *args, **kwargs):
+        if not chopp_liberado(request.user):
+            raise Http404
+        return view(request, *args, **kwargs)
+    return _view
+
+
+def contexto_modulos(request):
+    """Disponível em todos os templates: mostra ou esconde os menus do módulo de chopp."""
+    return {'chopp_liberado': chopp_liberado(request.user)}
+
+
+def eh_somente_fabrica(user):
+    """Usuário só da Fábrica: entra direto nas retiradas do dia, sem menu."""
+    if not user.is_authenticated or user.is_superuser:
+        return False
+    return set(user.groups.values_list('name', flat=True)) == {'Fábrica'}
 
 
 def pode_ver_bonificacao(user, bonificacao):

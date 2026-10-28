@@ -67,6 +67,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'app.permissoes.contexto_modulos',
             ],
         },
     },
@@ -198,6 +199,16 @@ mimetypes.add_type("image/png", ".png", True)
 mimetypes.add_type("image/svg+xml", ".svg", True)
 
 SITE_URL = os.environ.get('SITE_URL', "http://app.lautbeer.com.br")
+
+# Alerta de inadimplência no Agendamento de chopp (títulos vencidos no contas a receber do Protheus)
+# Dias de atraso tolerados (0 = qualquer atraso) e valor vencido mínimo para alertar
+INADIMPLENCIA_DIAS_ATRASO = int(os.environ.get('INADIMPLENCIA_DIAS_ATRASO', '0'))
+INADIMPLENCIA_VALOR_MINIMO = float(os.environ.get('INADIMPLENCIA_VALOR_MINIMO', '0'))
+
+# Agendamento de chopp, Chopp (Faturamento) e Fábrica: liberados para os usuários?
+# False = telas ocultas para todos (só o superusuário enxerga, para validar). Sem a variável: liberado em
+# desenvolvimento (DEBUG=True) e oculto em produção.
+CHOPP_ATIVO = os.environ.get('CHOPP_ATIVO', str(DEBUG)) == 'True'
 
 # Integração WhatsApp (Zenvia): o token fica só no .env
 ZENVIA_API_TOKEN = os.environ.get('ZENVIA_API_TOKEN', '')

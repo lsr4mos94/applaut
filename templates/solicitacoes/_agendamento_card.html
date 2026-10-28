@@ -1,0 +1,14 @@
+<button type="button" class="ag-card st-{{ a.status }}{% if a.inadimplencia %} inad{% endif %}" data-bs-toggle="modal" data-bs-target="#modalAg{{ a.id }}">
+    <div class="linha1">
+        {% if a.hora_retirada %}<span class="hora"><i class="bi bi-clock me-1"></i>{{ a.horario }}</span>
+        {% else %}<span class="hora text-muted"><i class="bi bi-hourglass-split me-1"></i>{{ a.data_solicitacao|date:"d/m H:i" }}</span>{% endif %}
+        <span class="st-badge {{ a.status }}">{{ a.get_status_display }}</span>
+    </div>
+    <div class="cli">{{ a.cliente_nome }}</div>
+    <div class="itens">
+        {% for it in a.itens.all %}{% if not it.removido %}<div>{{ it.quantidade }}× {{ it.produto_descricao }}</div>{% endif %}{% endfor %}
+    </div>
+    <div class="vend"><i class="bi bi-person me-1"></i>{{ a.vendedor.get_full_name|default:a.vendedor.username }}{% if a.litros %} · <span style="white-space:nowrap">{{ a.litros }} L</span>{% endif %}</div>
+    {% if a.observacao and a.status == 'PENDENTE' %}<div class="obs-card">{{ a.observacao|truncatechars:70 }}</div>{% endif %}
+    {% if a.inadimplencia %}<span class="tag-inad tag-inad-card" data-ag="{{ a.id }}" title="Ver títulos vencidos"><i class="bi bi-exclamation-octagon-fill"></i> Inadimplente</span>{% endif %}
+</button>

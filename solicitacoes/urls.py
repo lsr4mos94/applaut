@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
-from . import chopp
+from app.permissoes import requer_chopp
+from . import agendamento, chopp, fabrica
 
 urlpatterns = [
     path('boletos/', views.buscar_boleto, name='buscar_boleto'),
@@ -24,12 +25,25 @@ urlpatterns = [
 
     path('bonificacoes/exportar/excel/', views.exportar_bonificacoes_excel, name='exportar_bonificacoes_excel'),
 
-    # Solicitação de Chopp
-    path('chopp/', chopp.chopp_list, name='chopp_list'),
-    path('chopp/novo/', chopp.chopp_novo, name='chopp_novo'),
-    path('chopp/<int:pk>/editar/', chopp.chopp_editar, name='chopp_editar'),
-    path('chopp/<int:pk>/processar/', chopp.chopp_processar, name='chopp_processar'),
-    path('chopp/<int:pk>/cancelar/', chopp.chopp_cancelar, name='chopp_cancelar'),
-    path('chopp/exportar/excel/', chopp.chopp_exportar, name='chopp_exportar'),
-    path('api/busca-produtos-chopp/', chopp.api_busca_produtos_chopp, name='api_busca_produtos_chopp'),
+    # Solicitação de Chopp (ocultas enquanto CHOPP_ATIVO=False; ver app/permissoes.requer_chopp)
+    path('agendamentos/', requer_chopp(agendamento.agendamento_calendario), name='agendamento_calendario'),
+    path('agendamentos/novo/', requer_chopp(agendamento.agendamento_novo), name='agendamento_novo'),
+    path('agendamentos/<int:pk>/editar/', requer_chopp(agendamento.agendamento_editar), name='agendamento_editar'),
+    path('agendamentos/<int:pk>/cancelar/', requer_chopp(agendamento.agendamento_cancelar), name='agendamento_cancelar'),
+    path('agendamentos/<int:pk>/agendar/', requer_chopp(agendamento.agendamento_agendar), name='agendamento_agendar'),
+    path('agendamentos/confirmar/<str:data>/', requer_chopp(agendamento.agendamento_confirmar_dia), name='agendamento_confirmar_dia'),
+    path('agendamentos/pdf/<str:data>/', requer_chopp(agendamento.agendamento_pdf_dia), name='agendamento_pdf_dia'),
+    path('agendamentos/api/inadimplencia/', requer_chopp(agendamento.api_inadimplencia), name='agendamento_api_inadimplencia'),
+    path('agendamentos/api/titulos/', requer_chopp(agendamento.api_titulos), name='agendamento_api_titulos'),
+    path('agendamentos/api/clientes/', requer_chopp(agendamento.api_clientes), name='agendamento_api_clientes'),
+    path('agendamentos/api/produtos/', requer_chopp(agendamento.api_produtos), name='agendamento_api_produtos'),
+    path('fabrica/', requer_chopp(fabrica.fabrica_dia), name='fabrica_dia'),
+    path('fabrica/<int:pk>/entregar/', requer_chopp(fabrica.fabrica_entregar), name='fabrica_entregar'),
+    path('fabrica/<int:pk>/nao-retirou/', requer_chopp(fabrica.fabrica_nao_retirou), name='fabrica_nao_retirou'),
+    path('fabrica/api/produtos/', requer_chopp(fabrica.fabrica_api_produtos), name='fabrica_api_produtos'),
+    path('chopp/', requer_chopp(chopp.chopp_list), name='chopp_list'),
+    path('chopp/<int:pk>/processar/', requer_chopp(chopp.chopp_processar), name='chopp_processar'),
+    path('chopp/<int:pk>/cancelar/', requer_chopp(chopp.chopp_cancelar), name='chopp_cancelar'),
+    path('chopp/exportar/excel/', requer_chopp(chopp.chopp_exportar), name='chopp_exportar'),
+    path('api/busca-produtos-chopp/', requer_chopp(chopp.api_busca_produtos_chopp), name='api_busca_produtos_chopp'),
 ]

@@ -4,19 +4,13 @@
 <div class="d-md-flex justify-content-between align-items-center mb-4">
     <div>
         <h3 class="text-gold-title">Solicitação de Chopp</h3>
-        {% if not eh_gestor %}
-            <p class="page-subtitle">Você vê os seus pedidos de {{ inicio_janela|date:"d/m" }} até hoje.</p>
-        {% endif %}
     </div>
     <div class="d-grid d-md-flex gap-2 mt-3 mt-md-0">
-        {% if eh_gestor %}
+        {% if pode_exportar %}
         <button class="btn btn-outline-success fw-bold d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#modalExportar">
             <i class="bi bi-file-earmark-excel me-2"></i> Exportar
         </button>
         {% endif %}
-        <a href="{% url 'chopp_novo' %}" class="btn btn-gold-action d-flex align-items-center justify-content-center">
-            <i class="bi bi-plus-circle me-2"></i> Novo Pedido
-        </a>
     </div>
 </div>
 
@@ -24,7 +18,6 @@
 <div class="card mb-4">
     <div class="card-body card-filter">
         <form method="GET" class="row g-3 align-items-end">
-            {% if eh_gestor %}
             <div class="col-12 col-md-2">
                 <label>Busca</label>
                 <input type="text" name="busca" class="form-control form-control-sm" placeholder="Cliente, CNPJ, nº ou pedido Protheus" value="{{ request.GET.busca|default:'' }}">
@@ -38,7 +31,6 @@
                     {% endfor %}
                 </select>
             </div>
-            {% endif %}
             <div class="col-6 col-md-2">
                 <label>Status</label>
                 <select name="status" class="form-select form-select-sm">
@@ -48,16 +40,14 @@
                     {% endfor %}
                 </select>
             </div>
-            {% if eh_gestor %}
             <div class="col-6 col-md-2">
-                <label>De</label>
+                <label>Retirada de</label>
                 <input type="date" name="data_ini" class="form-control form-control-sm" value="{{ request.GET.data_ini|default:'' }}">
             </div>
             <div class="col-6 col-md-2">
-                <label>Até</label>
+                <label>Retirada até</label>
                 <input type="date" name="data_fim" class="form-control form-control-sm" value="{{ request.GET.data_fim|default:'' }}">
             </div>
-            {% endif %}
             <div class="col-12 col-md d-flex gap-2">
                 <button type="submit" class="btn btn-dark btn-sm flex-grow-1 px-3" title="Filtrar"><i class="bi bi-filter"></i> Filtrar</button>
                 <a href="{% url 'chopp_list' %}" class="btn btn-outline-secondary btn-sm" title="Limpar"><i class="bi bi-x-lg"></i></a>
@@ -73,9 +63,9 @@
             <thead>
                 <tr>
                     <th>Cliente</th>
-                    <th>Recebimento</th>
+                    <th>Retirada</th>
                     <th>Vendedor</th>
-                    <th>Data</th>
+                    <th>Condição</th>
                     <th class="text-end">Total</th>
                     <th class="text-center">Status</th>
                     <th class="text-center">Ações</th>
@@ -87,16 +77,18 @@
                     <td data-label="Cliente">
                         <strong class="text-strong">#{{ p.id }} {{ p.cliente_nome_fantasia|default:p.cliente_razao_social }}</strong>
                         <small class="text-muted d-block">{{ p.cliente_cpf_cnpj }} · {{ p.cliente_codigo }}/{{ p.cliente_loja }}</small>
+                        {% if p.inadimplencia %}<span class="tag-inad-sel mt-1" data-pedido="{{ p.id }}" data-bs-toggle="modal" data-bs-target="#modalVer{{ p.id }}" title="Ver títulos vencidos"><i class="bi bi-exclamation-octagon-fill"></i> Inadimplente</span>{% endif %}
                     </td>
-                    <td data-label="Recebimento">
-                        {{ p.get_recebimento_display }}
-                        {% if p.data_entrega %}<small class="text-muted d-block">{{ p.data_entrega|date:"d/m/Y" }}</small>{% endif %}
+                    <td data-label="Retirada">
+                        {{ p.data_retirada|date:"d/m/Y" }}
+                        <small class="text-muted d-block">{{ p.horario }}</small>
                     </td>
                     <td data-label="Vendedor">{{ p.vendedor.get_full_name|default:p.vendedor.username }}</td>
-                    <td data-label="Data">{{ p.data_solicitacao|date:"d/m/Y H:i" }}</td>
+                    <td data-label="Condição">{{ p.condicao_pagamento_descricao }}</td>
                     <td data-label="Total" class="text-md-end fw-semibold text-nowrap">R$ {{ p.total|floatformat:"2g" }}</td>
                     <td data-label="Status" class="text-md-center">
-                        {% if p.status == 'PENDENTE' %}<span class="badge badge-pendente">Pendente</span>
+                        {% if p.status == 'ENVIADO' %}<span class="badge badge-pendente">Enviado</span>
+                        {% elif p.status == 'ENTREGUE' %}<span class="badge badge-concluido">Entregue</span>
                         {% elif p.status == 'FINALIZADO' %}<span class="badge badge-confirmado">Finalizado</span>
                         {% else %}<span class="badge badge-reprovado">Cancelado</span>{% endif %}
                         {% if p.alterado_pelo_faturamento %}<small class="text-muted d-block mt-1">Alterado pelo Faturamento</small>{% endif %}
@@ -104,15 +96,9 @@
                     <td data-label="Ações" class="text-md-center">
                         <div class="d-flex justify-content-center gap-1">
                             <button type="button" class="btn-square-action btn-view" data-bs-toggle="modal" data-bs-target="#modalVer{{ p.id }}" title="Ver detalhes"><i class="bi bi-eye-fill"></i></button>
-                            {% if p.status == 'PENDENTE' %}
-                                {% if eh_faturamento %}
+                            {% if p.status in processaveis and eh_faturamento %}
                                     <a href="{% url 'chopp_processar' p.id %}" class="btn-square-action btn-approve" title="Conferir e finalizar"><i class="bi bi-check2-all"></i></a>
-                                {% elif p.vendedor_id == request.user.id and not p.usuario_faturamento_id %}
-                                    <a href="{% url 'chopp_editar' p.id %}" class="btn-square-action btn-edit" title="Editar"><i class="bi bi-pencil"></i></a>
-                                {% endif %}
-                                {% if eh_faturamento or p.vendedor_id == request.user.id and not p.usuario_faturamento_id %}
                                     <button type="button" class="btn-square-action btn-delete" data-bs-toggle="modal" data-bs-target="#modalCancelar{{ p.id }}" title="Cancelar pedido"><i class="bi bi-x-lg"></i></button>
-                                {% endif %}
                             {% endif %}
                         </div>
                     </td>
@@ -156,6 +142,17 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
+                {% if p.inadimplencia %}
+                <div class="alert alert-danger small mb-3 alerta-inad">
+                    <div class="d-flex gap-2 align-items-start abre-titulos" id="alertaInad{{ p.id }}" data-alvo="#titulos{{ p.id }}" title="Ver títulos">
+                        <i class="bi bi-exclamation-octagon-fill mt-1"></i>
+                        <div class="flex-grow-1"><strong>Cliente inadimplente.</strong> R$ {{ p.inadimplencia.valor|floatformat:"2g" }} vencidos em {{ p.inadimplencia.titulos }} título(s){% if p.inadimplencia.dias %}, o mais antigo com {{ p.inadimplencia.dias }} dia(s) de atraso{% endif %}.
+                            <span class="text-decoration-underline ms-1">Ver títulos</span></div>
+                        <i class="bi bi-chevron-down seta-titulos mt-1"></i>
+                    </div>
+                    <div class="caixa-titulos" id="titulos{{ p.id }}" data-codigo="{{ p.cliente_codigo }}" data-loja="{{ p.cliente_loja }}"></div>
+                </div>
+                {% endif %}
                 <div class="row mb-4 bg-light p-3 rounded mx-0 border">
                     <div class="col-md-6 border-md-end mb-2 mb-md-0">
                         <label class="text-muted small d-block text-uppercase fw-bold mb-2">Cliente</label>
@@ -165,25 +162,25 @@
                     <div class="col-md-6 ps-md-4">
                         <label class="text-muted small d-block text-uppercase fw-bold mb-2">Pedido</label>
                         <p class="mb-1 small"><strong>Vendedor:</strong> {{ p.vendedor.get_full_name|default:p.vendedor.username }}</p>
-                        <p class="mb-1 small"><strong>Lançado em:</strong> {{ p.data_solicitacao|date:"d/m/Y H:i" }}</p>
+                        <p class="mb-1 small"><strong>Agendado em:</strong> {{ p.data_solicitacao|date:"d/m/Y H:i" }}</p>
                         <p class="mb-1 small"><strong>Status:</strong> {{ p.get_status_display }}</p>
                         {% if p.pedido_protheus %}<p class="mb-1 small"><strong>Pedido Protheus:</strong> {{ p.pedido_protheus }}</p>{% endif %}
+                        {% if p.entregue_por %}<p class="mb-1 small"><strong>Fábrica:</strong> {{ p.entregue_por.get_full_name|default:p.entregue_por.username }} às {{ p.entregue_em|date:"d/m H:i" }}</p>{% endif %}
                         {% if p.usuario_faturamento %}<p class="mb-0 small"><strong>Faturamento:</strong> {{ p.usuario_faturamento.get_full_name|default:p.usuario_faturamento.username }}{% if p.data_finalizacao %} em {{ p.data_finalizacao|date:"d/m/Y H:i" }}{% endif %}</p>{% endif %}
                     </div>
                 </div>
                 <div class="row mb-4 p-3 mx-0 gap-2 gap-md-0 panel-accent">
                     <div class="col-12 col-md-4">
-                        <label class="text-muted small d-block fw-bold">Recebimento</label>
-                        <span class="fw-bold">{{ p.get_recebimento_display }}</span>
+                        <label class="text-muted small d-block fw-bold">Retirada</label>
+                        <span class="fw-bold">{{ p.data_retirada|date:"d/m/Y" }}</span>
                     </div>
                     <div class="col-12 col-md-4">
-                        <label class="text-muted small d-block fw-bold">Data de entrega</label>
-                        <span class="fw-bold">{{ p.data_entrega|date:"d/m/Y"|default:"—" }}</span>
+                        <label class="text-muted small d-block fw-bold">Horário</label>
+                        <span class="fw-bold">{{ p.horario }}</span>
                     </div>
                     <div class="col-12 col-md-4 text-md-end">
-                        <label class="text-muted small d-block fw-bold">Prazo de pagamento</label>
-                        <span class="fw-bold">{{ p.get_prazo_pagamento_display }}</span>
-                        {% if p.prazo_foi_alterado %}<small class="d-block text-warning">vendedor: {{ p.get_prazo_pagamento_solicitado_display }}</small>{% endif %}
+                        <label class="text-muted small d-block fw-bold">Condição de pagamento</label>
+                        <span class="fw-bold">{{ p.condicao_pagamento }} - {{ p.condicao_pagamento_descricao }}</span>
                     </div>
                 </div>
                 <h6 class="fw-bold mb-3 text-brand"><i class="bi bi-box-seam me-2"></i>Produtos</h6>
@@ -235,7 +232,7 @@
                 {% if p.status == 'CANCELADO' %}
                 <div class="p-3 rounded border border-danger-subtle bg-danger-subtle">
                     <label class="small d-block fw-bold text-uppercase mb-1 text-danger">Cancelado</label>
-                    <p class="mb-0 small">{{ p.motivo_cancelamento }}<br><span class="text-muted">por {{ p.cancelado_por.get_full_name|default:p.cancelado_por.username }} em {{ p.data_cancelamento|date:"d/m/Y H:i" }}</span></p>
+                    <p class="mb-0 small">{{ p.motivo_cancelamento }}<br><span class="text-muted">{% if p.cancelado_por %}por {{ p.cancelado_por.get_full_name|default:p.cancelado_por.username }} {% endif %}em {{ p.data_cancelamento|date:"d/m/Y H:i"|default:"—" }}</span></p>
                 </div>
                 {% endif %}
             </div>
@@ -246,8 +243,8 @@
     </div>
 </div>
 
-{% if p.status == 'PENDENTE' %}
-{% if eh_faturamento or p.vendedor_id == request.user.id %}
+{% if p.status in processaveis %}
+{% if eh_faturamento %}
 <div class="modal fade" id="modalCancelar{{ p.id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <form method="POST" action="{% url 'chopp_cancelar' p.id %}" class="modal-content text-start">
@@ -272,7 +269,7 @@
 {% endif %}
 {% endfor %}
 
-{% if eh_gestor %}
+{% if pode_exportar %}
 <div class="modal fade" id="modalExportar" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <form method="GET" action="{% url 'chopp_exportar' %}" class="modal-content text-start">
@@ -299,7 +296,7 @@
                         </select>
                     </div>
                 </div>
-                <small class="text-muted d-block mt-3">Uma linha por produto, com a quantidade e o preço que o vendedor lançou e os finais.</small>
+                <small class="text-muted d-block mt-3">Período pela data da retirada. Uma linha por produto, com a quantidade e o preço que o vendedor agendou e os finais.</small>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
@@ -309,4 +306,18 @@
     </div>
 </div>
 {% endif %}
+{% if inadimplencia_indisponivel %}
+<div class="alert alert-warning small mt-3"><i class="bi bi-exclamation-triangle me-1"></i> Não foi possível consultar a inadimplência no Protheus agora; os alertas não estão aparecendo.</div>
+{% endif %}
+{% include 'solicitacoes/_titulos_inadimplencia.html' %}
+<script>
+// Clicar no selo "Inadimplente" abre os detalhes já com os títulos à mostra
+document.addEventListener('click', function (e) {
+    const selo = e.target.closest('.tag-inad-sel[data-pedido]');
+    if (!selo) return;
+    document.getElementById('modalVer' + selo.dataset.pedido).addEventListener('shown.bs.modal', function () {
+        window.abrirTitulos(document.getElementById('alertaInad' + selo.dataset.pedido), true);
+    }, {once: true});
+}, true);
+</script>
 {% endblock %}

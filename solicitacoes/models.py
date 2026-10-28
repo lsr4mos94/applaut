@@ -1,3 +1,4 @@
+import re
 from django.db import models
 from django.contrib.auth.models import User
 
@@ -136,24 +137,20 @@ class FotoBonificacao(models.Model):
 
 
 class SolicitacaoChopp(models.Model):
-    """Pedido de chopp lançado pelo vendedor e processado pelo Faturamento (sem aprovação)."""
+    """
+    Pedido de chopp para retirada. O mesmo registro vai do pedido ao faturamento:
+    PENDENTE (vendedor gravou, sem dia) -> AGENDADO (backoffice definiu dia e hora)
+    -> ENVIADO (dia confirmado) -> ENTREGUE (fábrica marcou) -> FINALIZADO (Faturamento);
+    CANCELADO em qualquer ponto antes de finalizar.
+    """
 
-    RECEBIMENTO_CHOICES = [
-        ('RETIRADA_FABRICA', 'Retirada na Fábrica'),
-        ('RETIRADA_LOGISTICA', 'Retirada na Logística'),
-        ('ENTREGA', 'Entrega'),
-    ]
     STATUS_CHOICES = [
         ('PENDENTE', 'Pendente'),
+        ('AGENDADO', 'Agendado'),
+        ('ENVIADO', 'Enviado'),
+        ('ENTREGUE', 'Entregue'),
         ('FINALIZADO', 'Finalizado'),
         ('CANCELADO', 'Cancelado'),
-    ]
-    PRAZO_CHOICES = [
-        ('A VISTA', 'A VISTA'),
-        ('7 DIAS', '7 DIAS'),
-        ('14 DIAS', '14 DIAS'),
-        ('21 DIAS', '21 DIAS'),
-        ('28 DIAS', '28 DIAS'),
     ]
 
     vendedor = models.ForeignKey(User, on_delete=models.PROTECT, related_name='pedidos_chopp')
@@ -165,17 +162,27 @@ class SolicitacaoChopp(models.Model):
     cliente_nome_fantasia = models.CharField(max_length=100, blank=True)
     cliente_cpf_cnpj = models.CharField(max_length=18)
 
-    recebimento = models.CharField(max_length=20, choices=RECEBIMENTO_CHOICES)
-    data_entrega = models.DateField(null=True, blank=True)
-    prazo_pagamento = models.CharField(max_length=100, choices=PRAZO_CHOICES)
-    # Prazo que o vendedor escolheu (o Faturamento pode trocar o prazo_pagamento)
-    prazo_pagamento_solicitado = models.CharField(max_length=100, choices=PRAZO_CHOICES, blank=True)
+    # Retirada: o backoffice define dia e hora (vazios enquanto PENDENTE)
+    data_retirada = models.DateField(null=True, blank=True, db_index=True)
+    hora_retirada = models.TimeField(null=True, blank=True)
+    agendado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='pedidos_chopp_agendados')
+    agendado_em = models.DateTimeField(null=True, blank=True)
+
+    # Vêm do cadastro do cliente no Protheus (CIEC 01, filial 0101); ninguém altera
+    condicao_pagamento = models.CharField(max_length=10)
+    condicao_pagamento_descricao = models.CharField(max_length=60)
+    tabela_preco = models.CharField(max_length=10, blank=True)
+
     observacao = models.TextField(blank=True)
     # Justificativa do Faturamento para o que alterou (o vendedor não edita)
     observacao_faturamento = models.TextField(blank=True)
 
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='PENDENTE', db_index=True)
     pedido_protheus = models.CharField(max_length=20, blank=True)
+
+    # Fábrica: marca a retirada (ENTREGUE) ou "não retirou"
+    entregue_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='pedidos_chopp_entregues')
+    entregue_em = models.DateTimeField(null=True, blank=True)
 
     alterado_pelo_faturamento = models.BooleanField(default=False)
     usuario_faturamento = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='pedidos_chopp_processados')
@@ -185,12 +192,30 @@ class SolicitacaoChopp(models.Model):
     data_cancelamento = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        verbose_name = "Solicitação de Chopp"
-        verbose_name_plural = "Solicitações de Chopp"
-        ordering = ['-data_solicitacao']
+        verbose_name = "Agendamento de Chopp"
+        verbose_name_plural = "Agendamentos de Chopp"
+        ordering = ['data_retirada', 'hora_retirada', 'id']
 
     def __str__(self):
         return f"Chopp #{self.id} - {self.cliente_razao_social}"
+
+    @property
+    def cliente_nome(self):
+        return self.cliente_nome_fantasia or self.cliente_razao_social
+
+    @property
+    def horario(self):
+        """Ex.: '10:30' (hora livre definida pelo backoffice); vazio enquanto pendente."""
+        return self.hora_retirada.strftime('%H:%M') if self.hora_retirada else ''
+
+    @property
+    def faixa_horario(self):
+        return self.horario
+
+    @property
+    def litros(self):
+        """Litragem do pedido (barris: litros pelo nome do produto, ex. '30L')."""
+        return sum(i.litros for i in self.itens.all())
 
     @property
     def total(self):
@@ -200,13 +225,9 @@ class SolicitacaoChopp(models.Model):
     def total_solicitado(self):
         return sum((item.preco_solicitado * item.qtd_solicitada for item in self.itens.all() if item.qtd_solicitada), 0)
 
-    @property
-    def prazo_foi_alterado(self):
-        return bool(self.prazo_pagamento_solicitado) and self.prazo_pagamento_solicitado != self.prazo_pagamento
-
     def tem_alteracao_do_faturamento(self):
-        """O pedido final é diferente do que o vendedor lançou?"""
-        return self.prazo_foi_alterado or any(i.situacao != 'MANTIDO' for i in self.itens.all())
+        """O pedido final é diferente do que o vendedor agendou?"""
+        return any(i.situacao != 'MANTIDO' for i in self.itens.all())
 
 
 class SolicitacaoChoppItem(models.Model):
@@ -224,10 +245,25 @@ class SolicitacaoChoppItem(models.Model):
     preco_solicitado = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     # Item que o vendedor pediu e o Faturamento tirou: fica com quantidade 0 para o histórico
     removido = models.BooleanField(default=False)
+    # Preço veio da tabela do cliente no Protheus (travado para o vendedor)
+    preco_da_tabela = models.BooleanField(default=False)
+    # Quem incluiu o item depois do pedido (vazio = veio no pedido)
+    ORIGEM_CHOICES = [('', 'Pedido'), ('FABRICA', 'Fábrica'), ('FATURAMENTO', 'Faturamento')]
+    incluido_por = models.CharField(max_length=12, choices=ORIGEM_CHOICES, blank=True, default='')
 
     def save(self, *args, **kwargs):
         self.valor_total = self.preco_unitario * self.quantidade
         super().save(*args, **kwargs)
+
+    @property
+    def litros_por_unidade(self):
+        """Litros do barril pelo nome do produto ('BARRIL CHOPP PILSEN 30L' -> 30); copos e outros = 0."""
+        achado = re.search(r'(\d+)\s*L\b', self.produto_descricao.upper())
+        return int(achado.group(1)) if achado else 0
+
+    @property
+    def litros(self):
+        return 0 if self.removido else self.quantidade * self.litros_por_unidade
 
     @property
     def situacao(self):
@@ -241,10 +277,11 @@ class SolicitacaoChoppItem(models.Model):
 
     @property
     def situacao_display(self):
+        if self.situacao == 'INCLUIDO':
+            return 'Incluído pela Fábrica' if self.incluido_por == 'FABRICA' else 'Incluído pelo Faturamento'
         return {
-            'REMOVIDO': 'Removido pelo Faturamento',
-            'INCLUIDO': 'Incluído pelo Faturamento',
-            'ALTERADO': 'Alterado pelo Faturamento',
+            'REMOVIDO': 'Removido na retirada/faturamento',
+            'ALTERADO': 'Alterado na retirada/faturamento',
             'MANTIDO': 'Mantido',
         }[self.situacao]
 
@@ -252,3 +289,17 @@ class SolicitacaoChoppItem(models.Model):
     def foi_alterado(self):
         return self.situacao != 'MANTIDO'
 
+
+class DiaConfirmadoChopp(models.Model):
+    """Dia de retirada confirmado pela Gestão Comercial: os agendamentos foram enviados e o dia fica travado."""
+    data = models.DateField(unique=True)
+    confirmado_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name='dias_chopp_confirmados')
+    confirmado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Dia de retirada confirmado"
+        verbose_name_plural = "Dias de retirada confirmados"
+        ordering = ['-data']
+
+    def __str__(self):
+        return f"{self.data:%d/%m/%Y} confirmado por {self.confirmado_por}"

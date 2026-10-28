@@ -1,0 +1,112 @@
+<div class="modal fade" id="modalAg{{ a.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content text-start">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-cup-straw me-2"></i>Pedido #{{ a.id }} <span class="st-badge {{ a.status }} ms-2 align-middle">{{ a.get_status_display }}</span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row mb-4 bg-light p-3 rounded mx-0 border">
+                    <div class="col-md-7 border-md-end mb-2 mb-md-0">
+                        <label class="text-muted small d-block text-uppercase fw-bold mb-2">Cliente</label>
+                        <span class="fw-bold h6 text-brand">{{ a.cliente_razao_social }}</span><br>
+                        <small class="text-muted">{{ a.cliente_nome_fantasia }} · {{ a.cliente_cpf_cnpj }} · Código {{ a.cliente_codigo }} / Loja {{ a.cliente_loja }}</small>
+                    </div>
+                    <div class="col-md-5 ps-md-4">
+                        <label class="text-muted small d-block text-uppercase fw-bold mb-2">Retirada</label>
+                        {% if a.data_retirada %}
+                            <p class="mb-1 small"><strong>{{ a.data_retirada|date:"l, d/m/Y" }}</strong> às <strong>{{ a.horario }}</strong></p>
+                            {% if a.agendado_por %}<p class="mb-1 small text-muted">Agendado por {{ a.agendado_por.first_name|default:a.agendado_por.username }} em {{ a.agendado_em|date:"d/m H:i" }}</p>{% endif %}
+                        {% else %}
+                            <p class="mb-1 small text-muted">Aguardando o backoffice definir o dia e a hora.</p>
+                        {% endif %}
+                        <p class="mb-0 small"><strong>Condição:</strong> {{ a.condicao_pagamento }} - {{ a.condicao_pagamento_descricao }}</p>
+                    </div>
+                </div>
+                {% if a.inadimplencia %}
+                <div class="alert alert-danger small mb-3 alerta-inad">
+                    <div class="d-flex gap-2 align-items-start abre-titulos" id="alertaInad{{ a.id }}" data-alvo="#titulos{{ a.id }}" title="Ver títulos">
+                        <i class="bi bi-exclamation-octagon-fill mt-1"></i>
+                        <div class="flex-grow-1"><strong>Cliente inadimplente.</strong> R$ {{ a.inadimplencia.valor|floatformat:"2g" }} vencidos em {{ a.inadimplencia.titulos }} título(s){% if a.inadimplencia.dias %}, o mais antigo com {{ a.inadimplencia.dias }} dia(s) de atraso{% endif %}.
+                            <span class="text-decoration-underline ms-1">Ver títulos</span></div>
+                        <i class="bi bi-chevron-down seta-titulos mt-1"></i>
+                    </div>
+                    <div class="caixa-titulos" id="titulos{{ a.id }}" data-codigo="{{ a.cliente_codigo }}" data-loja="{{ a.cliente_loja }}"></div>
+                </div>
+                {% endif %}
+
+                {% if eh_gestao and a.id in pode_alterar_ids %}
+                <form method="POST" action="{% url 'agendamento_agendar' a.id %}" class="agenda-box p-3 mb-4">
+                    {% csrf_token %}
+                    <label class="text-muted small d-block text-uppercase fw-bold mb-2"><i class="bi bi-calendar-plus me-1"></i>{% if a.data_retirada %}Remarcar{% else %}Agendar{% endif %}</label>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-12 col-md-5">
+                            <select name="data_retirada" class="form-select form-select-sm" required>
+                                <option value="">Escolha o dia...</option>
+                                {% for o in opcoes_dia %}<option value="{{ o.valor }}" {% if a.data_retirada and a.data_retirada|date:'Y-m-d' == o.valor %}selected{% endif %}>{{ o.rotulo }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <input type="time" name="hora_retirada" class="form-control form-control-sm" value="{{ a.horario }}" required>
+                        </div>
+                        <div class="col-6 col-md-4 d-flex gap-2">
+                            <button type="submit" class="btn btn-sm btn-dark flex-grow-1"><i class="bi bi-check2 me-1"></i>{% if a.data_retirada %}Remarcar{% else %}Agendar{% endif %}</button>
+                        </div>
+                    </div>
+                    {% if a.data_retirada %}
+                    <button type="submit" name="acao" value="pendente" formnovalidate class="btn btn-link btn-sm px-0 mt-2 text-muted"><i class="bi bi-arrow-counterclockwise me-1"></i>Voltar para pendentes</button>
+                    {% endif %}
+                </form>
+                {% endif %}
+
+                <h6 class="fw-bold mb-3 text-brand"><i class="bi bi-box-seam me-2"></i>Produtos{% if a.litros %} <span class="text-muted fw-normal small">· {{ a.litros }} L</span>{% endif %}</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle">
+                        <thead><tr><th>Produto</th><th class="text-center">Qtd</th><th class="text-end">Preço</th><th class="text-end">Total</th></tr></thead>
+                        <tbody class="small">
+                            {% for it in a.itens.all %}
+                            <tr{% if it.removido %} class="text-muted"{% endif %}>
+                                <td>{% if it.removido %}<s>{{ it.produto_descricao }}</s>{% else %}{{ it.produto_descricao }}{% endif %}<small class="d-block text-muted">{{ it.produto_codigo }}{% if not it.preco_da_tabela %} · preço informado pelo vendedor{% endif %}</small></td>
+                                <td class="text-center">{{ it.quantidade }}</td>
+                                <td class="text-end text-nowrap">R$ {{ it.preco_unitario|floatformat:"2g" }}</td>
+                                <td class="text-end text-nowrap fw-semibold">R$ {{ it.valor_total|floatformat:"2g" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot><tr><td colspan="3" class="text-end fw-bold">Total</td><td class="text-end fw-bold text-nowrap">R$ {{ a.total|floatformat:"2g" }}</td></tr></tfoot>
+                    </table>
+                </div>
+                {% if a.observacao %}
+                <div class="p-3 bg-light rounded border mb-3">
+                    <label class="text-muted small d-block fw-bold text-uppercase mb-1">Observação</label>
+                    <p class="mb-0 small" style="white-space: pre-line;">{{ a.observacao }}</p>
+                </div>
+                {% endif %}
+                <p class="small text-muted mb-0">Pedido de {{ a.vendedor.get_full_name|default:a.vendedor.username }} em {{ a.data_solicitacao|date:"d/m/Y H:i" }}{% if a.pedido_protheus %} · Pedido Protheus {{ a.pedido_protheus }}{% endif %}</p>
+                {% if a.status == 'CANCELADO' %}
+                <div class="p-3 rounded border border-danger-subtle bg-danger-subtle mt-3">
+                    <label class="small d-block fw-bold text-uppercase mb-1 text-danger">Cancelado</label>
+                    <p class="mb-0 small">{{ a.motivo_cancelamento }}<br><span class="text-muted">{% if a.cancelado_por %}por {{ a.cancelado_por.get_full_name|default:a.cancelado_por.username }} {% endif %}em {{ a.data_cancelamento|date:"d/m/Y H:i"|default:"—" }}</span></p>
+                </div>
+                {% endif %}
+                {% if a.id in pode_alterar_ids %}
+                <div class="collapse mt-3" id="cancelar{{ a.id }}">
+                    <form method="POST" action="{% url 'agendamento_cancelar' a.id %}" class="p-3 rounded border">
+                        {% csrf_token %}
+                        <label class="form-label-custom">Motivo do cancelamento</label>
+                        <textarea name="motivo" class="form-control mb-2" rows="2" required></textarea>
+                        <button type="submit" class="btn btn-danger btn-sm px-3">Confirmar cancelamento</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                {% if a.id in pode_alterar_ids %}
+                    <button type="button" class="btn btn-outline-danger px-3 me-auto" data-bs-toggle="collapse" data-bs-target="#cancelar{{ a.id }}"><i class="bi bi-x-lg me-1"></i> Cancelar pedido</button>
+                    <a href="{% url 'agendamento_editar' a.id %}" class="btn btn-dark px-4"><i class="bi bi-pencil me-1"></i> Editar</a>
+                {% endif %}
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>

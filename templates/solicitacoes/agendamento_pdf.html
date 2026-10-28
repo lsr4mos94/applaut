@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Retiradas de chopp {{ dia|date:"d/m/Y" }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm 1.5cm 2.1cm 1.5cm;
+            @frame rodape {
+                -pdf-frame-content: rodape;
+                left: 1.5cm; right: 1.5cm; bottom: 0.8cm; height: 1cm;
+            }
+        }
+        body { font-family: "IBM Plex Sans", Helvetica, Arial, sans-serif; font-size: 9.5pt; color: #111827; line-height: 1.35; }
+        table { width: 100%; border-collapse: collapse; }
+        td, th { vertical-align: top; }
+
+        .doc-tipo-esq { font-size: 8pt; color: #8c7234; font-weight: bold; text-transform: uppercase; }
+        .titulo { font-size: 17pt; font-weight: bold; color: #111827; }
+        .doc-dia { font-size: 15pt; font-weight: bold; color: #111827; text-align: right; }
+        .doc-data { font-size: 8.5pt; color: #6b7280; text-align: right; }
+        .linha-dourada { border-bottom: 2px solid #bca464; height: 1px; margin: 10px 0 14px 0; }
+
+        .secao { font-size: 7.5pt; font-weight: bold; color: #8c7234; text-transform: uppercase; letter-spacing: 1px; margin: 16px 0 6px 0; }
+        .grade th {
+            background-color: #f3f4f6; color: #6b7280;
+            font-size: 7.5pt; font-weight: bold; text-transform: uppercase;
+            padding: 6px 7px 4px 7px; text-align: left;
+            border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb;
+        }
+        .grade td { padding: 7px 7px 5px 7px; border-bottom: 1px solid #e5e7eb; font-size: 9pt; }
+        .hora { font-weight: bold; font-size: 9.5pt; }
+        .cliente { font-weight: bold; }
+        .sub { color: #6b7280; font-size: 8pt; }
+        .obs { color: #374151; font-size: 8pt; padding-top: 3px; }
+        .num { text-align: right; }
+        .centro { text-align: center; }
+        .total-tabela td { padding: 6px 7px 0 7px; font-size: 9.5pt; }
+        .assinaturas td { padding-top: 34px; font-size: 8pt; color: #6b7280; text-align: center; }
+        .assinaturas .linha { border-top: 1px solid #9ca3af; padding-top: 4px; }
+        #rodape { font-size: 7.5pt; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 6px; }
+    </style>
+</head>
+<body>
+    <table width="100%">
+        <tr>
+            <td width="60%">
+                <span class="doc-tipo-esq">LÄUT · CHOPP</span><br>
+                <span class="titulo">Retiradas do dia</span>
+            </td>
+            <td width="40%" style="text-align: right;">
+                <span class="doc-dia">{{ nome_dia }}, {{ dia|date:"d/m/Y" }}</span><br>
+                <span class="doc-data">Confirmado por {{ confirmacao.confirmado_por.get_full_name|default:confirmacao.confirmado_por.username }} em {{ confirmacao.confirmado_em|date:"d/m/Y H:i" }}</span>
+            </td>
+        </tr>
+    </table>
+    <div class="linha-dourada"></div>
+
+    <div class="secao">RETIRADAS ({{ retiradas|length }})</div>
+    <table class="grade" width="100%">
+        <thead>
+            <tr>
+                <th width="16%">HORÁRIO</th>
+                <th width="36%">CLIENTE</th>
+                <th width="38%">PRODUTOS</th>
+                <th width="10%" class="centro">SAIU</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in retiradas %}
+            <tr>
+                <td width="16%" class="hora">{{ a.horario }}</td>
+                <td width="36%">
+                    <span class="cliente">{{ a.cliente_nome }}</span><br>
+                    <span class="sub">{{ a.cliente_razao_social }} · {{ a.cliente_codigo }}/{{ a.cliente_loja }}</span><br>
+                    <span class="sub">Vendedor: {{ a.vendedor.get_full_name|default:a.vendedor.username }}</span>
+                    {% if a.observacao %}<div class="obs">Obs.: {{ a.observacao }}</div>{% endif %}
+                </td>
+                <td width="38%">
+                    {% for i in a.itens_agendados %}<b>{{ i.qtd_solicitada }}×</b> {{ i.produto_descricao }}<br>{% endfor %}
+                </td>
+                <td width="10%" class="centro sub">[&nbsp;&nbsp;&nbsp;&nbsp;]</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="centro sub">Nenhuma retirada neste dia.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="secao">TOTAL POR PRODUTO</div>
+    <table class="grade" width="100%">
+        <thead>
+            <tr>
+                <th width="16%">CÓDIGO</th>
+                <th width="64%">PRODUTO</th>
+                <th width="20%" class="num">QUANTIDADE</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in totais %}
+            <tr>
+                <td width="16%" class="sub">{{ t.codigo }}</td>
+                <td width="64%">{{ t.descricao }}</td>
+                <td width="20%" class="num"><b>{{ t.quantidade }}</b></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <table width="100%" class="total-tabela">
+        <tr>
+            <td width="16%"></td>
+            <td width="64%"><b>Total de unidades</b></td>
+            <td width="20%" class="num"><b>{{ total_unidades }}</b></td>
+        </tr>
+    </table>
+
+    <table class="assinaturas" width="100%">
+        <tr>
+            <td width="45%"><div class="linha">Separado por</div></td>
+            <td width="10%"></td>
+            <td width="45%"><div class="linha">Conferido por</div></td>
+        </tr>
+    </table>
+
+    <div id="rodape">Sistema Läut · Retiradas de chopp de {{ dia|date:"d/m/Y" }} · gerado em {{ gerado_em|date:"d/m/Y H:i" }}</div>
+</body>
+</html>

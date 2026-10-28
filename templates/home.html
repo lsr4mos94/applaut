@@ -61,10 +61,28 @@
 </div>
 {% endif %}
 
-{% if "Vendedores" in user_groups or "Gestão Comercial" in user_groups or "Contas a Receber" in user_groups or "Faturamento" in user_groups or "Gestão Financeira" in user_groups or "Plantao" in user_groups %}
+{% if "Vendedores" in user_groups or "Gestão Comercial" in user_groups or "Contas a Receber" in user_groups or "Faturamento" in user_groups or "Gestão Financeira" in user_groups or "Plantao" in user_groups or "Fábrica" in user_groups and chopp_liberado %}
 <div class="home-secao">Solicitações</div>
 <div class="row g-3">
-    {% if "Vendedores" in user_groups or "Faturamento" in user_groups or "Gestão Comercial" in user_groups %}
+    {% if "Fábrica" in user_groups and chopp_liberado %}
+    <div class="col-12 col-md-6 col-xl-4">
+        <a class="atalho" href="{% url 'fabrica_dia' %}">
+            <span class="icone"><i class="bi bi-box2"></i></span>
+            <span class="titulo">Retiradas do dia</span>
+            <i class="bi bi-chevron-right seta"></i>
+        </a>
+    </div>
+    {% endif %}
+    {% if chopp_liberado %}{% if "Vendedores" in user_groups or "Gestão Comercial" in user_groups %}
+    <div class="col-12 col-md-6 col-xl-4">
+        <a class="atalho" href="{% url 'agendamento_calendario' %}">
+            <span class="icone"><i class="bi bi-calendar-week"></i></span>
+            <span class="titulo">Agendamento</span>
+            <i class="bi bi-chevron-right seta"></i>
+        </a>
+    </div>
+    {% endif %}{% endif %}
+    {% if chopp_liberado %}{% if "Faturamento" in user_groups or "Gestão Comercial" in user_groups or "Gestão Financeira" in user_groups %}
     <div class="col-12 col-md-6 col-xl-4">
         <a class="atalho" href="{% url 'chopp_list' %}">
             <span class="icone"><i class="bi bi-cup-straw"></i></span>
@@ -72,7 +90,7 @@
             <i class="bi bi-chevron-right seta"></i>
         </a>
     </div>
-    {% endif %}
+    {% endif %}{% endif %}
     {% if "Vendedores" in user_groups or "Faturamento" in user_groups or "Gestão Comercial" in user_groups %}
     <div class="col-12 col-md-6 col-xl-4">
         <a class="atalho" href="{% url 'bonificacao_list' %}">

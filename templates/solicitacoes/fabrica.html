@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    .fab-resumo { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+    .fab-resumo .bloco { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: .55rem .9rem; box-shadow: var(--shadow-sm); }
+    .fab-resumo .rot { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; font-weight: 600; }
+    .fab-resumo .val { font-size: 1.15rem; font-weight: 700; }
+    .fab-pedido { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid #2563eb; border-radius: var(--radius); box-shadow: var(--shadow-sm); margin-bottom: .9rem; }
+    .fab-pedido.ENTREGUE { border-left-color: #0d9488; opacity: .85; }
+    .fab-pedido.CANCELADO { border-left-color: #d1d5db; opacity: .7; }
+    .fab-cab { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; padding: .9rem 1.1rem; border-bottom: 1px solid var(--border); }
+    .fab-hora { font-size: 1.35rem; font-weight: 700; min-width: 70px; }
+    .fab-cli { font-weight: 600; font-size: 1rem; line-height: 1.25; }
+    .fab-cli small { display: block; font-weight: 400; color: var(--muted); font-size: .78rem; }
+    .fab-corpo { padding: .9rem 1.1rem; }
+    .fab-item { display: flex; align-items: center; gap: .75rem; padding: .45rem 0; border-bottom: 1px dashed var(--border); }
+    .fab-item:last-child { border-bottom: 0; }
+    .fab-item .desc { flex: 1; font-size: .9rem; }
+    .fab-item .desc small { color: var(--muted); display: block; font-size: .72rem; }
+    .fab-item input { width: 90px; text-align: center; font-size: 1.05rem; font-weight: 600; }
+    .fab-item .pedido { font-size: .72rem; color: var(--muted); white-space: nowrap; }
+    .fab-acoes { display: flex; flex-wrap: wrap; gap: .5rem; padding: .9rem 1.1rem; border-top: 1px solid var(--border); background: #fafafa; border-bottom-left-radius: var(--radius); border-bottom-right-radius: var(--radius); }
+    .fab-acoes .btn { font-weight: 600; }
+    .tag-inad { display: inline-flex; align-items: center; gap: .3rem; font-size: .72rem; font-weight: 700; text-transform: uppercase; color: #b42318; background: #fef3f2; border: 1px solid #fecdca; border-radius: 4px; padding: .15rem .45rem; }
+    .st-badge { font-size: .7rem; font-weight: 700; text-transform: uppercase; border-radius: 4px; padding: .15rem .45rem; }
+    .st-badge.ENVIADO { background: #dbeafe; color: #1d4ed8; }
+    .st-badge.ENTREGUE { background: #ccfbf1; color: #0f766e; }
+    .st-badge.CANCELADO { background: #f3f4f6; color: #6b7280; }
+    .obs-fab { font-size: .82rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: .4rem .6rem; margin-bottom: .6rem; }
+</style>
+
+<div class="d-md-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="text-gold-title">Retiradas de hoje</h3>
+        <p class="page-subtitle">{{ hoje|date:"l, d/m/Y" }} · confira o que o cliente levou e marque a retirada</p>
+    </div>
+    <a href="{% url 'fabrica_dia' %}" class="btn btn-outline-secondary mt-3 mt-md-0"><i class="bi bi-arrow-clockwise me-1"></i> Atualizar</a>
+</div>
+
+<div class="fab-resumo">
+    <div class="bloco"><div class="rot">Aguardando retirada</div><div class="val">{{ qtd_abertos }} pedido(s) · {{ litros_abertos }} L</div></div>
+    <div class="bloco"><div class="rot">Já entregue hoje</div><div class="val">{{ litros_entregues }} L</div></div>
+</div>
+
+{% if inadimplencia_indisponivel %}
+<div class="alert alert-warning small"><i class="bi bi-exclamation-triangle me-1"></i> Não foi possível consultar a inadimplência no Protheus agora.</div>
+{% endif %}
+
+{% for p in pedidos %}
+<div class="fab-pedido {{ p.status }}">
+    <div class="fab-cab">
+        <div class="fab-hora">{{ p.horario }}</div>
+        <div class="fab-cli flex-grow-1">{{ p.cliente_nome }}<small>{{ p.cliente_razao_social }} · {{ p.cliente_codigo }}/{{ p.cliente_loja }} · Vendedor: {{ p.vendedor.get_full_name|default:p.vendedor.username }}</small></div>
+        {% if p.inadimplencia %}<span class="tag-inad"><i class="bi bi-exclamation-octagon-fill"></i> Inadimplente</span>{% endif %}
+        <span class="st-badge {{ p.status }}">{% if p.status == 'ENVIADO' %}Aguardando{% elif p.status == 'CANCELADO' %}Não retirou{% else %}Entregue{% endif %}</span>
+    </div>
+
+    {% if p.status == 'ENVIADO' %}
+    <form method="POST" action="{% url 'fabrica_entregar' p.id %}" class="form-entrega" data-pedido="{{ p.id }}">
+        {% csrf_token %}
+        <div class="fab-corpo">
+            {% if p.observacao %}<div class="obs-fab"><i class="bi bi-chat-left-text me-1"></i>{{ p.observacao }}</div>{% endif %}
+            <div class="lista-itens">
+                {% for it in p.itens_ativos %}
+                <div class="fab-item">
+                    <div class="desc">{{ it.produto_descricao }}<small>{{ it.produto_codigo }}</small></div>
+                    {% if it.qtd_solicitada is not None %}<span class="pedido">pedido: {{ it.qtd_solicitada }}</span>{% endif %}
+                    <input type="number" name="qtd_{{ it.id }}" class="form-control" min="0" step="1" value="{{ it.quantidade }}">
+                </div>
+                {% endfor %}
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-secondary mt-2 btn-incluir" data-pedido="{{ p.id }}"><i class="bi bi-plus-circle me-1"></i> Incluir produto</button>
+        </div>
+        <div class="fab-acoes">
+            <button type="submit" class="btn btn-success px-4"><i class="bi bi-check2-circle me-1"></i> Marcar entregue</button>
+            <button type="button" class="btn btn-outline-danger" data-bs-toggle="collapse" data-bs-target="#naoRetirou{{ p.id }}"><i class="bi bi-x-circle me-1"></i> Não retirou</button>
+            <small class="text-muted align-self-center ms-md-auto">Quantidade 0 = o cliente não levou aquele produto.</small>
+        </div>
+    </form>
+    <div class="collapse" id="naoRetirou{{ p.id }}">
+        <form method="POST" action="{% url 'fabrica_nao_retirou' p.id %}" class="p-3 border-top d-flex flex-wrap gap-2 align-items-center">
+            {% csrf_token %}
+            <input type="text" name="motivo" class="form-control" style="max-width: 420px;" placeholder="Observação (opcional)">
+            <button type="submit" class="btn btn-danger">Confirmar: não retirou</button>
+        </form>
+    </div>
+    {% else %}
+    <div class="fab-corpo">
+        {% for it in p.itens_ativos %}<div class="small">{{ it.quantidade }}× {{ it.produto_descricao }}</div>{% empty %}<div class="small text-muted">{{ p.motivo_cancelamento }}</div>{% endfor %}
+        <div class="small text-muted mt-2">{% if p.status == 'CANCELADO' %}{{ p.motivo_cancelamento }} · {% endif %}por {{ p.entregue_por.get_full_name|default:p.entregue_por.username }} às {{ p.entregue_em|time:"H:i" }}</div>
+    </div>
+    {% endif %}
+</div>
+{% empty %}
+<div class="card"><div class="card-body text-center text-muted py-5">Nenhuma retirada confirmada para hoje.</div></div>
+{% endfor %}
+
+<!-- Busca de produto -->
+<div class="modal fade" id="modalProduto" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold">Incluir produto</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="p-3 border-bottom bg-light">
+                <input type="text" id="filtro_produto" class="form-control" placeholder="Digite nome ou código (min. 3 letras)..." autocomplete="off">
+            </div>
+            <div class="modal-body p-0" style="max-height: 60vh; overflow-y: auto;">
+                <div id="lista_produtos" class="list-group list-group-flush"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const mProd = new bootstrap.Modal(document.getElementById('modalProduto'));
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    let formAlvo = null, contador = 0, timer = null, seq = 0;
+
+    document.querySelectorAll('.btn-incluir').forEach(b => b.addEventListener('click', () => {
+        formAlvo = b.closest('form');
+        document.getElementById('filtro_produto').value = '';
+        document.getElementById('lista_produtos').innerHTML = '';
+        mProd.show();
+        setTimeout(() => document.getElementById('filtro_produto').focus(), 400);
+    }));
+
+    document.getElementById('filtro_produto').addEventListener('keyup', function () {
+        const termo = this.value.trim();
+        const lista = document.getElementById('lista_produtos');
+        clearTimeout(timer);
+        if (termo.length < 3) { lista.innerHTML = '<div class="p-3 text-center text-muted small">Continue digitando...</div>'; return; }
+        lista.innerHTML = '<div class="p-4 text-center"><span class="spinner-border spinner-border-sm"></span> Consultando Protheus...</div>';
+        timer = setTimeout(() => {
+            const minha = ++seq;
+            fetch("{% url 'fabrica_api_produtos' %}?q=" + encodeURIComponent(termo))
+                .then(lerJson)
+                .then(data => {
+                    if (minha !== seq) return;
+                    lista.innerHTML = data.length ? '' : '<div class="p-4 text-center text-muted">Nenhum produto encontrado.</div>';
+                    data.forEach(p => {
+                        const b = document.createElement('button');
+                        b.type = 'button'; b.className = 'list-group-item list-group-item-action py-3';
+                        b.innerHTML = `<strong>${esc(p.descricao)}</strong><br><small class="text-muted">Cód: ${esc(p.codigo)}</small>`;
+                        b.onclick = () => { mProd.hide(); incluir(p); };
+                        lista.appendChild(b);
+                    });
+                })
+                .catch(e => { if (minha === seq) lista.innerHTML = `<div class="p-4 text-center text-danger">${esc(e.message)}</div>`; });
+        }, 300);
+    });
+
+    function incluir(p) {
+        if (!formAlvo) return;
+        const n = ++contador;
+        const div = document.createElement('div');
+        div.className = 'fab-item';
+        div.innerHTML = `
+            <input type="hidden" name="novo_codigo_${n}" value="${esc(p.codigo)}">
+            <div class="desc">${esc(p.descricao)}<small>${esc(p.codigo)} · incluído agora</small></div>
+            <input type="number" name="novo_qtd_${n}" class="form-control" min="1" step="1" value="1">
+            <button type="button" class="btn btn-sm btn-link text-danger p-0" title="Tirar"><i class="bi bi-x-lg"></i></button>`;
+        div.querySelector('button').onclick = () => div.remove();
+        formAlvo.querySelector('.lista-itens').appendChild(div);
+        setTimeout(() => div.querySelector('input[type=number]').focus(), 300);
+    }
+
+    document.querySelectorAll('.form-entrega').forEach(f => f.addEventListener('submit', e => {
+        const total = [...f.querySelectorAll('input[type=number]')].reduce((s, i) => s + (parseInt(i.value) || 0), 0);
+        if (total <= 0) { e.preventDefault(); alert('Nenhum produto com quantidade. Se o cliente não levou nada, use "Não retirou".'); }
+    }));
+});
+</script>
+{% endblock %}

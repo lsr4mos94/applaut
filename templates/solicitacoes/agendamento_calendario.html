@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+
+{% block body_class %}menu-recolhido{% endblock %}
+
+{% block content %}
+<style>
+    .cal-toolbar { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .cal-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: .6rem; align-items: start; }
+    @media (max-width: 1399.98px) { .cal-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    @media (max-width: 991.98px)  { .cal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 575.98px)  { .cal-grid { grid-template-columns: 1fr; } }
+
+    .cal-dia { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; min-height: 220px; }
+    .cal-dia.hoje { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .cal-dia.passado { background: #fafafa; }
+    .cal-cab { padding: .7rem .8rem; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; }
+    .cal-cab .nome { font-weight: 600; font-size: .9rem; }
+    .cal-cab .data { color: var(--muted); font-size: .78rem; }
+    .cal-cab .resumo { color: var(--muted); font-size: .72rem; margin-top: .15rem; }
+    .cal-cab .tag-hoje { font-size: .65rem; font-weight: 700; color: var(--accent-strong); background: var(--accent-soft); border-radius: 4px; padding: .05rem .35rem; margin-left: .25rem; }
+    .cal-corpo { padding: .6rem; display: flex; flex-direction: column; gap: .5rem; flex: 1; }
+    .cal-vazio { color: #b6bac2; font-size: .8rem; text-align: center; padding: 1.5rem .5rem; }
+    .cal-rodape { padding: .6rem; border-top: 1px solid var(--border); }
+    .cal-rodape .btn { width: 100%; font-size: .8rem; font-weight: 600; }
+    .cal-dia.confirmado .cal-cab { background: #f0f6ff; border-top-left-radius: var(--radius); border-top-right-radius: var(--radius); }
+    .tag-inad { display: inline-flex; align-items: center; gap: .25rem; font-size: .64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: #b42318; background: #fef3f2; border: 1px solid #fecdca; border-radius: 4px; padding: .05rem .35rem; margin-top: .3rem; }
+    .ag-card.inad { border-left-color: #d92d20; }
+    .cal-pdf { font-size: .7rem; font-weight: 600; color: #1d4ed8; text-decoration: none; margin-left: .35rem; white-space: nowrap; }
+    .cal-pdf:hover { text-decoration: underline; }
+    .cal-dia.pendentes { background: #fffbeb; border-color: #fde68a; }
+    .cal-dia.pendentes .cal-cab { border-bottom-color: #fde68a; }
+    .litros { color: var(--text); font-weight: 600; white-space: nowrap; }
+    .obs-card { font-size: .7rem; color: #92400e; background: #fffbeb; border-radius: 4px; padding: .2rem .35rem; margin-top: .3rem; }
+    .agenda-box { background: #f0f6ff; border: 1px solid #bfdbfe; border-radius: var(--radius); }
+    .resumo-litros { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+    .resumo-litros .bloco { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: .55rem .9rem; box-shadow: var(--shadow-sm); }
+    .resumo-litros .rot { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; font-weight: 600; }
+    .resumo-litros .val { font-size: 1.1rem; font-weight: 700; }
+    .tag-confirmado { display: inline-flex; align-items: center; gap: .25rem; font-size: .66rem; font-weight: 600; color: #1d4ed8; margin-top: .25rem; line-height: 1.3; }
+
+    .ag-card { text-align: left; width: 100%; background: #fff; border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 8px; padding: .55rem .65rem; cursor: pointer; transition: box-shadow .15s, transform .15s; }
+    .ag-card:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+    .ag-card .linha1 { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .25rem .4rem; margin-bottom: .2rem; }
+    .ag-card .hora { font-size: .72rem; font-weight: 700; color: var(--text); white-space: nowrap; }
+    .ag-card .cli { font-weight: 600; font-size: .82rem; line-height: 1.25; }
+    .ag-card .itens { font-size: .74rem; color: var(--text); margin-top: .25rem; line-height: 1.35; }
+    .ag-card .vend { font-size: .7rem; color: var(--muted); margin-top: .3rem; }
+    .ag-card.st-ENVIADO { border-left-color: #2563eb; }
+    .ag-card.st-FINALIZADO { border-left-color: #16a34a; }
+    .ag-card.st-CANCELADO { border-left-color: #d1d5db; opacity: .6; }
+    .ag-card.st-CANCELADO .cli { text-decoration: line-through; }
+    .st-badge { font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; border-radius: 4px; padding: .1rem .35rem; white-space: nowrap; }
+    .ag-card.st-PENDENTE { border-left-color: #f59e0b; }
+    .ag-card.st-ENTREGUE { border-left-color: #0d9488; }
+    .st-badge.PENDENTE { background: #fef3c7; color: #b45309; }
+    .st-badge.ENTREGUE { background: #ccfbf1; color: #0f766e; }
+    .st-badge.AGENDADO { background: var(--accent-soft); color: var(--accent-strong); }
+    .st-badge.ENVIADO { background: #dbeafe; color: #1d4ed8; }
+    .st-badge.FINALIZADO { background: #dcfce7; color: #15803d; }
+    .st-badge.CANCELADO { background: #f3f4f6; color: #6b7280; }
+</style>
+
+<div class="d-md-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="text-gold-title">Agendamento de Chopp</h3>
+        <p class="page-subtitle">Retiradas de {{ inicio|date:"d/m" }} a {{ fim|date:"d/m/Y" }}{% if not eh_gestao %} · seus pedidos{% endif %}</p>
+    </div>
+    <a href="{% url 'agendamento_novo' %}" class="btn btn-gold-action d-flex align-items-center justify-content-center mt-3 mt-md-0">
+        <i class="bi bi-plus-circle me-2"></i> Novo pedido
+    </a>
+</div>
+
+<div class="resumo-litros">
+    <div class="bloco"><div class="rot">Agendado no período</div><div class="val">{{ litros_agendados }} L</div></div>
+    <div class="bloco"><div class="rot">Pendentes de agendar</div><div class="val">{{ litros_pendentes }} L</div></div>
+    <div class="bloco"><div class="rot">Total</div><div class="val">{{ litros_agendados|add:litros_pendentes }} L</div></div>
+</div>
+
+{% if pdf_dia %}
+<div class="alert alert-info d-flex flex-wrap align-items-center justify-content-between gap-2">
+    <span><i class="bi bi-file-earmark-pdf me-1"></i> A lista de retiradas do dia confirmado está pronta para a fábrica.</span>
+    <a href="{% url 'agendamento_pdf_dia' pdf_dia %}" target="_blank" id="link_pdf_dia" class="btn btn-sm btn-primary">Abrir PDF</a>
+</div>
+<script>document.addEventListener('DOMContentLoaded', () => { window.open(document.getElementById('link_pdf_dia').href, '_blank'); });</script>
+{% endif %}
+{% if inadimplencia_indisponivel %}
+<div class="alert alert-warning small"><i class="bi bi-exclamation-triangle me-1"></i> Não foi possível consultar a inadimplência no Protheus agora; os alertas não estão aparecendo.</div>
+{% endif %}
+
+{% if atrasados %}
+<div class="alert alert-warning d-flex flex-wrap align-items-center gap-2">
+    <span><i class="bi bi-exclamation-triangle me-1"></i> Dias anteriores com agendamentos ainda não confirmados:</span>
+    {% for d in atrasados %}
+        <button type="button" class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#modalConfirmar{{ d.data|date:'Ymd' }}">
+            {{ d.data|date:"d/m" }} · {{ d.pendentes|length }} agend. · Confirmar
+        </button>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if eh_gestao %}
+<div class="cal-toolbar">
+    <span></span>
+    <form method="GET" class="d-flex gap-2 align-items-center">
+        <select name="vendedor" class="form-select form-select-sm" style="min-width: 220px;" onchange="this.form.submit()">
+            <option value="">Todos os vendedores</option>
+            {% for v in vendedores %}
+                <option value="{{ v.id }}" {% if vendedor_id == v.id|stringformat:"s" %}selected{% endif %}>{{ v.get_full_name|default:v.username }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+{% endif %}
+
+<div class="cal-grid">
+    <section class="cal-dia pendentes">
+        <div class="cal-cab">
+            <div>
+                <div class="nome"><i class="bi bi-inbox me-1"></i>Pendentes</div>
+                <div class="data">sem dia definido</div>
+                <div class="resumo">{% if pedidos_pendentes %}{{ pedidos_pendentes|length }} pedido(s) · <span class="litros">{{ litros_pendentes }} L</span>{% else %}&nbsp;{% endif %}</div>
+            </div>
+        </div>
+        <div class="cal-corpo">
+            {% for a in pedidos_pendentes %}{% include 'solicitacoes/_agendamento_card.html' %}
+            {% empty %}<div class="cal-vazio">Nenhum pedido pendente</div>{% endfor %}
+        </div>
+    </section>
+    {% for d in dias %}
+    <section class="cal-dia{% if d.eh_hoje %} hoje{% endif %}{% if d.passado %} passado{% endif %}{% if d.confirmado %} confirmado{% endif %}">
+        <div class="cal-cab">
+            <div>
+                <div class="nome">{{ d.nome }}{% if d.eh_hoje %}<span class="tag-hoje">HOJE</span>{% endif %}</div>
+                <div class="data">{{ d.data|date:"d/m" }}</div>
+                <div class="resumo">{% if d.qtd_agendamentos %}{{ d.qtd_agendamentos }} pedido(s) · <span class="litros">{{ d.litros }} L</span>{% else %}&nbsp;{% endif %}</div>
+                {% if d.confirmado %}<div class="tag-confirmado" title="Confirmado por {{ d.confirmado.confirmado_por.get_full_name|default:d.confirmado.confirmado_por.username }} em {{ d.confirmado.confirmado_em|date:'d/m/Y H:i' }}"><i class="bi bi-lock-fill"></i> Confirmado por {{ d.confirmado.confirmado_por.first_name|default:d.confirmado.confirmado_por.username }} às {{ d.confirmado.confirmado_em|time:"H:i" }}{% if eh_gestao %}<a class="cal-pdf" href="{% url 'agendamento_pdf_dia' d.data|date:'Y-m-d' %}" target="_blank" title="Lista para a fábrica"><i class="bi bi-file-earmark-pdf"></i> PDF</a>{% endif %}</div>{% endif %}
+            </div>
+        </div>
+        <div class="cal-corpo">
+            {% for a in d.agendamentos %}{% include 'solicitacoes/_agendamento_card.html' %}
+            {% empty %}
+            <div class="cal-vazio">Nenhum agendamento</div>
+            {% endfor %}
+        </div>
+        {% if d.pode_confirmar %}
+        <div class="cal-rodape">
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalConfirmar{{ d.data|date:'Ymd' }}">
+                <i class="bi bi-send-check me-1"></i> Confirmar dia
+            </button>
+        </div>
+        {% endif %}
+    </section>
+    {% endfor %}
+</div>
+
+<!-- Confirmação de cada dia -->
+{% for d in dias_confirmacao %}{% if d.pode_confirmar %}
+<div class="modal fade" id="modalConfirmar{{ d.data|date:'Ymd' }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="POST" action="{% url 'agendamento_confirmar_dia' d.data|date:'Y-m-d' %}" class="modal-content text-start">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-send-check me-2"></i>Confirmar {{ d.nome|lower }}, {{ d.data|date:"d/m" }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2"><strong>{{ d.pendentes|length }} pedido(s)</strong> · {{ d.pendentes_unidades }} unidade(s) · {{ d.pendentes_litros }} L serão enviados para a fábrica e o Faturamento.</p>
+                <ul class="list-group list-group-flush small mb-3 border rounded">
+                    {% for a in d.pendentes %}
+                    <li class="list-group-item d-flex justify-content-between gap-2">
+                        <span><strong>{{ a.hora_retirada|time:"H:i" }}</strong> · {{ a.cliente_nome }}{% if a.inadimplencia %} <span class="tag-inad">Inadimplente</span>{% endif %}</span>
+                        <span class="text-muted text-nowrap">{{ a.vendedor.first_name|default:a.vendedor.username }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                <div class="alert alert-warning small mb-0"><i class="bi bi-lock-fill me-1"></i> Depois de confirmado, só o backoffice altera ou inclui pedidos no dia (sem horário já passado).</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Voltar</button>
+                <button type="submit" class="btn btn-success px-4"><i class="bi bi-send-check me-1"></i> Confirmar e enviar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}{% endfor %}
+
+<!-- Detalhes de cada pedido -->
+{% for a in pedidos_pendentes %}{% include 'solicitacoes/_agendamento_modal.html' %}{% endfor %}
+{% for d in dias %}{% for a in d.agendamentos %}{% include 'solicitacoes/_agendamento_modal.html' %}{% endfor %}{% endfor %}
+
+{% include 'solicitacoes/_titulos_inadimplencia.html' %}
+<script>
+// Clicar no selo "Inadimplente" do cartão abre os detalhes já com os títulos à mostra
+document.addEventListener('click', function (e) {
+    const selo = e.target.closest('.tag-inad-card');
+    if (!selo) return;
+    const modal = document.getElementById('modalAg' + selo.dataset.ag);
+    modal.addEventListener('shown.bs.modal', function () {
+        window.abrirTitulos(document.getElementById('alertaInad' + selo.dataset.ag), true);
+    }, {once: true});
+}, true);
+</script>
+{% endblock %}

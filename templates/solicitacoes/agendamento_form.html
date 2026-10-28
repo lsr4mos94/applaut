@@ -1,0 +1,370 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    .cliente-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
+    .cliente-box .nome { font-weight: 600; }
+    .info-chip { display: inline-flex; align-items: center; gap: .4rem; background: var(--accent-soft); color: var(--accent-strong);
+                 border-radius: 999px; padding: .25rem .75rem; font-size: .8rem; font-weight: 600; }
+    .item-ag { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: .9rem 1rem; margin-bottom: .6rem; }
+    .item-ag .preco[readonly] { background: #f6f7f9; }
+    .item-ag .origem-preco { font-size: .72rem; color: var(--muted); }
+    .item-ag .origem-preco.manual { color: var(--warn); font-weight: 600; }
+</style>
+
+<div class="d-md-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="text-gold-title">{{ titulo }}</h3>
+        <p class="page-subtitle">Retirada de chopp. Condição de pagamento e preços vêm do cadastro do cliente no Protheus.{% if not eh_gestao %} O dia e a hora da retirada são definidos pelo backoffice.{% endif %}</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-3 p-md-4">
+        <form method="POST" id="formAgendamento" novalidate>
+            {% csrf_token %}
+
+            <!-- Cliente -->
+            <h6 class="section-title"><i class="bi bi-person-bounding-box"></i>Cliente</h6>
+            <div class="mb-3">
+                <label class="form-label-custom">Localizar cliente (razão social, fantasia, CNPJ ou código)</label>
+                <div class="input-group">
+                    <input type="text" id="input_busca_cliente" class="form-control" placeholder="Digite ao menos 3 caracteres...">
+                    <button class="btn btn-dark px-4" type="button" id="btn_buscar_cliente"><i class="bi bi-search me-1"></i> Buscar</button>
+                </div>
+            </div>
+            <div id="cliente_box" class="cliente-box mb-4" style="display:none;">
+                <div class="nome" id="cli_nome"></div>
+                <div class="text-muted small mb-2"><span id="cli_fantasia"></span> · <span id="cli_cnpj"></span> · Código <span id="cli_codigo"></span> / Loja <span id="cli_loja"></span></div>
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="info-chip"><i class="bi bi-lock-fill"></i> Condição: <span id="cli_condicao"></span></span>
+                    <span class="info-chip"><i class="bi bi-tags"></i> Tabela de preço: <span id="cli_tabela"></span></span>
+                </div>
+                <div id="cli_inad" class="alert alert-danger small mt-3 mb-0 alerta-inad" style="display:none;">
+                    <div class="d-flex gap-2 align-items-start abre-titulos" id="cli_inad_gatilho" data-alvo="#cli_inad_titulos" title="Ver títulos">
+                        <div class="flex-grow-1" id="cli_inad_texto"></div>
+                        <i class="bi bi-chevron-down seta-titulos mt-1"></i>
+                    </div>
+                    <div class="caixa-titulos" id="cli_inad_titulos"></div>
+                </div>
+            </div>
+            <input type="hidden" name="cliente_codigo" id="h_codigo">
+            <input type="hidden" name="cliente_loja" id="h_loja">
+            <input type="hidden" name="cliente_nome" id="h_nome">
+            <input type="hidden" name="cliente_fantasia" id="h_fantasia">
+            <input type="hidden" name="cliente_cnpj" id="h_cnpj">
+            <input type="hidden" name="cliente_condicao" id="h_condicao">
+            <input type="hidden" name="cliente_condicao_descricao" id="h_condicao_descricao">
+            <input type="hidden" name="cliente_tabela" id="h_tabela">
+
+            {% if eh_gestao %}
+            <!-- Agenda: só o backoffice define dia e hora -->
+            <h6 class="section-title"><i class="bi bi-calendar-event"></i>Dia e hora da retirada <span class="text-muted fw-normal small ms-1">(opcional: em branco, o pedido fica nos pendentes)</span></h6>
+            <div class="row g-3 mb-4">
+                <div class="col-12 col-md-5">
+                    <label class="form-label-custom">Dia</label>
+                    <select name="data_retirada" id="data_retirada" class="form-select">
+                        <option value="">Sem dia (pendente)</option>
+                        {% for o in opcoes_dia %}<option value="{{ o.valor }}">{{ o.rotulo }}</option>{% endfor %}
+                        {% if agendamento.data_retirada %}<option value="{{ agendamento.data_retirada|date:'Y-m-d' }}" data-atual="1">{{ agendamento.data_retirada|date:"d/m/Y" }} (atual)</option>{% endif %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label-custom">Hora</label>
+                    <input type="time" name="hora_retirada" id="hora_retirada" class="form-control">
+                </div>
+                <div class="col-12 col-md-4 d-flex align-items-end">
+                    <small class="text-muted">Hora livre, conforme a litragem. Em dia já confirmado o pedido entra direto como Enviado.</small>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Produtos -->
+            <h6 class="section-title"><i class="bi bi-box-seam"></i>Produtos</h6>
+            <div id="lista_itens"></div>
+            <button type="button" class="btn btn-outline-secondary btn-sm mb-1" id="btn_add_produto" disabled>
+                <i class="bi bi-plus-circle me-1"></i> Adicionar Produto
+            </button>
+            <div class="small text-muted mb-4" id="aviso_produto">Selecione o cliente para adicionar produtos.</div>
+
+            <div class="row mb-4">
+                <div class="col-12 col-md-5 ms-auto">
+                    <div class="p-3 bg-light border rounded d-flex justify-content-between align-items-center">
+                        <span class="text-muted fw-bold small">Total</span>
+                        <span id="total_geral" class="fw-bold fs-5">R$ 0,00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label-custom">Observação <span class="text-muted fw-normal">(opcional)</span></label>
+                <textarea name="observacao" id="observacao" class="form-control" rows="2"></textarea>
+            </div>
+
+            <div class="d-flex flex-column flex-md-row justify-content-md-end gap-2 border-top pt-4">
+                <a href="{% url 'agendamento_calendario' %}" class="btn btn-light border px-4">Voltar</a>
+                <button type="submit" class="btn btn-dark px-5"><i class="bi bi-check2-circle me-1"></i> Salvar pedido</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Clientes encontrados -->
+<div class="modal fade" id="modalCliente" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold">Selecionar Cliente</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0" style="max-height: 60vh; overflow-y: auto;">
+                <div id="lista_clientes" class="list-group list-group-flush"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Busca de produto -->
+<div class="modal fade" id="modalProduto" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold">Buscar no Protheus</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="p-3 border-bottom bg-light">
+                <input type="text" id="filtro_produto" class="form-control" placeholder="Digite nome ou código (min. 3 letras)..." autocomplete="off">
+            </div>
+            <div class="modal-body p-0" style="max-height: 60vh; overflow-y: auto;">
+                <div id="lista_produtos" class="list-group list-group-flush"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include 'solicitacoes/_titulos_inadimplencia.html' %}
+{{ estado|json_script:"estado-inicial" }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const estado = JSON.parse(document.getElementById('estado-inicial').textContent);
+    const URL_CLIENTES = "{% url 'agendamento_api_clientes' %}";
+    const URL_PRODUTOS = "{% url 'agendamento_api_produtos' %}";
+    const URL_INAD = "{% url 'agendamento_api_inadimplencia' %}";
+    const mCli = new bootstrap.Modal(document.getElementById('modalCliente'));
+    const mProd = new bootstrap.Modal(document.getElementById('modalProduto'));
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const brl = v => 'R$ ' + (Number(v) || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    const $ = id => document.getElementById(id);
+    let cliente = null, contador = 0;
+
+    // ---------------- cliente
+    function preencherCliente(c, reprecificar) {
+        cliente = c && c.codigo ? c : null;
+        const campos = ['codigo', 'loja', 'nome', 'fantasia', 'cnpj', 'condicao', 'condicao_descricao', 'tabela'];
+        campos.forEach(k => $('h_' + k).value = cliente ? (cliente[k] || '') : '');
+        $('cliente_box').style.display = cliente ? '' : 'none';
+        if (cliente) {
+            $('cli_nome').textContent = cliente.nome;
+            $('cli_fantasia').textContent = cliente.fantasia || cliente.nome;
+            $('cli_cnpj').textContent = cliente.cnpj;
+            $('cli_codigo').textContent = cliente.codigo;
+            $('cli_loja').textContent = cliente.loja;
+            $('cli_condicao').textContent = cliente.condicao ? `${cliente.condicao} - ${cliente.condicao_descricao || ''}` : 'NÃO CADASTRADA';
+            $('cli_tabela').textContent = cliente.tabela || 'sem tabela';
+        }
+        $('btn_add_produto').disabled = !cliente;
+        $('aviso_produto').textContent = cliente ? 'Preços da tabela do cliente ficam travados; produto fora da tabela pede o preço.' : 'Selecione o cliente para adicionar produtos.';
+        if (reprecificar) document.querySelectorAll('.item-ag').forEach(reprecificarItem);
+        verificarInadimplencia();
+    }
+    // só alerta: não impede o agendamento
+    function verificarInadimplencia() {
+        const caixa = $('cli_inad');
+        caixa.style.display = 'none';
+        // lista de títulos volta fechada e é recarregada para o novo cliente
+        const lista = $('cli_inad_titulos');
+        lista.classList.remove('aberta'); $('cli_inad_gatilho').classList.remove('aberto');
+        delete lista.dataset.carregado; lista.innerHTML = '';
+        if (!cliente) return;
+        lista.dataset.codigo = cliente.codigo; lista.dataset.loja = cliente.loja;
+        const atual = cliente;
+        fetch(`${URL_INAD}?codigo=${encodeURIComponent(cliente.codigo)}&loja=${encodeURIComponent(cliente.loja)}`)
+            .then(lerJson)
+            .then(d => {
+                if (atual !== cliente || !d.inadimplente) return;
+                const atraso = d.dias ? `, o mais antigo com ${d.dias} dia(s) de atraso` : '';
+                $('cli_inad_texto').innerHTML = `<i class="bi bi-exclamation-octagon-fill me-1"></i><strong>Cliente inadimplente:</strong> ${brl(d.valor)} vencidos em ${d.titulos} título(s)${atraso}. O agendamento pode ser feito, mas fica sinalizado. <span class="text-decoration-underline">Ver títulos</span>`;
+                caixa.style.display = '';
+            })
+            .catch(() => {});
+    }
+    $('btn_buscar_cliente').onclick = function () {
+        const termo = $('input_busca_cliente').value.trim();
+        if (termo.length < 3) return alert('Digite ao menos 3 caracteres.');
+        const lista = $('lista_clientes');
+        lista.innerHTML = '<div class="p-4 text-center"><span class="spinner-border spinner-border-sm"></span> Consultando Protheus...</div>';
+        mCli.show();
+        fetch(URL_CLIENTES + '?q=' + encodeURIComponent(termo))
+            .then(lerJson)
+            .then(data => {
+                lista.innerHTML = data.length ? '' : '<div class="p-4 text-center text-muted">Nenhum cliente ativo encontrado.</div>';
+                data.forEach(c => {
+                    const b = document.createElement('button');
+                    b.type = 'button'; b.className = 'list-group-item list-group-item-action py-3';
+                    const semCond = c.condicao ? '' : ' <span class="badge bg-danger-subtle text-danger">sem condição de pagamento</span>';
+                    b.innerHTML = `<strong>${esc(c.nome)}</strong>${semCond}<br><small class="text-muted">${esc(c.fantasia)} | ${esc(c.cnpj)} | Cód: ${esc(c.codigo)} / ${esc(c.loja)}</small>`;
+                    b.onclick = () => {
+                        if (!c.condicao) { alert('Este cliente não tem condição de pagamento cadastrada no Protheus. Peça o ajuste do cadastro antes de agendar.'); return; }
+                        preencherCliente(c, true); mCli.hide();
+                    };
+                    lista.appendChild(b);
+                });
+            })
+            .catch(e => { lista.innerHTML = `<div class="p-4 text-center text-danger">${esc(e.message)}</div>`; });
+    };
+    $('input_busca_cliente').addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); $('btn_buscar_cliente').click(); }
+    });
+
+    // ---------------- itens
+    function totalGeral() {
+        let t = 0;
+        document.querySelectorAll('.item-ag').forEach(div => {
+            const sub = (parseFloat(div.querySelector('.qtd').value) || 0) * (parseFloat(div.querySelector('.preco').value) || 0);
+            div.querySelector('.subtotal').textContent = brl(sub);
+            t += sub;
+        });
+        $('total_geral').textContent = brl(t);
+    }
+    function definirPreco(div, preco) {
+        const campo = div.querySelector('.preco'), origem = div.querySelector('.origem-preco');
+        const daTabela = preco !== null && preco !== undefined && preco !== '';
+        div.querySelector('.flag-tabela').value = daTabela ? '1' : '';
+        campo.readOnly = daTabela;
+        if (daTabela) campo.value = preco;
+        else if (campo.dataset.daTabela === '1') campo.value = '';     // tinha preço da tabela antiga
+        campo.dataset.daTabela = daTabela ? '1' : '';
+        origem.className = 'origem-preco' + (daTabela ? '' : ' manual');
+        origem.innerHTML = daTabela ? '<i class="bi bi-lock-fill"></i> Preço da tabela ' + esc(cliente ? cliente.tabela : '')
+                                    : '<i class="bi bi-pencil"></i> Fora da tabela do cliente: informe o preço';
+        totalGeral();
+    }
+    function reprecificarItem(div) {
+        const codigo = div.querySelector('.codigo').value;
+        fetch(`${URL_PRODUTOS}?q=${encodeURIComponent(codigo)}&tabela=${encodeURIComponent(cliente ? cliente.tabela : '')}`)
+            .then(lerJson)
+            .then(data => { const p = data.find(x => x.codigo === codigo); definirPreco(div, p ? p.preco : null); })
+            .catch(() => {});
+    }
+    function addItem(it) {
+        const ja = [...document.querySelectorAll('.item-ag input.codigo')].find(i => i.value === it.codigo);
+        if (ja) { ja.closest('.item-ag').querySelector('.qtd').focus(); return null; }
+        const n = ++contador;
+        const div = document.createElement('div');
+        div.className = 'item-ag';
+        div.innerHTML = `
+            <input type="hidden" name="item_codigo_${n}" class="codigo" value="${esc(it.codigo)}">
+            <input type="hidden" name="item_nome_${n}" value="${esc(it.nome)}">
+            <input type="hidden" name="item_da_tabela_${n}" class="flag-tabela" value="">
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-md-5">
+                    <div class="fw-semibold">${esc(it.nome)}</div>
+                    <small class="text-muted">Cód: ${esc(it.codigo)}${it.grupo ? ' | ' + esc(it.grupo) : ''}</small>
+                    <div class="origem-preco"></div>
+                </div>
+                <div class="col-4 col-md-2">
+                    <label class="form-label-custom">Quantidade</label>
+                    <input type="number" name="item_qtd_${n}" class="form-control qtd text-center" min="1" step="1" value="${esc(it.qtd || 1)}">
+                </div>
+                <div class="col-5 col-md-2">
+                    <label class="form-label-custom">Preço unitário</label>
+                    <input type="number" name="item_preco_${n}" class="form-control preco text-end" min="0.01" step="0.01" placeholder="0,00" value="">
+                </div>
+                <div class="col-3 col-md-2 text-end">
+                    <label class="form-label-custom d-block">Subtotal</label>
+                    <span class="subtotal fw-semibold">R$ 0,00</span>
+                </div>
+                <div class="col-12 col-md-1 text-end">
+                    <button type="button" class="btn-square-action btn-delete remover" title="Remover"><i class="bi bi-trash3-fill"></i></button>
+                </div>
+            </div>`;
+        div.querySelectorAll('.qtd, .preco').forEach(i => i.addEventListener('input', totalGeral));
+        div.querySelector('.remover').onclick = () => { div.remove(); totalGeral(); };
+        $('lista_itens').appendChild(div);
+        // preco_tabela: preço vindo da tabela do cliente (travado); preco: digitado pelo vendedor
+        definirPreco(div, it.preco_tabela ?? null);
+        if ((it.preco_tabela ?? null) === null && it.preco) { div.querySelector('.preco').value = it.preco; totalGeral(); }
+        return div;
+    }
+
+    // busca de produto enquanto digita
+    let timer = null, seq = 0;
+    $('btn_add_produto').onclick = () => {
+        $('filtro_produto').value = '';
+        $('lista_produtos').innerHTML = '';
+        mProd.show();
+        setTimeout(() => $('filtro_produto').focus(), 500);
+    };
+    $('filtro_produto').addEventListener('keyup', function () {
+        const termo = this.value.trim();
+        const lista = $('lista_produtos');
+        clearTimeout(timer);
+        if (termo.length < 3) { lista.innerHTML = '<div class="p-3 text-center text-muted small">Continue digitando...</div>'; return; }
+        lista.innerHTML = '<div class="p-4 text-center"><span class="spinner-border spinner-border-sm"></span> Consultando Protheus...</div>';
+        timer = setTimeout(() => {
+            const minha = ++seq;
+            fetch(`${URL_PRODUTOS}?q=${encodeURIComponent(termo)}&tabela=${encodeURIComponent(cliente ? cliente.tabela : '')}`)
+                .then(lerJson)
+                .then(data => {
+                    if (minha !== seq) return;
+                    lista.innerHTML = data.length ? '' : '<div class="p-4 text-center text-muted">Nenhum produto encontrado.</div>';
+                    data.forEach(p => {
+                        const b = document.createElement('button');
+                        b.type = 'button'; b.className = 'list-group-item list-group-item-action py-3';
+                        const preco = p.preco !== null ? `<span class="float-end fw-semibold">${brl(p.preco)}</span>` : '<span class="float-end small text-warning fw-semibold">fora da tabela</span>';
+                        b.innerHTML = `${preco}<strong>${esc(p.descricao)}</strong><br><small class="text-muted">Cód: ${esc(p.codigo)} | ${esc(p.grupo_familia)}</small>`;
+                        b.onclick = () => {
+                            mProd.hide();
+                            const div = addItem({codigo: p.codigo, nome: p.descricao, grupo: p.grupo_familia, qtd: 1, preco_tabela: p.preco});
+                            if (div) setTimeout(() => div.querySelector(p.preco !== null ? '.qtd' : '.preco').focus(), 400);
+                        };
+                        lista.appendChild(b);
+                    });
+                })
+                .catch(e => { if (minha === seq) lista.innerHTML = `<div class="p-4 text-center text-danger">${esc(e.message)}</div>`; });
+        }, 300);
+    });
+
+    // ---------------- estado inicial (editar ou voltar com erro)
+    preencherCliente(estado.cliente, false);
+    if ($('data_retirada')) {
+        const sel = $('data_retirada');
+        // a data atual só aparece como opção extra quando não está entre os dias do calendário
+        const extra = sel.querySelector('option[data-atual]');
+        if (extra && [...sel.options].filter(o => o.value === extra.value).length > 1) extra.remove();
+        sel.value = estado.data_retirada || '';
+        $('hora_retirada').value = estado.hora_retirada || '';
+    }
+    $('observacao').value = estado.observacao || '';
+    (estado.itens || []).forEach(it => addItem({codigo: it.codigo, nome: it.nome, qtd: it.qtd,
+                                                 preco_tabela: it.da_tabela ? it.preco : null,
+                                                 preco: it.da_tabela ? null : it.preco}));
+    totalGeral();
+
+    // ---------------- conferência antes de enviar
+    $('formAgendamento').addEventListener('submit', function (e) {
+        const faltas = [];
+        if (!$('h_codigo').value) faltas.push('Selecione o cliente.');
+        if ($('data_retirada') && !!$('data_retirada').value !== !!$('hora_retirada').value)
+            faltas.push('Para agendar já, informe o dia e a hora (ou deixe os dois em branco).');
+        const itens = document.querySelectorAll('.item-ag');
+        if (!itens.length) faltas.push('Inclua pelo menos um produto.');
+        itens.forEach(div => {
+            if (!(parseInt(div.querySelector('.qtd').value) > 0)) faltas.push('Informe a quantidade de todos os produtos.');
+            if (!(parseFloat(div.querySelector('.preco').value) > 0)) faltas.push('Informe o preço dos produtos fora da tabela.');
+        });
+        if (faltas.length) { e.preventDefault(); alert([...new Set(faltas)].join('\n')); }
+    });
+});
+</script>
+{% endblock %}

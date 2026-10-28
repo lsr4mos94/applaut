@@ -1,0 +1,70 @@
+{% comment %}
+Lista de títulos vencidos que abre ao clicar no alerta de inadimplência.
+Qualquer elemento com class="abre-titulos" e data-alvo="#id-da-caixa" alterna a caixa;
+a caixa precisa de data-codigo e data-loja (carrega uma vez só, na primeira abertura).
+{% endcomment %}
+<style>
+    .alerta-inad { flex-direction: column; align-items: stretch !important; }
+    .alerta-inad:not([style*="none"]) { display: block !important; }
+    .abre-titulos { cursor: pointer; }
+    .tag-inad-sel { display: inline-flex; align-items: center; gap: .25rem; font-size: .64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: #b42318; background: #fef3f2; border: 1px solid #fecdca; border-radius: 4px; padding: .05rem .35rem; cursor: pointer; }
+    .abre-titulos .seta-titulos { transition: transform .15s; }
+    .abre-titulos.aberto .seta-titulos { transform: rotate(180deg); }
+    .caixa-titulos { display: none; margin-top: .6rem; }
+    .caixa-titulos.aberta { display: block; }
+    .caixa-titulos table { font-size: .78rem; margin: 0; background: #fff; }
+    .caixa-titulos th { font-size: .68rem; text-transform: uppercase; color: var(--muted); font-weight: 600; white-space: nowrap; }
+</style>
+<script>
+(function () {
+    const URL_TITULOS = "{% url 'agendamento_api_titulos' %}";
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const brl = v => 'R$ ' + (Number(v) || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+    function carregar(caixa) {
+        if (caixa.dataset.carregado) return;
+        caixa.dataset.carregado = '1';
+        caixa.innerHTML = '<div class="small text-muted py-2"><span class="spinner-border spinner-border-sm me-1"></span> Consultando títulos no Protheus...</div>';
+        fetch(`${URL_TITULOS}?codigo=${encodeURIComponent(caixa.dataset.codigo)}&loja=${encodeURIComponent(caixa.dataset.loja)}`)
+            .then(lerJson)
+            .then(lista => {
+                if (!lista.length) { caixa.innerHTML = '<div class="small text-muted py-2">Nenhum título vencido encontrado agora.</div>'; return; }
+                const total = lista.reduce((s, t) => s + Number(t.saldo), 0);
+                caixa.innerHTML = `
+                    <div class="table-responsive border rounded">
+                    <table class="table table-sm align-middle">
+                        <thead><tr><th>Empresa</th><th>Título</th><th>Tipo</th><th>Vencimento</th><th class="text-end">Atraso</th><th class="text-end">Valor em aberto</th></tr></thead>
+                        <tbody>${lista.map(t => `
+                            <tr>
+                                <td>${esc(t.empresa)}</td>
+                                <td class="fw-semibold text-nowrap">${esc(t.titulo)}</td>
+                                <td>${esc(t.tipo)}</td>
+                                <td class="text-nowrap">${esc(t.vencimento)}</td>
+                                <td class="text-end text-nowrap">${t.dias != null ? esc(t.dias) + ' dia(s)' : ''}</td>
+                                <td class="text-end text-nowrap fw-semibold">${brl(t.saldo)}${Number(t.saldo) !== Number(t.valor) ? `<div class="text-muted fw-normal" style="font-size:.68rem">de ${brl(t.valor)}</div>` : ''}</td>
+                            </tr>`).join('')}
+                        </tbody>
+                        <tfoot><tr><td colspan="5" class="text-end fw-bold">Total vencido</td><td class="text-end fw-bold text-nowrap">${brl(total)}</td></tr></tfoot>
+                    </table>
+                    </div>`;
+            })
+            .catch(e => { delete caixa.dataset.carregado; caixa.innerHTML = `<div class="small text-danger py-2">${esc(e.message)}</div>`; });
+    }
+
+    window.abrirTitulos = function (gatilho, abrir) {
+        const caixa = document.querySelector(gatilho.dataset.alvo);
+        if (!caixa) return;
+        const aberta = abrir === undefined ? !caixa.classList.contains('aberta') : abrir;
+        caixa.classList.toggle('aberta', aberta);
+        gatilho.classList.toggle('aberto', aberta);
+        if (aberta) carregar(caixa);
+    };
+
+    document.addEventListener('click', function (e) {
+        const gatilho = e.target.closest('.abre-titulos');
+        if (!gatilho) return;
+        e.preventDefault();
+        window.abrirTitulos(gatilho);
+    });
+})();
+</script>
